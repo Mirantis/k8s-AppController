@@ -1,11 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
+
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/restclient"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 func main() {
@@ -15,27 +16,19 @@ func main() {
 
 	podName := os.Args[1]
 
-	url := fmt.Sprintf("http://127.0.0.1:8080/api/v1/namespaces/default/pods/%s", podName)
-	log.Printf("Requesting %s", url)
-	resp, err := http.Get(url)
+	config := &restclient.Config{
+		Host: "http://127.0.0.1:8080",
+	}
 
+	client, err := client.New(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, err := ioutil.ReadAll(resp.Body)
-
+	pod, err := client.Pods(api.NamespaceDefault).Get(podName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = fmt.Printf("Response: %s", body)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	log.Printf("Status: %v\n", pod.Status)
 }
