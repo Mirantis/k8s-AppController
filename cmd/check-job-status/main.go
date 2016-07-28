@@ -3,11 +3,27 @@ package main
 import (
 	"log"
 	"os"
+	"sort"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
+
+type byLastProbeTime []batch.JobCondition
+
+func (b byLastProbeTime) Len() int {
+	return len(b)
+}
+
+func (b byLastProbeTime) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+func (b byLastProbeTime) Less(i, j int) bool {
+	return b[i].LastProbeTime.After(b[j].LastProbeTime.Time)
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -31,6 +47,7 @@ func main() {
 	}
 
 	conds := job.Status.Conditions
+	sort.Sort(byLastProbeTime(conds))
 
 	if len(conds) == 0 {
 		log.Printf("Job Status: undefined")
