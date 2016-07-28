@@ -30,5 +30,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Status: %v\n", pod.Status)
+	log.Printf("Status: %v\n", pod.Status.Phase)
 }
