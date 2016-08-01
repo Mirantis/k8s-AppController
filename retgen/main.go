@@ -1,29 +1,37 @@
 package main
 
 import (
-	"fmt"
-
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/restclient"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/runtime"
 )
 
-func connect() error {
+var scheme *runtime.Scheme = runtime.NewScheme()
+var codec runtime.ParameterCodec
+
+func GetAppControllerClient() (*AppControllerClient, error) {
+	version := unversioned.GroupVersion{
+		Version: "v1alpha1",
+	}
+
+	scheme.AddUnversionedTypes(version, &DependencyList{})
+	scheme.AddUnversionedTypes(version, &Dependency{})
+	codec = runtime.NewParameterCodec(scheme)
+
 	config := &restclient.Config{
-		Host:     "http://localhost:8800",
-		Username: "",
-		Password: "",
+		Host:    "http://localhost:8800",
+		APIPath: "/apis/appcontroller.k8s",
+		ContentConfig: restclient.ContentConfig{
+			GroupVersion:         &version,
+			NegotiatedSerializer: api.Codecs,
+		},
 	}
-	client, err := client.New(config)
+	client, err := New(config)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	pods, err := client.Pods(api.NamespaceDefault).List(api.ListOptions{})
-	if err != nil {
-		return err
-	}
-	fmt.Println(pods)
-	return nil
+	return client, nil
 }
 
 func main() {
