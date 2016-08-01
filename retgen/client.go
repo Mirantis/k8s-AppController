@@ -2,9 +2,11 @@ package main
 
 import (
 	//"fmt"
-	//"net/http"
 	//	"reflect"
 	//"unsafe"
+	"encoding/json"
+	"net/http"
+	"net/url"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -15,33 +17,39 @@ import (
 )
 
 type AppControllerClient struct {
-	*restclient.RESTClient
+	*http.Client
+	Root                   *url.URL
+	dependenciesURL        *url.URL
+	resourceDefinitionsURL *url.URL
 }
 
 func (c *AppControllerClient) Dependencies() DependenciesInterface {
 	return newDependencies(c)
 }
 
-//func (c *AppControllerClient) ResourceDefinitions() ResourceDefinitionsInterface {
-//	return newResourceDefinitions(c)
-//}
+func (c *AppControllerClient) ResourceDefinitions() ResourceDefinitionsInterface {
+	return newResourceDefinitions(c)
+}
 
 //Create new client for appcontroller resources
 func New(c *restclient.Config) (*AppControllerClient, error) {
-	err := restclient.SetKubernetesDefaults(c)
-	if err != nil {
-		return nil, err
-	}
-	client, err := restclient.RESTClientFor(c)
-	if err != nil {
-		return nil, err
-	}
-	//unversionedClient, err := client.New(c)
-	//if err != nil {
-	//	return nil, err
-	//}
+	client := &http.Client{}
 
-	return &AppControllerClient{RESTClient: client}, nil
+	root, err := url.Parse(c.Host + c.APIPath + "/" + c.ContentConfig.GroupVersion.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	deps, err := url.Parse(root.String() + "/namespaces/default/dependencies")
+	if err != nil {
+		return nil, err
+	}
+
+	resources, err := url.Parse(root.String() + "/namespaces/default/definitions")
+	if err != nil {
+		return nil, err
+	}
+	return &AppControllerClient{Client: client, Root: root, dependenciesURL: deps, resourceDefinitionsURL: resources}, nil
 }
 
 //////////////
@@ -62,15 +70,23 @@ func newDependencies(c *AppControllerClient) *dependency {
 func (c *dependency) List(opts api.ListOptions) (result *DependencyList, err error) {
 	result = &DependencyList{}
 
-	//err = c.r.Get().Resource("dependencies").VersionedParams(&opts, codec).Do().Into(result)
-	err = c.r.Get().Resource("dependencies").Do().Into(result)
+	//TODO: parse opts
+	resp, err := c.r.Get(c.r.dependenciesURL.String())
+	if err != nil {
+		return
+	}
+	err = json.NewDecoder(resp.Body).Decode(result)
 
 	return
 }
 
 func (c *dependency) Get(name string) (result *Dependency, err error) {
 	result = &Dependency{}
-	err = c.r.Get().Resource("dependencies").Name(name).Do().Into(result)
+	resp, err := c.r.Get(c.r.dependenciesURL.String() + "/" + name)
+	if err != nil {
+		return
+	}
+	err = json.NewDecoder(resp.Body).Decode(result)
 
 	return
 }
@@ -85,20 +101,68 @@ type Dependency struct {
 	Children []string `json:"children"`
 }
 
-func (o *Dependency) GetObjectKind() unversioned.ObjectKind {
-	return &o.TypeMeta
-}
-
 type DependencyList struct {
 	unversioned.TypeMeta `json:",inline"`
 
 	// Standard list metadata.
 	unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Items is the list of ThirdPartyResources.
 	Items []Dependency `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-func (o *DependencyList) GetObjectKind() unversioned.ObjectKind {
-	return &o.TypeMeta
+/////////////////
+type ResourceDefinitionsInterface interface {
+	List(opts api.ListOptions) (*ResourceDefinitionList, error)
+	Get(name string) (*ResourceDefinition, error)
+}
+
+type resourceDefinition struct {
+	r *AppControllerClient
+}
+
+func newResourceDefinitions(c *AppControllerClient) *resourceDefinition {
+	return &resourceDefinition{c}
+}
+
+func (c *resourceDefinition) List(opts api.ListOptions) (result *ResourceDefinitionList, err error) {
+	result = &ResourceDefinitionList{}
+
+	resp, err := c.r.Get(c.r.resourceDefinitionsURL.String())
+	if err != nil {
+		return
+	}
+	err = json.NewDecoder(resp.Body).Decode(result)
+
+	return
+}
+
+func (c *resourceDefinition) Get(name string) (result *ResourceDefinition, err error) {
+	result = &ResourceDefinition{}
+	resp, err := c.r.Get(c.r.resourceDefinitionsURL.String() + "/" + name)
+	if err != nil {
+		return
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(result)
+
+	return
+}
+
+type ResourceDefinition struct {
+	unversioned.TypeMeta `json:",inline"`
+
+	// Standard object metadata
+	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	//TODO: add other object types
+	Pod api.Pod `json:"pod,omitempty"`
+}
+
+type ResourceDefinitionList struct {
+	unversioned.TypeMeta `json:",inline"`
+
+	// Standard list metadata.
+	unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	Items []ResourceDefinition `json:"items"`
 }

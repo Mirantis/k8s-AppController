@@ -1,0 +1,7 @@
+metadata:
+  name: dependency.appcontroller.k8s
+apiVersion: extensions/v1beta1
+kind: ThirdPartyResource
+description: "Dependencies for App Controller resources"
+versions:
+- name: v1alpha1
