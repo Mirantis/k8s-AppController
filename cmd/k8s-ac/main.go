@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gluke77/k8s-ac/client"
+	"github.com/Mirantis/k8s-AppController/client"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	kClient "k8s.io/kubernetes/pkg/client/unversioned"
