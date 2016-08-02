@@ -35,17 +35,18 @@ func (c *AppControllerClient) ResourceDefinitions() ResourceDefinitionsInterface
 func New(c *restclient.Config) (*AppControllerClient, error) {
 	client := &http.Client{}
 
-	root, err := url.Parse(c.Host + c.APIPath + "/" + c.ContentConfig.GroupVersion.Version)
+	root, err := url.Parse(c.Host + c.APIPath)
 	if err != nil {
 		return nil, err
 	}
 
-	deps, err := url.Parse(root.String() + "/namespaces/default/dependencies")
+	//these in front of the path are ugly hacks caused by https://github.com/kubernetes/kubernetes/issues/23831
+	deps, err := url.Parse(root.String() + "1/" + c.ContentConfig.GroupVersion.Version + "/namespaces/default/dependencies")
 	if err != nil {
 		return nil, err
 	}
 
-	resources, err := url.Parse(root.String() + "/namespaces/default/definitions")
+	resources, err := url.Parse(root.String() + "2/" + c.ContentConfig.GroupVersion.Version + "/namespaces/default/definitions")
 	if err != nil {
 		return nil, err
 	}

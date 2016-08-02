@@ -1,4 +1,4 @@
-apiVersion: appcontroller.k8s/v1alpha1
+apiVersion: appcontroller.k8s2/v1alpha1
 kind: Definition
 metadata:
   name: pod-definition-1
