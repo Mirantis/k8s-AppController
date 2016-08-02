@@ -1,7 +1,7 @@
 apiVersion: appcontroller.k8s2/v1alpha1
 kind: Definition
 metadata:
-  name: jod-definition-1
+  name: job-definition-1
 job:
   apiVersion: batch/v1
   kind: Job
