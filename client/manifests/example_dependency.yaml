@@ -4,3 +4,10 @@ metadata:
   name: dependency-1
 parent: pod/test-pod
 child: pod/test-pod-2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-2
+parent: pod/test-pod
+child: job/job-definition-1
