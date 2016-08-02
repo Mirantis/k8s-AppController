@@ -3,13 +3,49 @@ package main
 import (
 	"log"
 	"os"
-	"time"
 
 	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/scheduler"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	kClient "k8s.io/kubernetes/pkg/client/unversioned"
 )
+
+type ScheduledPod struct {
+	Pod  *api.Pod
+	Pods kClient.PodInterface
+}
+
+func (p ScheduledPod) Key() string {
+	return "pod/" + p.Pod.Name
+}
+
+func (p ScheduledPod) Create() error {
+	log.Println("Looking for pod", p.Pod.Name)
+	status, err := p.Status()
+
+	if err == nil {
+		log.Println("Found pod, status:", status)
+		log.Println("Skipping pod creation")
+		return nil
+	}
+
+	log.Println("Creating pod", p.Pod.Name)
+	p.Pod, err = p.Pods.Create(p.Pod)
+	return err
+}
+
+func (p ScheduledPod) Status() (string, error) {
+	pod, err := p.Pods.Get(p.Pod.Name)
+	if err != nil {
+		return "error", err
+	}
+	p.Pod = pod
+	if p.Pod.Status.Phase != "Succeeded" {
+		return "not ready", nil
+	}
+	return "ready", nil
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -23,23 +59,24 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Println("Getting dependencies")
 	depList, err := c.Dependencies().List(api.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	deps := []scheduler.Dependency{}
 	for _, dep := range depList.Items {
-		log.Println(dep.Parent, "->", dep.Child)
+		log.Println("Found dependency", dep.Parent, "->", dep.Child)
+		deps = append(deps, scheduler.Dependency{Parent: dep.Parent, Child: dep.Child})
 	}
+	log.Println("Dependencies found so far", deps)
 
+	log.Println("Getting resource definitions")
 	resList, err := c.ResourceDefinitions().List(api.ListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	resources := resList.Items
-
-	log.Println(resources)
 
 	config := &restclient.Config{
 		Host: url,
@@ -52,41 +89,22 @@ func main() {
 
 	pods := kc.Pods(api.NamespaceDefault)
 
-	for _, r := range resources {
+	resources := []scheduler.Resource{}
+	for _, r := range resList.Items {
 		if r.Pod != nil {
-			name := r.Pod.Name
-
-			log.Println("Found pod", r.Pod.Name)
-
-			pod, err := pods.Create(r.Pod)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			log.Println("Created pod", pod)
-			log.Println("Name", pod.Name)
-			log.Println("Status", pod.Status.Phase)
-
-			for i := 0; i < 5; i++ {
-				pod, err = pods.Get(name)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				log.Println("Name", pod.Name)
-				log.Println("Status", pod.Status.Phase)
-
-				time.Sleep(time.Second * 5)
-
-				if pod.Status.Phase == "Succeeded" {
-					break
-				}
-			}
-
-		} else if r.Job != nil {
-			log.Println("Unsupported resource definition", r)
+			resources = append(resources,
+				ScheduledPod{Pod: r.Pod, Pods: pods})
+			log.Println("Found pod definition", r.Pod.Name, r.Pod)
 		} else {
-			log.Println("Unsupported resource definition", r)
+			log.Println("Found unsupported resource", r)
 		}
 	}
+	log.Println("ResourceDefinitions found so far", resources)
+
+	log.Println("Starting resource creation")
+
+	scheduler.Create(resources, deps)
+
+	log.Println("Done")
+
 }

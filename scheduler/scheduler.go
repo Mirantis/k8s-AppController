@@ -1,15 +1,15 @@
 package scheduler
 
 import (
-	"fmt"
+	"log"
 	"sync"
 	"time"
 )
 
 type Resource interface {
 	Key() string
-	Status() string
-	Create()
+	Status() (string, error)
+	Create() error
 }
 
 type ScheduledResourceStatus int
@@ -45,10 +45,10 @@ func (d *ScheduledResource) IsBlocked() bool {
 type DependencyGraph map[string]*ScheduledResource
 
 type Dependency struct {
-	// The one who depends on
-	Depender string
 	//  The one who is being depend on
-	Dependent string
+	Parent string
+	// The one who depends on
+	Child string
 }
 
 func buildDependencyGraph(resources []Resource, deps []Dependency) DependencyGraph {
@@ -62,10 +62,10 @@ func buildDependencyGraph(resources []Resource, deps []Dependency) DependencyGra
 	}
 
 	for _, d := range deps {
-		depGraph[d.Depender].Requires = append(
-			depGraph[d.Depender].Requires, depGraph[d.Dependent])
-		depGraph[d.Dependent].RequiredBy = append(
-			depGraph[d.Dependent].RequiredBy, depGraph[d.Depender])
+		depGraph[d.Child].Requires = append(
+			depGraph[d.Child].Requires, depGraph[d.Parent])
+		depGraph[d.Parent].RequiredBy = append(
+			depGraph[d.Parent].RequiredBy, depGraph[d.Child])
 	}
 
 	return depGraph
@@ -79,17 +79,28 @@ func createResources(toCreate chan *ScheduledResource, created chan string) {
 
 	for r := range toCreate {
 		go func(r *ScheduledResource) {
-			r.Create()
+			log.Println("Creating resource", r.Key())
+			err := r.Create()
+			if err != nil {
+				log.Printf("Error creating resource %s: %v", r.Key(), err)
+			}
 
-			for r.Resource.Status() != "ready" {
+			for {
 				time.Sleep(time.Millisecond * 100)
+				status, err := r.Resource.Status()
+				if err != nil {
+					log.Printf("Error getting status for resource %s: %v", r.Key(), err)
+				}
+				if status == "ready" {
+					break
+				}
 			}
 
 			r.Lock()
 			r.Status = Ready
 			r.Unlock()
 
-			fmt.Println("Ready", r.Key())
+			log.Printf("Resource %s created", r.Key())
 
 			for _, req := range r.RequiredBy {
 				if !req.IsBlocked() {
@@ -129,10 +140,9 @@ func Create(resources []Resource, deps []Dependency) {
 		}
 	}
 
-	fmt.Printf("Wait for %d deps to create\n", depCount)
+	log.Printf("Wait for %d deps to create\n", depCount)
 	for i := 0; i < depCount; i++ {
-		key := <-created
-		fmt.Println(i, "- Created ", key)
+		<-created
 	}
 	close(toCreate)
 	close(created)
