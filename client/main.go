@@ -6,13 +6,13 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 )
 
-func GetAppControllerClient() (*AppControllerClient, error) {
+func GetAppControllerClient(url string) (*AppControllerClient, error) {
 	version := unversioned.GroupVersion{
 		Version: "v1alpha1",
 	}
 
 	config := &restclient.Config{
-		Host:    "http://localhost:8800",
+		Host:    url,
 		APIPath: "/apis/appcontroller.k8s",
 		ContentConfig: restclient.ContentConfig{
 			GroupVersion:         &version,
