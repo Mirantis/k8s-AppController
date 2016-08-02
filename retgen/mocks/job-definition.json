@@ -1,0 +1,41 @@
+{
+    "apiVersion": "appcontroller.k8s2/v1alpha1",
+    "job": {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {
+            "name": "pi"
+        },
+        "spec": {
+            "template": {
+                "metadata": {
+                    "name": "pi"
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "command": [
+                                "perl",
+                                "-Mbignum=bpi",
+                                "-wle",
+                                "print bpi(2000)"
+                            ],
+                            "image": "perl",
+                            "name": "pi"
+                        }
+                    ],
+                    "restartPolicy": "Never"
+                }
+            }
+        }
+    },
+    "kind": "Definition",
+    "metadata": {
+        "creationTimestamp": "2016-08-02T08:44:16Z",
+        "name": "job-definition-1",
+        "namespace": "default",
+        "resourceVersion": "817",
+        "selfLink": "/apis/appcontroller.k8s2/v1alpha1/namespaces/default/definitions/job-definition-1",
+        "uid": "4b6931d2-588d-11e6-b912-0cc47a430c04"
+    }
+}

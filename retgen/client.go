@@ -5,8 +5,6 @@ import (
 	"net/url"
 
 	"k8s.io/kubernetes/pkg/client/restclient"
-	//client "k8s.io/kubernetes/pkg/client/unversioned"
-	//"github.com/kr/pretty"
 )
 
 type AppControllerClient struct {

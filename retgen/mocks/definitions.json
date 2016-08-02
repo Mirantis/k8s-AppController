@@ -1,0 +1,125 @@
+{
+    "apiVersion": "appcontroller.k8s2/v1alpha1",
+    "items": [
+        {
+            "apiVersion": "appcontroller.k8s2/v1alpha1",
+            "job": {
+                "apiVersion": "batch/v1",
+                "kind": "Job",
+                "metadata": {
+                    "name": "pi"
+                },
+                "spec": {
+                    "template": {
+                        "metadata": {
+                            "name": "pi"
+                        },
+                        "spec": {
+                            "containers": [
+                                {
+                                    "command": [
+                                        "perl",
+                                        "-Mbignum=bpi",
+                                        "-wle",
+                                        "print bpi(2000)"
+                                    ],
+                                    "image": "perl",
+                                    "name": "pi"
+                                }
+                            ],
+                            "restartPolicy": "Never"
+                        }
+                    }
+                }
+            },
+            "kind": "Definition",
+            "metadata": {
+                "creationTimestamp": "2016-08-02T08:44:16Z",
+                "name": "job-definition-1",
+                "namespace": "default",
+                "resourceVersion": "817",
+                "selfLink": "/apis/appcontroller.k8s2/v1alpha1/namespaces/default/definitions/jod-definition-1",
+                "uid": "4b6931d2-588d-11e6-b912-0cc47a430c04"
+            }
+        },
+        {
+            "apiVersion": "appcontroller.k8s2/v1alpha1",
+            "kind": "Definition",
+            "metadata": {
+                "creationTimestamp": "2016-08-02T08:32:01Z",
+                "name": "pod-definition-1",
+                "namespace": "default",
+                "resourceVersion": "78",
+                "selfLink": "/apis/appcontroller.k8s2/v1alpha1/namespaces/default/definitions/pod-definition-1",
+                "uid": "956e5588-588b-11e6-b912-0cc47a430c04"
+            },
+            "pod": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "labels": {
+                        "label1": "label1value",
+                        "label2": "label2value"
+                    },
+                    "name": "test-pod"
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "command": [
+                                "/bin/sh",
+                                "-c",
+                                "env"
+                            ],
+                            "image": "gcr.io/google_containers/busybox",
+                            "name": "test-container"
+                        }
+                    ],
+                    "restartPolicy": "Never"
+                }
+            }
+        },
+        {
+            "apiVersion": "appcontroller.k8s2/v1alpha1",
+            "kind": "Definition",
+            "metadata": {
+                "creationTimestamp": "2016-08-02T08:32:01Z",
+                "name": "pod-definition-2",
+                "namespace": "default",
+                "resourceVersion": "79",
+                "selfLink": "/apis/appcontroller.k8s2/v1alpha1/namespaces/default/definitions/pod-definition-2",
+                "uid": "956edc2a-588b-11e6-b912-0cc47a430c04"
+            },
+            "pod": {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "labels": {
+                        "label1": "label1value",
+                        "label2": "label2value"
+                    },
+                    "name": "test-pod-2"
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "command": [
+                                "/bin/sh",
+                                "-c",
+                                "env"
+                            ],
+                            "image": "gcr.io/google_containers/busybox",
+                            "name": "test-container"
+                        }
+                    ],
+                    "restartPolicy": "Never"
+                }
+            }
+        }
+    ],
+    "kind": "DefinitionList",
+    "metadata": {
+        "resourceVersion": "8186",
+        "selfLink": "/apis/appcontroller.k8s2/v1alpha1/namespaces/default/definitions"
+    }
+}

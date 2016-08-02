@@ -1,0 +1,14 @@
+{
+    "apiVersion": "appcontroller.k8s1/v1alpha1",
+    "child": "pod/test-pod-2",
+    "kind": "Dependency",
+    "metadata": {
+        "creationTimestamp": "2016-08-02T08:32:11Z",
+        "name": "dep-name",
+        "namespace": "default",
+        "resourceVersion": "90",
+        "selfLink": "/apis/appcontroller.k8s1/v1alpha1/namespaces/default/dependencies/dep-name",
+        "uid": "9b5ec913-588b-11e6-b912-0cc47a430c04"
+    },
+    "parent": "pod/test-pod"
+}
