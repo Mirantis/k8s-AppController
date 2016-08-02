@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"k8s.io/kubernetes/pkg/api"
@@ -24,8 +24,4 @@ func GetAppControllerClient() (*AppControllerClient, error) {
 		return nil, err
 	}
 	return client, nil
-}
-
-func main() {
-
 }

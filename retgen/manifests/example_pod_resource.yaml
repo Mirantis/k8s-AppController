@@ -6,7 +6,26 @@ pod:
   apiVersion: v1
   kind: Pod
   metadata:
-    name: dapi-test-pod
+    name: test-pod
+    labels:
+      label1: label1value
+      label2: label2value
+  spec:
+    containers:
+      - name: test-container
+        image: gcr.io/google_containers/busybox
+        command: [ "/bin/sh", "-c", "env"]
+    restartPolicy: Never
+---
+apiVersion: appcontroller.k8s2/v1alpha1
+kind: Definition
+metadata:
+  name: pod-definition-2
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: test-pod-2
     labels:
       label1: label1value
       label2: label2value
