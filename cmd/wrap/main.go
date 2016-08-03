@@ -44,5 +44,9 @@ metadata:
 
 func main() {
 	definition := getInput(os.Stdin)
-	fmt.Print(getWrappedYaml(definition, os.Args[1]))
+	out, err := getWrappedYaml(definition, os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(out)
 }
