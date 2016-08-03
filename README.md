@@ -1,11 +1,50 @@
-##Building docker image
+# Usage
 
-`docker build -t appcontroller .`
+Clone repo:
 
-##Running Application Controller via docker
+`git clone https://github.com/Mirantis/k8s-AppController.git`
+`cd k8s-AppController`
 
-`docker run appcontroller kubeac <k8s cluster url>`
+Create third party resource kinds:
 
-##K8s pod definition
+`kubectl create -f client/manifest dependencies.yaml`
+`kubectl create -f client/manifest resdefs.yaml`
 
-On the way
+Create appcontroller wrap pod:
+
+`kubectl create -f appcontroller-wrap.yaml`
+
+Suppose you have some yaml files with single k8s object definitions (pod and jobs are supported right now). Create AppController ResourceDefintions for them:
+
+`cat path_to_your_pod.yaml | kubectl exec -i k8s-appcontroller-wrap wrap <resource_name> | kubectl create -f -`
+
+Create file with dependencies:
+```yaml
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-1
+parent: pod/<pod_resource_name_1>
+child: job/<job_resource_name_2>
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-2
+parent: pod/<pod_resource_name_2>
+child: pod/<pod_resource_name_3>
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-3
+parent: job/<job_resource_name_1>
+child: job/<job_resource_name_1>
+```
+Load it to k8s:
+
+`kubectl create -f dependencies_file.yaml`
+
+Run AppController pod:
+
+`kubectl create -f appcontroller.yaml`
