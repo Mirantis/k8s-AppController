@@ -2,7 +2,6 @@ package resources
 
 import (
 	"log"
-	"sort"
 
 	"k8s.io/kubernetes/pkg/apis/batch"
 	kClient "k8s.io/kubernetes/pkg/client/unversioned"
@@ -37,18 +36,14 @@ func (s Job) Status() (string, error) {
 		return "error", err
 	}
 	s.Job = job
-	conds := job.Status.Conditions
-	sort.Sort(byLastProbeTime(conds))
 
-	if len(conds) == 0 {
-		return "not ready", nil
+	for _, cond := range s.Job.Status.Conditions {
+		if cond.Type == "Complete" && cond.Status == "True" {
+			return "ready", nil
+		}
 	}
 
-	if conds[0].Type != "Complete" || conds[0].Status != "True" {
-		return "not ready", nil
-	}
-
-	return "ready", nil
+	return "not ready", nil
 }
 
 func (s Job) Create() error {
@@ -56,8 +51,8 @@ func (s Job) Create() error {
 	status, err := s.Status()
 
 	if err == nil {
-		log.Println("Found job, status:", status)
-		log.Println("Skipping job creation")
+		log.Printf("Found job %s, status:%s", s.Job.Name, status)
+		log.Println("Skipping creation of job", s.Job.Name)
 		return nil
 	}
 
