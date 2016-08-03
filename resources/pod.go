@@ -21,8 +21,8 @@ func (p Pod) Create() error {
 	status, err := p.Status()
 
 	if err == nil {
-		log.Println("Found pod, status:", status)
-		log.Println("Skipping pod creation")
+		log.Printf("Found pod %s, status: %s ", p.Pod.Name, status)
+		log.Println("Skipping creation of pod", p.Pod.Name)
 		return nil
 	}
 
@@ -37,8 +37,24 @@ func (p Pod) Status() (string, error) {
 		return "error", err
 	}
 	p.Pod = pod
-	if p.Pod.Status.Phase != "Succeeded" {
-		return "not ready", nil
+
+	if p.Pod.Status.Phase == "Succeeded" {
+		return "ready", nil
 	}
-	return "ready", nil
+
+	if p.Pod.Status.Phase == "Running" && p.isReady() {
+		return "ready", nil
+	}
+
+	return "not ready", nil
+}
+
+func (p Pod) isReady() bool {
+	for _, cond := range p.Pod.Status.Conditions {
+		if cond.Type == "Ready" && cond.Status == "True" {
+			return true
+		}
+	}
+
+	return false
 }
