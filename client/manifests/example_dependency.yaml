@@ -10,4 +10,4 @@ kind: Dependency
 metadata:
   name: dependency-2
 parent: pod/test-pod
-child: job/job-definition-1
+child: job/pi
