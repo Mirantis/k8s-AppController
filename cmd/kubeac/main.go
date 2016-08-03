@@ -3,17 +3,19 @@ package main
 import (
 	"log"
 	"os"
+	"sort"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/scheduler"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	kClient "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type ScheduledPod struct {
-	Pod  *api.Pod
-	Pods kClient.PodInterface
+	Pod    *api.Pod
+	Client kClient.PodInterface
 }
 
 func (p ScheduledPod) Key() string {
@@ -31,12 +33,12 @@ func (p ScheduledPod) Create() error {
 	}
 
 	log.Println("Creating pod", p.Pod.Name)
-	p.Pod, err = p.Pods.Create(p.Pod)
+	p.Pod, err = p.Client.Create(p.Pod)
 	return err
 }
 
 func (p ScheduledPod) Status() (string, error) {
-	pod, err := p.Pods.Get(p.Pod.Name)
+	pod, err := p.Client.Get(p.Pod.Name)
 	if err != nil {
 		return "error", err
 	}
@@ -45,6 +47,64 @@ func (p ScheduledPod) Status() (string, error) {
 		return "not ready", nil
 	}
 	return "ready", nil
+}
+
+type byLastProbeTime []batch.JobCondition
+
+func (b byLastProbeTime) Len() int {
+	return len(b)
+}
+
+func (b byLastProbeTime) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+func (b byLastProbeTime) Less(i, j int) bool {
+	return b[i].LastProbeTime.After(b[j].LastProbeTime.Time)
+}
+
+type ScheduledJob struct {
+	Job    *batch.Job
+	Client kClient.JobInterface
+}
+
+func (s ScheduledJob) Key() string {
+	return "job/" + s.Job.Name
+}
+
+func (s ScheduledJob) Status() (string, error) {
+	job, err := s.Client.Get(s.Job.Name)
+	if err != nil {
+		return "error", err
+	}
+	s.Job = job
+	conds := job.Status.Conditions
+	sort.Sort(byLastProbeTime(conds))
+
+	if len(conds) == 0 {
+		return "not ready", nil
+	}
+
+	if conds[0].Type != "Complete" || conds[0].Status != "True" {
+		return "not ready", nil
+	}
+
+	return "ready", nil
+}
+
+func (s ScheduledJob) Create() error {
+	log.Println("Looking for job", s.Job.Name)
+	status, err := s.Status()
+
+	if err == nil {
+		log.Println("Found job, status:", status)
+		log.Println("Skipping job creation")
+		return nil
+	}
+
+	log.Println("Creating job", s.Job.Name)
+	s.Job, err = s.Client.Create(s.Job)
+	return err
 }
 
 func main() {
@@ -88,13 +148,18 @@ func main() {
 	}
 
 	pods := kc.Pods(api.NamespaceDefault)
+	jobs := kc.Extensions().Jobs(api.NamespaceDefault)
 
 	resources := []scheduler.Resource{}
 	for _, r := range resList.Items {
 		if r.Pod != nil {
 			resources = append(resources,
-				ScheduledPod{Pod: r.Pod, Pods: pods})
+				ScheduledPod{Pod: r.Pod, Client: pods})
 			log.Println("Found pod definition", r.Pod.Name, r.Pod)
+		} else if r.Job != nil {
+			resources = append(resources,
+				ScheduledJob{Job: r.Job, Client: jobs})
+			log.Println("Found job definition", r.Job.Name, r.Job)
 		} else {
 			log.Println("Found unsupported resource", r)
 		}
