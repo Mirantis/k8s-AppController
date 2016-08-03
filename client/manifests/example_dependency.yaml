@@ -10,4 +10,11 @@ kind: Dependency
 metadata:
   name: dependency-2
 parent: pod/test-pod
-child: job/pi
+child: job/test-job
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-3
+parent: pod/test-pod-3
+child: job/test-job
