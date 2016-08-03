@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8s-appcontroller
+spec:
+  restartPolicy: Never
+  containers:
+  - name: kubeac
+    image: nebril/appcontroller
+    command: ["kubeac", "CLUSTER_URL"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8s-appcontroller-wrap
+spec:
+  restartPolicy: Never
+  containers:
+  - name: kube-app-wrap
+    image: nebril/appcontroller
+    command: ["tail", "-f", "/dev/null"] #run container forever so the user can use `kubectl exec k8s-appcontroller-wrap`
