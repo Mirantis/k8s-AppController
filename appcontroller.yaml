@@ -7,4 +7,4 @@ spec:
   containers:
   - name: kubeac
     image: nebril/appcontroller
-    command: ["kubeac", "CLUSTER_URL"]
+    command:  ["sh", "-c", "exec runsv /etc/sv/ac"]
