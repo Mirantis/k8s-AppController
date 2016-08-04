@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: existing-test-pod
+  labels:
+    label1: label1value
+    label2: label2value
+spec:
+  containers:
+  - name: test-container
+    image: gcr.io/google_containers/busybox
+    command: [ "/bin/sh", "-c", "env"]
+  restartPolicy: Never
