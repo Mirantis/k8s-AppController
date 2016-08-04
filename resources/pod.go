@@ -4,12 +4,12 @@ import (
 	"log"
 
 	"k8s.io/kubernetes/pkg/api"
-	kClient "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type Pod struct {
 	Pod    *api.Pod
-	Client kClient.PodInterface
+	Client unversioned.PodInterface
 }
 
 func (p Pod) Key() string {
@@ -57,4 +57,8 @@ func (p Pod) isReady() bool {
 	}
 
 	return false
+}
+
+func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
+	return Pod{Pod: pod, Client: client}
 }
