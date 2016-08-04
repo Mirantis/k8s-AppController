@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"k8s.io/kubernetes/pkg/apis/batch"
-	kClient "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type byLastProbeTime []batch.JobCondition
@@ -23,7 +23,7 @@ func (b byLastProbeTime) Less(i, j int) bool {
 
 type Job struct {
 	Job    *batch.Job
-	Client kClient.JobInterface
+	Client unversioned.JobInterface
 }
 
 func (s Job) Key() string {
@@ -59,4 +59,8 @@ func (s Job) Create() error {
 	log.Println("Creating job", s.Job.Name)
 	s.Job, err = s.Client.Create(s.Job)
 	return err
+}
+
+func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
+	return Job{Job: job, Client: client}
 }

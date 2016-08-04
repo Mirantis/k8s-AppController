@@ -5,11 +5,10 @@ import (
 	"os"
 
 	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/kubernetes"
 	"github.com/Mirantis/k8s-AppController/resources"
 	"github.com/Mirantis/k8s-AppController/scheduler"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	kClient "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 func main() {
@@ -43,27 +42,23 @@ func main() {
 		log.Fatal(err)
 	}
 
-	config := &restclient.Config{
-		Host: url,
-	}
-
-	kc, err := kClient.New(config)
+	kc, err := kubernetes.Client(url)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pods := kc.Pods(api.NamespaceDefault)
-	jobs := kc.Extensions().Jobs(api.NamespaceDefault)
+	pods := kc.Pods()
+	jobs := kc.Jobs()
 
 	resList := []scheduler.Resource{}
 	for _, r := range resDefList.Items {
 		if r.Pod != nil {
 			resList = append(resList,
-				resources.Pod{Pod: r.Pod, Client: pods})
+				resources.NewPod(r.Pod, pods))
 			log.Println("Found pod definition", r.Pod.Name, r.Pod)
 		} else if r.Job != nil {
 			resList = append(resList,
-				resources.Job{Job: r.Job, Client: jobs})
+				resources.NewJob(r.Job, jobs))
 			log.Println("Found job definition", r.Job.Name, r.Job)
 		} else {
 			log.Println("Found unsupported resource", r)
