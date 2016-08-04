@@ -10,11 +10,15 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
+	var url string
+	fromEnv := os.Getenv("KUBERNETES_CLUSTER_URL")
+	if fromEnv != "" {
+		url = fromEnv
+	} else if len(os.Args) != 2 {
 		log.Fatal("Usage: k8s-ac KUBERNETES_CLUSTER_URL")
+	} else {
+		url = os.Args[1]
 	}
-
-	url := os.Args[1]
 
 	c, err := client.GetAppControllerClient(url)
 	if err != nil {
