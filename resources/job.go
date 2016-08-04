@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"errors"
 	"log"
 
 	"k8s.io/kubernetes/pkg/apis/batch"
@@ -63,4 +64,45 @@ func (s Job) Create() error {
 
 func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
 	return Job{Job: job, Client: client}
+}
+
+type ExistingJob struct {
+	Name   string
+	Client unversioned.JobInterface
+}
+
+func (s ExistingJob) Key() string {
+	return "job/" + s.Name
+}
+
+func (s ExistingJob) Status() (string, error) {
+	job, err := s.Client.Get(s.Name)
+	if err != nil {
+		return "error", err
+	}
+
+	for _, cond := range job.Status.Conditions {
+		if cond.Type == "Complete" && cond.Status == "True" {
+			return "ready", nil
+		}
+	}
+
+	return "not ready", nil
+}
+
+func (s ExistingJob) Create() error {
+	log.Println("Looking for job", s.Name)
+	status, err := s.Status()
+
+	if err == nil {
+		log.Printf("Found job %s, status:%s", s.Name, status)
+		return nil
+	}
+
+	log.Fatalf("Job %s not found", s.Name)
+	return errors.New("Job not found")
+}
+
+func NewExistingJob(name string, client unversioned.JobInterface) ExistingJob {
+	return ExistingJob{Name: name, Client: client}
 }
