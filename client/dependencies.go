@@ -25,8 +25,8 @@ func newDependencies(c *AppControllerClient) *dependency {
 func (c *dependency) List(opts api.ListOptions) (result *DependencyList, err error) {
 	result = &DependencyList{}
 
-	//TODO: parse opts
-	resp, err := c.r.Get(c.r.dependenciesURL.String())
+	url := getUrlWithOptions(c.r.dependenciesURL, opts)
+	resp, err := c.r.Get(url.String())
 	if err != nil {
 		return
 	}

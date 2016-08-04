@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -196,5 +197,30 @@ func TestGetJobResourceDefinition(t *testing.T) {
 	}
 	if def.Job == nil {
 		t.Error("Job shouldn't be nil")
+	}
+}
+
+func TestGetURLWithoutOptions(t *testing.T) {
+	baseUrl, _ := url.Parse("http://trololo.com:5233")
+
+	noOptionsURL := getUrlWithOptions(baseUrl, api.ListOptions{})
+
+	if noOptionsURL.String() != baseUrl.String() {
+		t.Errorf("%s expected, got %s", baseUrl, noOptionsURL)
+	}
+}
+
+func TestGetURLWithOptions(t *testing.T) {
+	baseUrl, _ := url.Parse("http://trololo.com:5233")
+	options := api.ListOptions{
+		LabelSelector: AppControllerLabelSelector{Key: "Key", Value: "Value"},
+	}
+
+	optionsURL := getUrlWithOptions(baseUrl, options)
+
+	expected := fmt.Sprintf("%s?labelSelector=Key%%3DValue", baseUrl.String())
+
+	if optionsURL.String() != expected {
+		t.Errorf("%s expected, got %s", expected, optionsURL)
 	}
 }

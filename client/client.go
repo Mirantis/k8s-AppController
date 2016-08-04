@@ -1,10 +1,13 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 type AppControllerClient struct {
@@ -42,4 +45,44 @@ func New(c *restclient.Config) (*AppControllerClient, error) {
 		return nil, err
 	}
 	return &AppControllerClient{Client: client, Root: root, dependenciesURL: deps, resourceDefinitionsURL: resources}, nil
+}
+
+func getUrlWithOptions(baseURL *url.URL, opts api.ListOptions) *url.URL {
+	params := url.Values{}
+	//TODO: check other selectors than label
+	if opts.LabelSelector != nil {
+		params.Add("labelSelector", opts.LabelSelector.String())
+	}
+
+	finalUrl := *baseURL
+	finalUrl.RawQuery = params.Encode()
+
+	return &finalUrl
+}
+
+//implements labels.Selector, but supports only equality
+type AppControllerLabelSelector struct {
+	Key   string
+	Value string
+}
+
+func (s AppControllerLabelSelector) Empty() bool {
+	return len(s.Key) == 0
+}
+
+func (s AppControllerLabelSelector) String() string {
+	if s.Empty() {
+		return ""
+	}
+	return fmt.Sprintf("%s=%s", s.Key, s.Value)
+}
+
+//not supported, returns copy
+func (s AppControllerLabelSelector) Add(r ...labels.Requirement) labels.Selector {
+	return s
+}
+
+//not supported
+func (s AppControllerLabelSelector) Matches(labels.Labels) bool {
+	return false
 }

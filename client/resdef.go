@@ -26,8 +26,8 @@ func newResourceDefinitions(c *AppControllerClient) *resourceDefinition {
 func (c *resourceDefinition) List(opts api.ListOptions) (result *ResourceDefinitionList, err error) {
 	result = &ResourceDefinitionList{}
 
-	//TODO: parse opts
-	resp, err := c.r.Get(c.r.resourceDefinitionsURL.String())
+	url := getUrlWithOptions(c.r.resourceDefinitionsURL, opts)
+	resp, err := c.r.Get(url.String())
 	if err != nil {
 		return
 	}
