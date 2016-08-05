@@ -5,6 +5,7 @@ COPY . /go/src/appcontroller
 
 WORKDIR /go/src/appcontroller
 
+RUN apk --no-cache add git
 RUN go get ./...
 RUN go build -o kubeac cmd/kubeac/main.go
 RUN go build -o wrap cmd/wrap/main.go
