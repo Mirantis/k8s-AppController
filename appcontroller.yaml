@@ -6,5 +6,5 @@ spec:
   restartPolicy: Always
   containers:
   - name: kubeac
-    image: nebril/k8s-appcontroller:other_start
+    image: nebril/k8s-appcontroller
     command:  ["sh", "-c", "exec runsv /etc/sv/ac"]
