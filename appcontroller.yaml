@@ -6,5 +6,9 @@ spec:
   restartPolicy: Always
   containers:
   - name: kubeac
-    image: nebril/k8s-appcontroller
-    command:  ["sh", "-c", "exec runsv /etc/sv/ac"]
+    image: nebril/k8s-appcontroller:other_start
+    command:  ["sh", "-c", "run_runit"]
+    env:
+      - # tempoarary only
+        name: KUBERNETES_CLUSTER_URL
+        value: http://10.0.0.1:8080
