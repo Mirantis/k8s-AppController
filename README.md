@@ -47,4 +47,8 @@ Run AppController pod:
 
 Start appcontroller process:
 
-`kubectl exec k8s-appcontroller ac-start`
+`kubectl exec k8s-appcontroller ac-run`
+
+You can stop appcontroller process by:
+
+`kubectl exec k8s-appcontroller ac-stop`
