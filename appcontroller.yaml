@@ -3,8 +3,8 @@ kind: Pod
 metadata:
   name: k8s-appcontroller
 spec:
-  restartPolicy: Never
+  restartPolicy: Always
   containers:
   - name: kubeac
-    image: nebril/appcontroller
+    image: nebril/k8s-appcontroller:other_start
     command:  ["sh", "-c", "exec runsv /etc/sv/ac"]
