@@ -1,21 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: pi
+  name: test-job
 spec:
   template:
     metadata:
-      name: pi
+      name: test-job
     spec:
       containers:
-      - name: pi
-        image: perl
-        command: ["/bin/bash", "-c", "perl -Mbignum=bpi -wle 'print bpi(5000)' > /pi/pi"]
-        volumeMounts:
-        - mountPath: /pi
-          name: pivol
+      - name: test-container
+        image: gcr.io/google_containers/busybox
+        command: [ "/bin/sh", "-c", "sleep 10; env"]
       restartPolicy: Never
-      volumes:
-      - name: pivol
-        hostPath:
-          path: /data

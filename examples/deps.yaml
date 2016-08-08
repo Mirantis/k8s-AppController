@@ -2,5 +2,5 @@ apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
   name: dependency-1
-parent: job/pi
-child: pod/print-pi
+parent: pod/eventually-alive-pod
+child: job/test-job
