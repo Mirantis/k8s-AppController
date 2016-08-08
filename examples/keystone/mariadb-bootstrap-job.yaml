@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mariadb-bootstrap
+spec:
+  template:
+    metadata:
+      name: mariadb-bootstrap
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - image: "nebril/centos-binary-mariadb"
+          name: mariadb-bootstrap
+          volumeMounts:
+            - mountPath: /var/lib/kolla/config_files
+              name: mariadb-config
+            - mountPath: /var/lib/mysql
+              name: mariadb-persistent-storage
+            - mountPath: /var/log/kolla
+              name: kolla-logs
+          env:
+            - name: KOLLA_KUBERNETES
+              value: ""
+            - name: KOLLA_BOOTSTRAP
+              value: ""
+            - name: KOLLA_CONFIG_STRATEGY
+              value: "COPY_ALWAYS"
+            - name: DB_ROOT_PASSWORD
+              value: "UFyWEz4feE4bCy5EtKbCyoVXfFjhDw7zyZxXk6L9"
+      volumes:
+        - name: mariadb-config
+          configMap:
+            name: mariadb-configmap
+        - name: mariadb-persistent-storage
+          persistentVolumeClaim:
+            claimName: mariadb
+        - name: kolla-logs
+          emptyDir: {}
