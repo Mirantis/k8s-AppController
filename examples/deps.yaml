@@ -4,3 +4,31 @@ metadata:
   name: dependency-1
 parent: pod/eventually-alive-pod
 child: job/test-job
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-2
+parent: job/test-job
+child: pod/eventually-alive-pod2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-3
+parent: job/test-job
+child: pod/eventually-alive-pod3
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-4
+parent: pod/eventually-alive-pod2
+child: job/test-job2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-5
+parent: pod/eventually-alive-pod3
+child: job/test-job2
