@@ -2,6 +2,7 @@
 
 set -x
 
+kubectl.sh create -f existing_job.yaml
 kubectl.sh create -f ../appcontroller.yaml
 kubectl.sh create -f ../manifests/dependencies.yaml
 kubectl.sh create -f ../manifests/resdefs.yaml
