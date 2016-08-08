@@ -6,7 +6,7 @@ spec:
   restartPolicy: Always
   containers:
   - name: kubeac
-    image: nebril/k8s-appcontroller:other_start
+    image: nebril/k8s-appcontroller
     command:  ["sh", "-c", "run_runit"]
     env:
       - # tempoarary only
