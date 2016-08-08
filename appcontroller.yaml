@@ -7,7 +7,7 @@ spec:
   containers:
   - name: kubeac
     image: nebril/k8s-appcontroller
-    command:  ["/usr/bin/run_runit"]
+    command:  ["sh", "run_runit.sh"]
     env:
       - # tempoarary only
         name: KUBERNETES_CLUSTER_URL
