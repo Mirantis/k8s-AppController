@@ -9,6 +9,7 @@ import (
 type ClientInterface interface {
 	Pods() unversioned.PodInterface
 	Jobs() unversioned.JobInterface
+	Services() unversioned.ServiceInterface
 }
 
 type client struct {
@@ -23,6 +24,10 @@ func (c *client) Pods() unversioned.PodInterface {
 
 func (c *client) Jobs() unversioned.JobInterface {
 	return c.Client.Extensions().Jobs(api.NamespaceDefault)
+}
+
+func (c *client) Services() unversioned.ServiceInterface {
+	return c.Client.Services(api.NamespaceDefault)
 }
 
 func Client(url string) (ClientInterface, error) {

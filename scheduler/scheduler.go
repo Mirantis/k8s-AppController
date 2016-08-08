@@ -68,6 +68,7 @@ func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
 
 	pods := kc.Pods()
 	jobs := kc.Jobs()
+	services := kc.Services()
 
 	for _, r := range resList.Items {
 		if r.Pod != nil {
@@ -78,8 +79,12 @@ func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
 			sr := newScheduledResource(resources.NewJob(r.Job, jobs))
 			depGraph[sr.Key()] = sr
 			log.Println("Found job definition", r.Job.Name, r.Job)
+		} else if r.Service != nil {
+			sr := newScheduledResource(resources.NewService(r.Service, services))
+			depGraph[sr.Key()] = sr
+			log.Println("Found service definition", r.Service.Name, r.Service)
 		} else {
-			log.Fatalf("Found unsupported resource", r)
+			log.Fatalln("Found unsupported resource", r)
 		}
 	}
 
@@ -109,8 +114,10 @@ func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
 				depGraph[d.Parent] = newScheduledResource(resources.NewExistingPod(name, pods))
 			} else if typ == "job" {
 				depGraph[d.Parent] = newScheduledResource(resources.NewExistingJob(name, jobs))
+			} else if typ == "service" {
+				depGraph[d.Parent] = newScheduledResource(resources.NewExistingService(name, services))
 			} else {
-				log.Fatalf("Not a proper resource type: %s. Expected 'pod' or 'job'", typ)
+				log.Fatalf("Not a proper resource type: %s. Expected 'pod','job' or 'service'", typ)
 			}
 		}
 

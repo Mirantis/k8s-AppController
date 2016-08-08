@@ -63,8 +63,9 @@ type ResourceDefinition struct {
 	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	//TODO: add other object types
-	Pod *api.Pod   `json:"pod,omitempty"`
-	Job *batch.Job `json:"job,omitempty"`
+	Pod     *api.Pod     `json:"pod,omitempty"`
+	Job     *batch.Job   `json:"job,omitempty"`
+	Service *api.Service `json:"service,omitempty"`
 }
 
 type ResourceDefinitionList struct {

@@ -49,6 +49,8 @@ pod:
   kind: Pod
   metadata:
     name: test-pod-3
+    labels:
+      kubeac_service: sample
   spec:
     containers:
     - command: ["/bin/sh"]
