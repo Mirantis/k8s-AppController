@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: print-pi
+spec:
+  containers:
+  - name: pi
+    image: perl
+    command: ["/bin/bash", "-c", "cat /pi/pi"]
+    volumeMounts:
+    - mountPath: /pi
+      name: pivol
+  restartPolicy: Never
+  volumes:
+  - name: pivol
+    hostPath:
+      path: /data
