@@ -2,6 +2,8 @@ apiVersion: appcontroller.k8s2/v1alpha1
 kind: Definition
 metadata:
   name: pod-definition-1
+  labels:
+    kubeac_task: sample
 pod:
   apiVersion: v1
   kind: Pod
@@ -21,6 +23,8 @@ apiVersion: appcontroller.k8s2/v1alpha1
 kind: Definition
 metadata:
   name: pod-definition-2
+  labels:
+    kubeac_task: sample
 pod:
   apiVersion: v1
   kind: Pod

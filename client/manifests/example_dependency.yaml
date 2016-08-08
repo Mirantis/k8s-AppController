@@ -1,6 +1,8 @@
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
+  labels:
+    kubeac_task: sample
   name: dependency-1
 parent: pod/test-pod
 child: pod/test-pod-2
