@@ -1,6 +1,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,7 +28,11 @@ func (c *AppControllerClient) ResourceDefinitions() ResourceDefinitionsInterface
 
 //Create new client for appcontroller resources
 func New(c *restclient.Config) (*AppControllerClient, error) {
-	client := &http.Client{}
+	tr := &http.Transport{
+		//Need this for minikube
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
 
 	root, err := url.Parse(c.Host + c.APIPath)
 	if err != nil {
