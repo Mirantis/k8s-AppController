@@ -13,8 +13,39 @@ type Pod struct {
 	Client unversioned.PodInterface
 }
 
+func podKey(name string) string {
+	return "pod/" + name
+}
+
 func (p Pod) Key() string {
-	return "pod/" + p.Pod.Name
+	return podKey(p.Pod.Name)
+}
+
+func podStatus(p unversioned.PodInterface, name string) (string, error) {
+	pod, err := p.Get(name)
+	if err != nil {
+		return "error", err
+	}
+
+	if pod.Status.Phase == "Succeeded" {
+		return "ready", nil
+	}
+
+	if pod.Status.Phase == "Running" && isReady(pod) {
+		return "ready", nil
+	}
+
+	return "not ready", nil
+}
+
+func isReady(pod *api.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == "Ready" && cond.Status == "True" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p Pod) Create() error {
@@ -33,31 +64,7 @@ func (p Pod) Create() error {
 }
 
 func (p Pod) Status() (string, error) {
-	pod, err := p.Client.Get(p.Pod.Name)
-	if err != nil {
-		return "error", err
-	}
-	p.Pod = pod
-
-	if p.Pod.Status.Phase == "Succeeded" {
-		return "ready", nil
-	}
-
-	if p.Pod.Status.Phase == "Running" && isReady(p.Pod) {
-		return "ready", nil
-	}
-
-	return "not ready", nil
-}
-
-func isReady(pod *api.Pod) bool {
-	for _, cond := range pod.Status.Conditions {
-		if cond.Type == "Ready" && cond.Status == "True" {
-			return true
-		}
-	}
-
-	return false
+	return podStatus(p.Client, p.Pod.Name)
 }
 
 func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
@@ -70,7 +77,7 @@ type ExistingPod struct {
 }
 
 func (p ExistingPod) Key() string {
-	return "pod/" + p.Name
+	return podKey(p.Name)
 }
 
 func (p ExistingPod) Create() error {
@@ -88,20 +95,7 @@ func (p ExistingPod) Create() error {
 }
 
 func (p ExistingPod) Status() (string, error) {
-	pod, err := p.Client.Get(p.Name)
-	if err != nil {
-		return "error", err
-	}
-
-	if pod.Status.Phase == "Succeeded" {
-		return "ready", nil
-	}
-
-	if pod.Status.Phase == "Running" && isReady(pod) {
-		return "ready", nil
-	}
-
-	return "not ready", nil
+	return podStatus(p.Client, p.Name)
 }
 
 func NewExistingPod(name string, client unversioned.PodInterface) ExistingPod {
