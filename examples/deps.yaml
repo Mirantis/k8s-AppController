@@ -32,3 +32,10 @@ metadata:
   name: dependency-5
 parent: pod/eventually-alive-pod3
 child: job/test-job2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-6
+parent: job/existing-test-job
+child: pod/eventually-alive-pod
