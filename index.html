@@ -9,6 +9,8 @@
 
 		<script src="http://code.jquery.com/jquery-2.0.3.min.js"></script>
 		<script src="http://cytoscape.github.io/cytoscape.js/api/cytoscape.js-latest/cytoscape.min.js"></script>
+		<script src="cytoscape-cxtmenu.js"></script>
+		<script src="js-yaml.min.js"></script>
 
 		<!-- for testing with local version of cytoscape.js -->
 		<!--<script src="../cytoscape.js/build/cytoscape.js"></script>-->
@@ -23,11 +25,14 @@
 			}
 			#cy {
 				width: 100%;
-				height: 100%;
-				position: absolute;
+				height: 500px;
 				left: 0;
 				top: 0;
 				z-index: 999;
+			}
+			#yaml {
+				width: 300px;
+				height: 500px;
 			}
 			h1 {
 				opacity: 0.5;
@@ -36,7 +41,55 @@
 		</style>
 
 		<script>
-			$(function(){
+			var elements;
+			var cxtMenuDefaults = {
+				menuRadius: 100, // the radius of the circular menu in pixels
+				selector: 'node', // elements matching this Cytoscape.js selector will trigger cxtmenus
+				commands: [ // an array of commands to list in the menu
+				{
+					content: 'Remove',
+					select: function() {
+						var that = this;
+						elements.nodes = elements.nodes.filter(function(e){
+							return e.data.id != that._private.data.id;
+						});
+						elements.edges = elements.edges.filter(function(e){return e.data.source != that._private.data.id && e.data.target != that._private.data.id;});
+						drawGraph();
+					},
+				},
+				],
+				fillColor: 'rgba(0, 0, 0, 0.75)', // the background colour of the menu
+				activeFillColor: 'rgba(92, 194, 237, 0.75)', // the colour used to indicate the selected command
+				activePadding: 20, // additional size in pixels for the active command
+				indicatorSize: 24, // the size in pixels of the pointer to the active command
+				separatorWidth: 3, // the empty spacing in pixels between successive commands
+				spotlightPadding: 4, // extra spacing in pixels between the element and the spotlight
+				minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight
+				maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight
+				itemColor: 'white', // the colour of text in the command's content
+				itemTextShadowColor: 'black', // the text shadow colour of the command's content
+				zIndex: 9999 // the z-index of the ui div
+			};
+			elements = {
+						nodes: [
+							{ data: { id: 'job/test-job' } },
+							{ data: { id: 'job/test-job2' } },
+							{ data: { id: 'pod/eventually-alive-pod' } },
+							{ data: { id: 'pod/eventually-alive-pod2' } },
+							{ data: { id: 'pod/eventually-alive-pod3' } },
+							{ data: { id: 'job/existing-test-job' } },
+						],
+						edges: [
+							{ data: { source: 'pod/eventually-alive-pod', target: 'job/test-job' } },
+							{ data: { source: 'job/test-job', target: 'pod/eventually-alive-pod2' } },
+							{ data: { source: 'job/test-job', target: 'pod/eventually-alive-pod3' } },
+							{ data: { source: 'pod/eventually-alive-pod2', target: 'job/test-job2' } },
+							{ data: { source: 'pod/eventually-alive-pod3', target: 'job/test-job2' } },
+							{ data: { source: 'job/existing-test-job', target: 'pod/eventually-alive-pod' } },
+						]
+					};
+			var drawGraph = function() {
+
 				var cy = window.cy = cytoscape({
 					container: document.getElementById('cy'),
           boxSelectionEnabled: false,
@@ -66,42 +119,41 @@
 							}
 						}
 					],
-					elements: {
-						nodes: [
-							{ data: { id: 'n0' } },
-							{ data: { id: 'n1' } },
-							{ data: { id: 'n2' } },
-							{ data: { id: 'n3' } },
-							{ data: { id: 'n4' } },
-							{ data: { id: 'n5' } },
-							{ data: { id: 'n6' } },
-							{ data: { id: 'n7' } },
-							{ data: { id: 'n8' } },
-							{ data: { id: 'n9' } },
-							{ data: { id: 'n10' } },
-							{ data: { id: 'n11' } },
-							{ data: { id: 'n12' } },
-							{ data: { id: 'n13' } },
-							{ data: { id: 'n14' } },
-							{ data: { id: 'n15' } },
-							{ data: { id: 'n16' } }
-						],
-						edges: [
-							{ data: { source: 'n0', target: 'n1' } },
-							{ data: { source: 'n1', target: 'n2' } },
-							{ data: { source: 'n1', target: 'n3' } },
-							{ data: { source: 'n4', target: 'n5' } },
-							{ data: { source: 'n4', target: 'n6' } },
-							{ data: { source: 'n6', target: 'n7' } },
-							{ data: { source: 'n6', target: 'n8' } },
-							{ data: { source: 'n8', target: 'n9' } },
-							{ data: { source: 'n8', target: 'n10' } },
-							{ data: { source: 'n11', target: 'n12' } },
-							{ data: { source: 'n12', target: 'n13' } },
-							{ data: { source: 'n13', target: 'n14' } },
-							{ data: { source: 'n13', target: 'n15' } },
-						]
-					},
+					elements: elements
+				});
+				cy.cxtmenu(cxtMenuDefaults);
+
+			}
+			$(function(){
+				drawGraph();
+				$('#addnode').click(function(e){
+					e.preventDefault();
+					var newobj = { data: { id: $('#nodename').val() }};
+					elements.nodes.push(newobj);
+					drawGraph();
+				});
+				$('#adddep').click(function(e){
+					e.preventDefault();
+					var newobj = { data: { source: $('#parent').val(), target: $('#child').val() } };
+					elements.edges.push(newobj);
+					drawGraph();
+				});
+				$('#generate').click(function(e){
+					e.preventDefault();
+					var result = "";
+					var yamls = elements.edges.map(function(edge) {
+						var k8sRepresentation = {
+							apiVersion: "appcontroller.k8s1/v1alpha1",
+							kind: "Dependency",
+							metadata:{
+								name: edge.data.source+edge.data.target
+							},
+							parent: edge.data.source,
+							child: edge.data.target
+						};
+						return yaml.dump(k8sRepresentation);
+					});
+					$('#yaml').val(yamls.join("---\n"));
 				});
 			});
 		</script>
@@ -111,123 +163,22 @@
 		<h1>cytoscape-dagre demo</h1>
 
 		<div id="cy"></div>
+		<div id="forms">
+			<h2>Add node</h2>
+			<form>
+				<label>node name<input type="text" id="nodename"></label><br/>
+				<button id="addnode" href="#">add</button>
+			</form>
+			<h2>Add dependency</h2>
+			<form>
+				<label>parent<input type="text" id="parent"></label><br>
+				<label>child<input type="text" id="child"></label><br>
+				<button id="adddep" href="#">add</button>
+			</form>
 
-	<script id="jsbin-javascript">
-sadfsdfsafsdsdsadf
-</script>
+			<textarea id="yaml">
 
-<script id="jsbin-source-html" type="text/html"><!DOCTYPE>
-
-<html>
-
-	<head>
-		<title>cytoscape-dagre.js demo</title>
-
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
-
-		<script src="http://code.jquery.com/jquery-2.0.3.min.js"><\/script>
-		<script src="http://cytoscape.github.io/cytoscape.js/api/cytoscape.js-latest/cytoscape.min.js"><\/script>
-		<\!-- for testing with local version of cytoscape.js -->
-		<\!--<script src="../cytoscape.js/build/cytoscape.js"><\/script>-->
-		<script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js"><\/script>
-		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"><\/script>
-		<style>
-			body {
-				font-family: helvetica;
-				font-size: 14px;
-			}
-			#cy {
-				width: 100%;
-				height: 100%;
-				position: absolute;
-				left: 0;
-				top: 0;
-				z-index: 999;
-			}
-			h1 {
-				opacity: 0.5;
-				font-size: 1em;
-			}
-		</style>
-		<script>
-			$(function(){
-				var cy = window.cy = cytoscape({
-					container: document.getElementById('cy'),
-          boxSelectionEnabled: false,
-          autounselectify: true,
-					layout: {
-						name: 'dagre'
-					},
-					style: [
-						{
-							selector: 'node',
-							style: {
-								'content': 'data(id)',
-								'text-opacity': 0.5,
-								'text-valign': 'center',
-								'text-halign': 'right',
-								'background-color': '#11479e'
-							}
-						},
-						{
-							selector: 'edge',
-							style: {
-								'width': 4,
-								'target-arrow-shape': 'triangle',
-								'line-color': '#9dbaea',
-								'target-arrow-color': '#9dbaea',
-								'curve-style': 'bezier'
-							}
-						}
-					],
-					elements: {
-						nodes: [
-							{ data: { id: 'n0' } },
-							{ data: { id: 'n1' } },
-							{ data: { id: 'n2' } },
-							{ data: { id: 'n3' } },
-							{ data: { id: 'n4' } },
-							{ data: { id: 'n5' } },
-							{ data: { id: 'n6' } },
-							{ data: { id: 'n7' } },
-							{ data: { id: 'n8' } },
-							{ data: { id: 'n9' } },
-							{ data: { id: 'n10' } },
-							{ data: { id: 'n11' } },
-							{ data: { id: 'n12' } },
-							{ data: { id: 'n13' } },
-							{ data: { id: 'n14' } },
-							{ data: { id: 'n15' } },
-							{ data: { id: 'n16' } }
-						],
-						edges: [
-							{ data: { source: 'n0', target: 'n1' } },
-							{ data: { source: 'n1', target: 'n2' } },
-							{ data: { source: 'n1', target: 'n3' } },
-							{ data: { source: 'n4', target: 'n5' } },
-							{ data: { source: 'n4', target: 'n6' } },
-							{ data: { source: 'n6', target: 'n7' } },
-							{ data: { source: 'n6', target: 'n8' } },
-							{ data: { source: 'n8', target: 'n9' } },
-							{ data: { source: 'n8', target: 'n10' } },
-							{ data: { source: 'n11', target: 'n12' } },
-							{ data: { source: 'n12', target: 'n13' } },
-							{ data: { source: 'n13', target: 'n14' } },
-							{ data: { source: 'n13', target: 'n15' } },
-						]
-					},
-				});
-			});
-		<\/script>
-	</head>
-	<body>
-		<h1>cytoscape-dagre demo</h1>
-		<div id="cy"></div>
-	</body>
-</html>
-</script>
-
-
-<script id="jsbin-source-javascript" type="text/javascript">sadfsdfsafsdsdsadf</script></body>
-
+			</textarea>
+			<button id="generate" href="#">generate</button>
+		</div>
 </html>
