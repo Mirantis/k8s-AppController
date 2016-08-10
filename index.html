@@ -57,6 +57,18 @@
 						drawGraph();
 					},
 				},
+				{
+					content: 'Move name to child input',
+					select: function() {
+						$('#child').val(this._private.data.id);
+					},
+				},
+				{
+					content: 'Move name to parent input',
+					select: function() {
+						$('#parent').val(this._private.data.id);
+					},
+				},
 				],
 				fillColor: 'rgba(0, 0, 0, 0.75)', // the background colour of the menu
 				activeFillColor: 'rgba(92, 194, 237, 0.75)', // the colour used to indicate the selected command
@@ -155,6 +167,33 @@
 					});
 					$('#yaml').val(yamls.join("---\n"));
 				});
+				$('#load').click(function(e){
+					e.preventDefault();
+
+					var yamls = $('#yaml').val().split("---\n");
+					var natives = yamls.map(yaml.load)
+					elements.edges = natives.map(function(n){
+						return {data: {source: n.parent, target: n.child}};
+					});
+					elements.nodes = [];
+					elements.nodes = natives.reduce(function(p, e) {
+						var existingParents = elements.nodes.filter(function(x) {
+							return x.data.id == e.parent;
+						});
+						var existingChildren = elements.nodes.filter(function(x) {
+							return x.data.id == e.child;
+						});
+
+						if(existingParents.length == 0){
+							p.push({data: {id: e.parent}});
+						}
+						if(existingChildren.length == 0){
+							p.push({data: {id: e.child}});
+						}
+						return p;
+					}, []);
+					drawGraph();
+				});
 			});
 		</script>
 	</head>
@@ -180,6 +219,7 @@
 
 			</textarea>
 			<button id="generate" href="#">generate</button>
+			<button id="load" href="#">load</button>
 		</div>
 	</body>
 </html>
