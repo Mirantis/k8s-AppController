@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: existing-test-job
+spec:
+  template:
+    metadata:
+      name: test-job
+    spec:
+      containers:
+      - name: test-container
+        image: gcr.io/google_containers/busybox
+        command: [ "/bin/sh", "-c", "sleep 10; env"]
+      restartPolicy: Never
