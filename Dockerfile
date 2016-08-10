@@ -1,9 +1,9 @@
 FROM golang:alpine
 
-RUN mkdir -p /go/src/appcontroller
-COPY . /go/src/appcontroller
+RUN mkdir -p /go/src/github.com/Mirantis/k8s-AppController
+COPY . /go/src/github.com/Mirantis/k8s-AppController
 
-WORKDIR /go/src/appcontroller
+WORKDIR /go/src/github.com/Mirantis/k8s-AppController
 
 RUN apk --no-cache add git
 RUN go get ./...
