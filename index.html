@@ -101,7 +101,6 @@
 						]
 					};
 			var drawGraph = function() {
-
 				var cy = window.cy = cytoscape({
 					container: document.getElementById('cy'),
 					boxSelectionEnabled: false,
@@ -134,6 +133,9 @@
 					elements: elements
 				});
 				cy.cxtmenu(cxtMenuDefaults);
+				$('#nodes').val(elements.nodes.map(function(n){
+					return n.data.id;
+				}).join("\n"));
 
 			}
 			$(function(){
@@ -175,23 +177,17 @@
 					elements.edges = natives.map(function(n){
 						return {data: {source: n.parent, target: n.child}};
 					});
-					elements.nodes = [];
-					elements.nodes = natives.reduce(function(p, e) {
-						var existingParents = elements.nodes.filter(function(x) {
-							return x.data.id == e.parent;
-						});
-						var existingChildren = elements.nodes.filter(function(x) {
-							return x.data.id == e.child;
-						});
-
-						if(existingParents.length == 0){
-							p.push({data: {id: e.parent}});
-						}
-						if(existingChildren.length == 0){
-							p.push({data: {id: e.child}});
-						}
+					var names = natives.reduce(function(p, e) {
+						p.push(e.parent);
+						p.push(e.child);
 						return p;
-					}, []);
+					}, [])
+					.filter(function(item, pos, self) {
+						return self.indexOf(item) == pos;
+					});
+					elements.nodes = names.map(function(name){
+						return {data: {id: name}};
+					})
 					drawGraph();
 				});
 			});
@@ -215,11 +211,16 @@
 				<button id="adddep" href="#">add</button>
 			</form>
 
+			<h2>Generate/load dependency yaml</h2>
 			<textarea id="yaml">
 
 			</textarea>
 			<button id="generate" href="#">generate</button>
 			<button id="load" href="#">load</button>
+			<h2>Node names</h2>
+			<textarea id="nodes">
+
+			</textarea>
 		</div>
 	</body>
 </html>
