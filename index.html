@@ -160,7 +160,7 @@
 							apiVersion: "appcontroller.k8s1/v1alpha1",
 							kind: "Dependency",
 							metadata:{
-								name: edge.data.source+edge.data.target
+								name: guid()
 							},
 							parent: edge.data.source,
 							child: edge.data.target
@@ -191,11 +191,20 @@
 					drawGraph();
 				});
 			});
+			function guid() {
+			  function s4() {
+				return Math.floor((1 + Math.random()) * 0x10000)
+				  .toString(16)
+				  .substring(1);
+			  }
+			  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+				s4() + '-' + s4() + s4() + s4();
+			}
 		</script>
 	</head>
 
 	<body>
-		<h1>cytoscape-dagre demo</h1>
+		<h1>k8s appcontroller graph editor</h1>
 
 		<div id="cy"></div>
 		<div id="forms">
