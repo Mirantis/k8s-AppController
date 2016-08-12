@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html>
+
+	<head>
+		<title>cytoscape-dagre.js demo</title>
+
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+
+		<script src="http://code.jquery.com/jquery-2.0.3.min.js"></script>
+		<script src="http://cytoscape.github.io/cytoscape.js/api/cytoscape.js-latest/cytoscape.min.js"></script>
+		<script src="cytoscape-cxtmenu.js"></script>
+		<script src="js-yaml.min.js"></script>
+
+		<!-- for testing with local version of cytoscape.js -->
+		<!--<script src="../cytoscape.js/build/cytoscape.js"></script>-->
+
+		<script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js"></script>
+		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script>
+
+		<style>
+			body {
+				font-family: helvetica;
+				font-size: 14px;
+			}
+			#cy {
+				width: 100%;
+				height: 500px;
+				left: 0;
+				top: 0;
+				z-index: 999;
+			}
+			#yaml {
+				width: 300px;
+				height: 500px;
+			}
+			h1 {
+				opacity: 0.5;
+				font-size: 1em;
+			}
+		</style>
+
+		<script>
+			var elements;
+			var cxtMenuDefaults = {
+				menuRadius: 100, // the radius of the circular menu in pixels
+				selector: 'node', // elements matching this Cytoscape.js selector will trigger cxtmenus
+				commands: [ // an array of commands to list in the menu
+				{
+					content: 'Remove',
+					select: function() {
+						var that = this;
+						elements.nodes = elements.nodes.filter(function(e){
+							return e.data.id != that._private.data.id;
+						});
+						elements.edges = elements.edges.filter(function(e){return e.data.source != that._private.data.id && e.data.target != that._private.data.id;});
+						drawGraph();
+					},
+				},
+				{
+					content: 'Move name to child input',
+					select: function() {
+						$('#child').val(this._private.data.id);
+					},
+				},
+				{
+					content: 'Move name to parent input',
+					select: function() {
+						$('#parent').val(this._private.data.id);
+					},
+				},
+				],
+				fillColor: 'rgba(0, 0, 0, 0.75)', // the background colour of the menu
+				activeFillColor: 'rgba(92, 194, 237, 0.75)', // the colour used to indicate the selected command
+				activePadding: 20, // additional size in pixels for the active command
+				indicatorSize: 24, // the size in pixels of the pointer to the active command
+				separatorWidth: 3, // the empty spacing in pixels between successive commands
+				spotlightPadding: 4, // extra spacing in pixels between the element and the spotlight
+				minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight
+				maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight
+				itemColor: 'white', // the colour of text in the command's content
+				itemTextShadowColor: 'black', // the text shadow colour of the command's content
+				zIndex: 9999 // the z-index of the ui div
+			};
+			elements = {
+						nodes: [
+							{ data: { id: 'job/test-job' } },
+							{ data: { id: 'job/test-job2' } },
+							{ data: { id: 'pod/eventually-alive-pod' } },
+							{ data: { id: 'pod/eventually-alive-pod2' } },
+							{ data: { id: 'pod/eventually-alive-pod3' } },
+							{ data: { id: 'job/existing-test-job' } },
+						],
+						edges: [
+							{ data: { source: 'pod/eventually-alive-pod', target: 'job/test-job' } },
+							{ data: { source: 'job/test-job', target: 'pod/eventually-alive-pod2' } },
+							{ data: { source: 'job/test-job', target: 'pod/eventually-alive-pod3' } },
+							{ data: { source: 'pod/eventually-alive-pod2', target: 'job/test-job2' } },
+							{ data: { source: 'pod/eventually-alive-pod3', target: 'job/test-job2' } },
+							{ data: { source: 'job/existing-test-job', target: 'pod/eventually-alive-pod' } },
+						]
+					};
+			var drawGraph = function() {
+				var cy = window.cy = cytoscape({
+					container: document.getElementById('cy'),
+					boxSelectionEnabled: false,
+					autounselectify: true,
+					layout: {
+						name: 'dagre'
+					},
+					style: [
+						{
+							selector: 'node',
+							style: {
+								'content': 'data(id)',
+								'text-opacity': 0.5,
+								'text-valign': 'center',
+								'text-halign': 'right',
+								'background-color': '#11479e'
+							}
+						},
+						{
+							selector: 'edge',
+							style: {
+								'width': 4,
+								'target-arrow-shape': 'triangle',
+								'line-color': '#9dbaea',
+								'target-arrow-color': '#9dbaea',
+								'curve-style': 'bezier'
+							}
+						}
+					],
+					elements: elements
+				});
+				cy.cxtmenu(cxtMenuDefaults);
+				$('#nodes').val(elements.nodes.map(function(n){
+					return n.data.id;
+				}).join("\n"));
+
+			}
+			$(function(){
+				drawGraph();
+				$('#addnode').click(function(e){
+					e.preventDefault();
+					var newobj = { data: { id: $('#nodename').val() }};
+					elements.nodes.push(newobj);
+					drawGraph();
+				});
+				$('#adddep').click(function(e){
+					e.preventDefault();
+					var newobj = { data: { source: $('#parent').val(), target: $('#child').val() } };
+					elements.edges.push(newobj);
+					drawGraph();
+				});
+				$('#generate').click(function(e){
+					e.preventDefault();
+					var result = "";
+					var yamls = elements.edges.map(function(edge) {
+						var k8sRepresentation = {
+							apiVersion: "appcontroller.k8s1/v1alpha1",
+							kind: "Dependency",
+							metadata:{
+								name: guid()
+							},
+							parent: edge.data.source,
+							child: edge.data.target
+						};
+						return yaml.dump(k8sRepresentation);
+					});
+					$('#yaml').val(yamls.join("---\n"));
+				});
+				$('#load').click(function(e){
+					e.preventDefault();
+
+					var yamls = $('#yaml').val().split("---\n");
+					var natives = yamls.map(yaml.load)
+					elements.edges = natives.map(function(n){
+						return {data: {source: n.parent, target: n.child}};
+					});
+					var names = natives.reduce(function(p, e) {
+						p.push(e.parent);
+						p.push(e.child);
+						return p;
+					}, [])
+					.filter(function(item, pos, self) {
+						return self.indexOf(item) == pos;
+					});
+					elements.nodes = names.map(function(name){
+						return {data: {id: name}};
+					})
+					drawGraph();
+				});
+			});
+			function guid() {
+			  function s4() {
+				return Math.floor((1 + Math.random()) * 0x10000)
+				  .toString(16)
+				  .substring(1);
+			  }
+			  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+				s4() + '-' + s4() + s4() + s4();
+			}
+		</script>
+	</head>
+
+	<body>
+		<h1>k8s appcontroller graph editor</h1>
+
+		<div id="cy"></div>
+		<div id="forms">
+			<h2>Add node</h2>
+			<form>
+				<label>node name<input type="text" id="nodename"></label><br/>
+				<button id="addnode" href="#">add</button>
+			</form>
+			<h2>Add dependency</h2>
+			<form>
+				<label>parent<input type="text" id="parent"></label><br>
+				<label>child<input type="text" id="child"></label><br>
+				<button id="adddep" href="#">add</button>
+			</form>
+
+			<h2>Generate/load dependency yaml</h2>
+			<textarea id="yaml">
+
+			</textarea>
+			<button id="generate" href="#">generate</button>
+			<button id="load" href="#">load</button>
+			<h2>Node names</h2>
+			<textarea id="nodes">
+
+			</textarea>
+		</div>
+	</body>
+</html>
