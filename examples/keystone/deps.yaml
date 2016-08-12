@@ -1,6 +1,0 @@
-apiVersion: appcontroller.k8s1/v1alpha1
-kind: Dependency
-metadata:
-  name: dependency-1
-parent: job/mariadb-bootstrap
-child: pod/mariadb
