@@ -36,5 +36,5 @@ echo "cat pod3.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod3 | kubectl.s
 cat pod3.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod3 | kubectl.sh create -f -
 
 echo "Here we are running appcontroller binary itself. As the log will say, it retrieves dependencies and resource definitions from the k8s cluster and creates underlying objects accordingly."
-echo "kubectl.sh exec k8s-appcontroller kubeac \$KUBERNETES_CLUSTER_URL"
+echo "kubectl.sh exec k8s-appcontroller ac-run"
 kubectl.sh exec k8s-appcontroller ac-run

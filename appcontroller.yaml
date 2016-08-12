@@ -9,6 +9,6 @@ spec:
     image: nebril/k8s-appcontroller
     command:  ["/usr/bin/run_runit"]
     env:
-      - # tempoarary only
+      - # temporary only
         name: KUBERNETES_CLUSTER_URL
         value: http://10.0.0.1:8080
