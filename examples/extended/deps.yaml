@@ -1,0 +1,125 @@
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: a3d575af-51c0-161d-d1a1-0ce4c1d8d959
+parent: pod/eventually-alive-pod
+child: job/test-job
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: eb427dac-fd7a-af7b-21dc-86036844fbf8
+parent: job/test-job
+child: pod/eventually-alive-pod2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 99c01148-64de-3d26-ea94-0c79569d7b71
+parent: job/test-job
+child: pod/eventually-alive-pod3
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: f5c82257-f33b-d49b-e767-cd43309f11ad
+parent: pod/eventually-alive-pod2
+child: job/test-job2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 0838ee9e-0c4f-6111-3628-9238ebc6a53a
+parent: pod/eventually-alive-pod3
+child: job/test-job2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: a2ef61aa-316e-341c-f107-d043d4e1d8a4
+parent: job/existing-test-job
+child: pod/eventually-alive-pod
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: f96fbc4e-9360-1818-9bc4-309acafb6db9
+parent: job/test-job
+child: pod/eventually-alive-pod4
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: d1a178a8-3803-24b9-1a35-1033c83db64a
+parent: pod/eventually-alive-pod4
+child: job/test-job2
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 89b78534-694c-2c89-eb6c-32fae9c3b76a
+parent: job/existing-test-job
+child: pod/eventually-alive-pod5
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 78493219-8ecc-cac0-b711-4afe21d983b3
+parent: pod/eventually-alive-pod5
+child: job/test-job3
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 82d3b31a-aef4-0e74-344e-507ca68918ab
+parent: pod/eventually-alive-pod6
+child: pod/eventually-alive-pod9
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 041f8e3e-e0a8-319c-26d5-6652ec50d630
+parent: pod/eventually-alive-pod7
+child: pod/eventually-alive-pod9
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 4f8fb13f-8da7-afae-59cd-90c61201dc2b
+parent: pod/eventually-alive-pod8
+child: pod/eventually-alive-pod9
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: c274de96-ff0a-c0cf-817b-bf6bc946b6c1
+parent: job/test-job3
+child: job/test-job4
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 81e7528d-98f4-01e5-e38a-698f96904241
+parent: job/test-job4
+child: pod/eventually-alive-pod6
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: f6e8cba9-0d6a-4b61-65a2-e5bc635981fe
+parent: job/test-job4
+child: pod/eventually-alive-pod7
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 5ce310ce-c334-3fb2-636f-b2ce8489d4de
+parent: job/test-job4
+child: pod/eventually-alive-pod8
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: d377be21-667e-bc54-c18c-3a222d569b88
+parent: pod/eventually-alive-pod3
+child: job/test-job4

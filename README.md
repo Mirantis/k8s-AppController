@@ -1,3 +1,6 @@
+# Demo
+[![asciicast](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1.png)](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1)
+
 # Usage
 
 Clone repo:
