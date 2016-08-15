@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 func getInput(stream *os.File) string {
