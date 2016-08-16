@@ -26,6 +26,7 @@ type Interface interface {
 	Pods() unversioned.PodInterface
 	Jobs() unversioned.JobInterface
 	Services() unversioned.ServiceInterface
+	ReplicaSets() unversioned.ReplicaSetInterface
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
 }
@@ -56,6 +57,10 @@ func (c client) Jobs() unversioned.JobInterface {
 
 func (c client) Services() unversioned.ServiceInterface {
 	return c.Client.Services(api.NamespaceDefault)
+}
+
+func (c client) ReplicaSets() unversioned.ReplicaSetInterface {
+	return c.Client.Extensions().ReplicaSets(api.NamespaceDefault)
 }
 
 func newForConfig(c restclient.Config) (Interface, error) {

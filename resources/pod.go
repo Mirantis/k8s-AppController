@@ -31,6 +31,10 @@ func podKey(name string) string {
 	return "pod/" + name
 }
 
+func (p Pod) UpdateMeta(meta map[string]string) error {
+	return nil
+}
+
 func (p Pod) Key() string {
 	return podKey(p.Pod.Name)
 }
@@ -88,6 +92,10 @@ func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
 type ExistingPod struct {
 	Name   string
 	Client unversioned.PodInterface
+}
+
+func (p ExistingPod) UpdateMeta(meta map[string]string) error {
+	return nil
 }
 
 func (p ExistingPod) Key() string {

@@ -46,6 +46,10 @@ func jobStatus(j unversioned.JobInterface, name string) (string, error) {
 	return "not ready", nil
 }
 
+func (s Job) UpdateMeta(meta map[string]string) error {
+	return nil
+}
+
 func (s Job) Key() string {
 	return jobKey(s.Job.Name)
 }
@@ -76,6 +80,10 @@ func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
 type ExistingJob struct {
 	Name   string
 	Client unversioned.JobInterface
+}
+
+func (s ExistingJob) UpdateMeta(meta map[string]string) error {
+	return nil
 }
 
 func (s ExistingJob) Key() string {
