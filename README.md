@@ -1,3 +1,27 @@
+# Introduction
+AppController is a pod that you can spawn in your Kubernetes cluster which will take care of your complex deployments for you.
+
+## Basic concepts
+
+AppController uses three basic concepts:
+
+### K8s Objects
+
+AppController interacts with bare Kubernetes objects by creating them (if they are needed by deployment and do not exist yet) and reading their state. The state is used by AppController to ensure that dependencies for other objects are met.
+
+### Dependencies
+
+Dependencies are objects that represent vertices in your deployment graph. You can define them and easily create them with kubectl. Dependencies are ThirdPartyResource which is API extension provided by AppController. It's worth mentioning, that Dependencies can represent dependency between pre-existing K8s object (not orchestrated by AppController) and Resource Definitions, so parts of your deployment graph can depend on objects that were created in your cluster before you even started AppController-aided-deployment.
+
+### Resource Definitions
+
+Resource Definitions are objects that represent Kubernetes Objects that are not yet created, but are part of deployment graph. They store manifests of underlying objects. Objects currently supported by Resource Definitions: (the list is growing steadily)
+* Jobs
+* Pods
+* Services
+
+Resource Definitions are (the same as Dependencies) ThirdPartyResource API extension.
+
 # Demo
 [![asciicast](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1.png)](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1)
 
@@ -10,8 +34,9 @@ Clone repo:
 
 Create third party resource kinds:
 
-`kubectl create -f client/manifest dependencies.yaml`
-`kubectl create -f client/manifest resdefs.yaml`
+`kubectl create -f manifests/dependencies.yaml`
+
+`kubectl create -f manifests/resdefs.yaml`
 
 Suppose you have some yaml files with single k8s object definitions (pod and jobs are supported right now). Create AppController ResourceDefintions for them:
 
