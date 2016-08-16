@@ -10,8 +10,9 @@ Clone repo:
 
 Create third party resource kinds:
 
-`kubectl create -f client/manifest dependencies.yaml`
-`kubectl create -f client/manifest resdefs.yaml`
+`kubectl create -f manifests/dependencies.yaml`
+
+`kubectl create -f manifests/resdefs.yaml`
 
 Suppose you have some yaml files with single k8s object definitions (pod and jobs are supported right now). Create AppController ResourceDefintions for them:
 
