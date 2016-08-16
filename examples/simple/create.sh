@@ -8,7 +8,7 @@ kubectl.sh create -f existing_job.yaml
 
 echo "Creating pod with AppController binary. This is going to be our entry point."
 echo "kubectl.sh create -f ../../appcontroller.yaml"
-kubectl.sh create -f ../../appcontroller.yaml
+kubectl.sh create -f ../../manifests/appcontroller.yaml
 echo "Creating ThirdPartyResources - basically we are creating new k8s API endpoints so that we can store Resource Definitions and Dependencies in Kubernetes cluster."
 echo "kubectl.sh create -f ../../manifests/dependencies.yaml"
 kubectl.sh create -f ../../manifests/dependencies.yaml

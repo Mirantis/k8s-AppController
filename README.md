@@ -71,7 +71,7 @@ Load it to k8s:
 
 Run AppController pod:
 
-`kubectl create -f appcontroller.yaml`
+`kubectl create -f manifests/appcontroller.yaml`
 
 Start appcontroller process:
 
