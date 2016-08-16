@@ -15,88 +15,85 @@
 package client
 
 import (
-	"fmt"
-	"net/http"
-	"net/url"
+	"log"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-type AppControllerClient struct {
-	*http.Client
-	Root                   *url.URL
-	dependenciesURL        *url.URL
-	resourceDefinitionsURL *url.URL
+type Interface interface {
+	Pods() unversioned.PodInterface
+	Jobs() unversioned.JobInterface
+	Services() unversioned.ServiceInterface
+	Dependencies() DependenciesInterface
+	ResourceDefinitions() ResourceDefinitionsInterface
 }
 
-func (c *AppControllerClient) Dependencies() DependenciesInterface {
-	return newDependencies(c)
+type client struct {
+	*unversioned.Client
+	DependenciesInterface
+	ResourceDefinitionsInterface
 }
 
-func (c *AppControllerClient) ResourceDefinitions() ResourceDefinitionsInterface {
-	return newResourceDefinitions(c)
+var _ Interface = &client{}
+
+func (c client) Dependencies() DependenciesInterface {
+	return c.DependenciesInterface
 }
 
-//Create new client for appcontroller resources
-func New(c *restclient.Config) (*AppControllerClient, error) {
-	client := &http.Client{}
+func (c client) ResourceDefinitions() ResourceDefinitionsInterface {
+	return c.ResourceDefinitionsInterface
+}
 
-	root, err := url.Parse(c.Host + c.APIPath)
+func (c client) Pods() unversioned.PodInterface {
+	return c.Client.Pods(api.NamespaceDefault)
+}
+
+func (c client) Jobs() unversioned.JobInterface {
+	return c.Client.Extensions().Jobs(api.NamespaceDefault)
+}
+
+func (c client) Services() unversioned.ServiceInterface {
+	return c.Client.Services(api.NamespaceDefault)
+}
+
+func newForConfig(c restclient.Config) (Interface, error) {
+	deps, err := newDependencies(c)
+	if err != nil {
+		return nil, err
+	}
+	resdefs, err := newResourceDefinitions(c)
+	if err != nil {
+		return nil, err
+	}
+	cl, err := unversioned.New(&c)
 	if err != nil {
 		return nil, err
 	}
 
-	//these in front of the path are ugly hacks caused by https://github.com/kubernetes/kubernetes/issues/23831
-	deps, err := url.Parse(root.String() + "1/" + c.ContentConfig.GroupVersion.Version + "/namespaces/default/dependencies")
-	if err != nil {
-		return nil, err
+	return &client{
+		Client:                       cl,
+		DependenciesInterface:        deps,
+		ResourceDefinitionsInterface: resdefs,
+	}, nil
+}
+
+func New(url string) (Interface, error) {
+	var rc *restclient.Config
+	var err error
+
+	if url == "" {
+		log.Println("No Kubernetes cluster URL provided. Assume in-cluster.")
+		rc, err = restclient.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rc = &restclient.Config{
+			Host: url,
+		}
 	}
 
-	resources, err := url.Parse(root.String() + "2/" + c.ContentConfig.GroupVersion.Version + "/namespaces/default/definitions")
-	if err != nil {
-		return nil, err
-	}
-	return &AppControllerClient{Client: client, Root: root, dependenciesURL: deps, resourceDefinitionsURL: resources}, nil
-}
-
-func getUrlWithOptions(baseURL *url.URL, opts api.ListOptions) *url.URL {
-	params := url.Values{}
-	//TODO: check other selectors than label
-	if opts.LabelSelector != nil {
-		params.Add("labelSelector", opts.LabelSelector.String())
-	}
-
-	finalUrl := *baseURL
-	finalUrl.RawQuery = params.Encode()
-
-	return &finalUrl
-}
-
-//implements labels.Selector, but supports only equality
-type AppControllerLabelSelector struct {
-	Key   string
-	Value string
-}
-
-func (s AppControllerLabelSelector) Empty() bool {
-	return len(s.Key) == 0
-}
-
-func (s AppControllerLabelSelector) String() string {
-	if s.Empty() {
-		return ""
-	}
-	return fmt.Sprintf("%s=%s", s.Key, s.Value)
-}
-
-//not supported, returns copy
-func (s AppControllerLabelSelector) Add(r ...labels.Requirement) labels.Selector {
-	return s
-}
-
-//not supported
-func (s AppControllerLabelSelector) Matches(labels.Labels) bool {
-	return false
+	return newForConfig(*rc)
 }

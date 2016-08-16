@@ -15,58 +15,14 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/client/restclient"
 )
-
-type DependenciesInterface interface {
-	List(opts api.ListOptions) (*DependencyList, error)
-	Get(name string) (*Dependency, error)
-}
-
-type dependency struct {
-	r *AppControllerClient
-}
-
-func newDependencies(c *AppControllerClient) *dependency {
-	return &dependency{c}
-}
-
-func (c *dependency) List(opts api.ListOptions) (result *DependencyList, err error) {
-	result = &DependencyList{}
-
-	url := getUrlWithOptions(c.r.dependenciesURL, opts)
-	resp, err := c.r.Get(url.String())
-	if err != nil {
-		return
-	}
-	if resp.StatusCode >= 400 {
-		err = errors.New(resp.Status)
-		return
-	}
-	err = json.NewDecoder(resp.Body).Decode(result)
-
-	return
-}
-
-func (c *dependency) Get(name string) (result *Dependency, err error) {
-	result = &Dependency{}
-	resp, err := c.r.Get(c.r.dependenciesURL.String() + "/" + name)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode >= 400 {
-		err = errors.New(resp.Status)
-		return
-	}
-	err = json.NewDecoder(resp.Body).Decode(result)
-
-	return
-}
 
 type Dependency struct {
 	unversioned.TypeMeta `json:",inline"`
@@ -85,4 +41,50 @@ type DependencyList struct {
 	unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []Dependency `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+type DependenciesInterface interface {
+	List(opts api.ListOptions) (*DependencyList, error)
+}
+
+type dependencies struct {
+	rc *restclient.RESTClient
+}
+
+func newDependencies(c restclient.Config) (*dependencies, error) {
+	c.APIPath = "/apis"
+	c.ContentConfig = restclient.ContentConfig{
+		GroupVersion: &unversioned.GroupVersion{
+			Group:   "appcontroller.k8s1",
+			Version: "v1alpha1",
+		},
+		NegotiatedSerializer: api.Codecs,
+	}
+
+	rc, err := restclient.RESTClientFor(&c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dependencies{rc}, nil
+}
+
+func (c dependencies) List(opts api.ListOptions) (*DependencyList, error) {
+	resp, err := c.rc.Get().
+		Namespace("default").
+		Resource("dependencies").
+		LabelsSelectorParam(opts.LabelSelector).
+		DoRaw()
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &DependencyList{}
+	err = json.NewDecoder(bytes.NewReader(resp)).Decode(result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

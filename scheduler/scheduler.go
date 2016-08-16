@@ -15,14 +15,17 @@
 package scheduler
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Mirantis/k8s-AppController/client"
-	"github.com/Mirantis/k8s-AppController/kubernetes"
 	"github.com/Mirantis/k8s-AppController/resources"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 type Resource interface {
@@ -70,21 +73,27 @@ func newScheduledResource(r Resource) *ScheduledResource {
 	}
 }
 
-func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
-	depList *client.DependencyList) DependencyGraph {
+func BuildDependencyGraph(c client.Interface, sel labels.Selector) (*DependencyGraph, error) {
+
+	log.Println("Getting resource definitions")
+	resDefList, err := c.ResourceDefinitions().List(api.ListOptions{LabelSelector: sel})
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("Getting dependencies")
+	depList, err := c.Dependencies().List(api.ListOptions{LabelSelector: sel})
+	if err != nil {
+		return nil, err
+	}
 
 	depGraph := DependencyGraph{}
 
-	kc, err := kubernetes.Client(url)
-	if err != nil {
-		log.Fatal(err)
-	}
+	pods := c.Pods()
+	jobs := c.Jobs()
+	services := c.Services()
 
-	pods := kc.Pods()
-	jobs := kc.Jobs()
-	services := kc.Services()
-
-	for _, r := range resList.Items {
+	for _, r := range resDefList.Items {
 		if r.Pod != nil {
 			sr := newScheduledResource(resources.NewPod(r.Pod, pods))
 			depGraph[sr.Key()] = sr
@@ -98,7 +107,7 @@ func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
 			depGraph[sr.Key()] = sr
 			log.Println("Found service definition", r.Service.Name, r.Service)
 		} else {
-			log.Fatalln("Found unsupported resource", r)
+			return nil, errors.New(fmt.Sprintln("Found unsupported resource", r))
 		}
 	}
 
@@ -118,7 +127,7 @@ func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
 			keyParts := strings.Split(d.Parent, "/")
 
 			if len(keyParts) < 2 {
-				log.Fatalf("Not a proper resource key: %s. Expected RESOURCE_TYPE/NAME", d.Parent)
+				return nil, fmt.Errorf("Not a proper resource key: %s. Expected RESOURCE_TYPE/NAME", d.Parent)
 			}
 
 			typ := keyParts[0]
@@ -131,7 +140,7 @@ func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
 			} else if typ == "service" {
 				depGraph[d.Parent] = newScheduledResource(resources.NewExistingService(name, services))
 			} else {
-				log.Fatalf("Not a proper resource type: %s. Expected 'pod','job' or 'service'", typ)
+				return nil, fmt.Errorf("Not a proper resource type: %s. Expected 'pod','job' or 'service'", typ)
 			}
 		}
 
@@ -141,11 +150,9 @@ func buildDependencyGraph(url string, resList *client.ResourceDefinitionList,
 			depGraph[d.Parent].RequiredBy, depGraph[d.Child])
 	}
 
-	return depGraph
+	return &depGraph, nil
 
-	//TODO Handle external depList
 	//TODO Check cycles in graph
-	//TODO Handle depList not in kos
 }
 
 func createResources(toCreate chan *ScheduledResource, created chan string) {
@@ -196,10 +203,8 @@ func createResources(toCreate chan *ScheduledResource, created chan string) {
 	}
 }
 
-func Create(url string, resList *client.ResourceDefinitionList,
-	depList *client.DependencyList) {
+func Create(depGraph DependencyGraph) {
 
-	depGraph := buildDependencyGraph(url, resList, depList)
 	depCount := len(depGraph)
 	toCreate := make(chan *ScheduledResource, depCount)
 	created := make(chan string, depCount)
@@ -215,7 +220,7 @@ func Create(url string, resList *client.ResourceDefinitionList,
 		}
 	}
 
-	log.Printf("Wait for %d depList to create\n", depCount)
+	log.Printf("Wait for %d deps to create\n", depCount)
 	for i := 0; i < depCount; i++ {
 		<-created
 	}

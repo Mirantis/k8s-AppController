@@ -15,60 +15,15 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/client/restclient"
 )
-
-type ResourceDefinitionsInterface interface {
-	List(opts api.ListOptions) (*ResourceDefinitionList, error)
-	Get(name string) (*ResourceDefinition, error)
-}
-
-type resourceDefinition struct {
-	r *AppControllerClient
-}
-
-func newResourceDefinitions(c *AppControllerClient) *resourceDefinition {
-	return &resourceDefinition{c}
-}
-
-func (c *resourceDefinition) List(opts api.ListOptions) (result *ResourceDefinitionList, err error) {
-	result = &ResourceDefinitionList{}
-
-	url := getUrlWithOptions(c.r.resourceDefinitionsURL, opts)
-	resp, err := c.r.Get(url.String())
-	if err != nil {
-		return
-	}
-	if resp.StatusCode >= 400 {
-		err = errors.New(resp.Status)
-		return
-	}
-	err = json.NewDecoder(resp.Body).Decode(result)
-
-	return
-}
-
-func (c *resourceDefinition) Get(name string) (result *ResourceDefinition, err error) {
-	result = &ResourceDefinition{}
-	resp, err := c.r.Get(c.r.resourceDefinitionsURL.String() + "/" + name)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode >= 400 {
-		err = errors.New(resp.Status)
-		return
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(result)
-
-	return
-}
 
 type ResourceDefinition struct {
 	unversioned.TypeMeta `json:",inline"`
@@ -89,4 +44,50 @@ type ResourceDefinitionList struct {
 	unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []ResourceDefinition `json:"items"`
+}
+
+type ResourceDefinitionsInterface interface {
+	List(opts api.ListOptions) (*ResourceDefinitionList, error)
+}
+
+type resourceDefinitions struct {
+	rc *restclient.RESTClient
+}
+
+func newResourceDefinitions(c restclient.Config) (*resourceDefinitions, error) {
+	c.APIPath = "/apis"
+	c.ContentConfig = restclient.ContentConfig{
+		GroupVersion: &unversioned.GroupVersion{
+			Group:   "appcontroller.k8s2",
+			Version: "v1alpha1",
+		},
+		NegotiatedSerializer: api.Codecs,
+	}
+
+	rc, err := restclient.RESTClientFor(&c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resourceDefinitions{rc}, nil
+}
+
+func (c *resourceDefinitions) List(opts api.ListOptions) (*ResourceDefinitionList, error) {
+	resp, err := c.rc.Get().
+		Namespace("default").
+		Resource("definitions").
+		LabelsSelectorParam(opts.LabelSelector).
+		DoRaw()
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ResourceDefinitionList{}
+	err = json.NewDecoder(bytes.NewReader(resp)).Decode(result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

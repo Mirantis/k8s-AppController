@@ -21,7 +21,6 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/scheduler"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/labels"
 )
 
@@ -36,8 +35,10 @@ func main() {
 	if url == "" {
 		url = os.Getenv("KUBERNETES_CLUSTER_URL")
 	}
-	if url == "" {
-		log.Fatal("Usage: kubeac [-l <label>=<value>[,<label>=<value]...] KUBERNETES_CLUSTER_URL")
+
+	c, err := client.New(url)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	sel, err := labels.Parse(*labelSelector)
@@ -47,24 +48,12 @@ func main() {
 
 	log.Println("Using label selector:", *labelSelector)
 
-	c, err := client.GetAppControllerClient(url)
+	depGraph, err := scheduler.BuildDependencyGraph(c, sel)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Getting resource definitions")
-	resDefList, err := c.ResourceDefinitions().List(api.ListOptions{LabelSelector: sel})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("Getting dependencies")
-	depList, err := c.Dependencies().List(api.ListOptions{LabelSelector: sel})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	scheduler.Create(url, resDefList, depList)
+	scheduler.Create(*depGraph)
 
 	log.Println("Done")
 
