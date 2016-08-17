@@ -18,6 +18,7 @@ import (
 	"log"
 
 	"k8s.io/kubernetes/pkg/api"
+	apiUnversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
@@ -100,6 +101,19 @@ func newForConfig(c restclient.Config) (Interface, error) {
 		DependenciesInterface:        deps,
 		ResourceDefinitionsInterface: resdefs,
 	}, nil
+}
+
+func thirdPartyResourceRESTClient(c *restclient.Config) (*restclient.RESTClient, error) {
+	c.APIPath = "/apis"
+	c.ContentConfig = restclient.ContentConfig{
+		GroupVersion: &apiUnversioned.GroupVersion{
+			Group:   "appcontroller.k8s",
+			Version: "v1alpha1",
+		},
+		NegotiatedSerializer: api.Codecs,
+	}
+	rc, err := restclient.RESTClientFor(c)
+	return rc, err
 }
 
 // GetConfig returns restclient.Config for given URL.
