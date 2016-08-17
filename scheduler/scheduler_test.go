@@ -24,7 +24,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 			2, len(depGraph))
 	}
 
-	sr, ok := (depGraph)["pod/ready-1"]
+	sr, ok := depGraph["pod/ready-1"]
 
 	if !ok {
 		t.Errorf("Dependency for '%s' not found in dependency graph", "pod/ready-1")
@@ -74,5 +74,28 @@ func TestBuildDependencyGraph(t *testing.T) {
 	if len(sr.RequiredBy) != 0 {
 		t.Errorf("Wrong length of 'RequiredBy' for scheduled resource '%s', expected %d, actual %d",
 			sr.Key(), 0, len(sr.Requires))
+	}
+}
+
+func TestIsBlocked(t *testing.T) {
+	one := &ScheduledResource{Status: Init}
+
+	if one.IsBlocked() {
+		t.Errorf("Scheduled resource is blocked but it must not")
+	}
+
+	two := &ScheduledResource{Status: Ready}
+	three := &ScheduledResource{Status: Ready}
+
+	one.Requires = []*ScheduledResource{two, three}
+
+	if one.IsBlocked() {
+		t.Errorf("Scheduled resource is blocked but it must not")
+	}
+
+	one.Requires[0].Status = Creating
+
+	if !one.IsBlocked() {
+		t.Errorf("Scheduled resource is not blocked but it must be")
 	}
 }
