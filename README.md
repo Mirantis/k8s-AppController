@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Mirantis/k8s-AppController.svg?branch=master)](https://travis-ci.org/Mirantis/k8s-AppController)
+
 # Introduction
 AppController is a pod that you can spawn in your Kubernetes cluster which will take care of your complex deployments for you.
 
