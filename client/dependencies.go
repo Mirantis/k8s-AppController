@@ -56,7 +56,7 @@ func newDependencies(c restclient.Config) (*dependencies, error) {
 	c.APIPath = "/apis"
 	c.ContentConfig = restclient.ContentConfig{
 		GroupVersion: &unversioned.GroupVersion{
-			Group:   "appcontroller.k8s1",
+			Group:   "appcontroller.k8s",
 			Version: "v1alpha1",
 		},
 		NegotiatedSerializer: api.Codecs,

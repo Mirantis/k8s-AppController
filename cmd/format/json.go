@@ -36,7 +36,7 @@ func (f JSON) Wrap(k8sObject string) (string, error) {
 	data, err := f.ExtractData(k8sObject)
 
 	base := `{
-    "apiVersion": "appcontroller.k8s2/v1alpha1",
+    "apiVersion": "appcontroller.k8s/v1alpha1",
     "kind": "Definition",
     "metadata": {
         "name": "` + data.Kind + "-" + data.Metadata.Name + `"

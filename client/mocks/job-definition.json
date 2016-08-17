@@ -1,5 +1,5 @@
 {
-    "apiVersion": "appcontroller.k8s2/v1alpha1",
+    "apiVersion": "appcontroller.k8s/v1alpha1",
     "job": {
         "apiVersion": "batch/v1",
         "kind": "Job",
@@ -35,7 +35,7 @@
         "name": "job-definition-1",
         "namespace": "default",
         "resourceVersion": "817",
-        "selfLink": "/apis/appcontroller.k8s2/v1alpha1/namespaces/default/definitions/job-definition-1",
+        "selfLink": "/apis/appcontroller.k8s/v1alpha1/namespaces/default/definitions/job-definition-1",
         "uid": "4b6931d2-588d-11e6-b912-0cc47a430c04"
     }
 }

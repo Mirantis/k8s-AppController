@@ -63,7 +63,7 @@ func newResourceDefinitions(c restclient.Config) (*resourceDefinitions, error) {
 	c.APIPath = "/apis"
 	c.ContentConfig = restclient.ContentConfig{
 		GroupVersion: &unversioned.GroupVersion{
-			Group:   "appcontroller.k8s2",
+			Group:   "appcontroller.k8s",
 			Version: "v1alpha1",
 		},
 		NegotiatedSerializer: api.Codecs,

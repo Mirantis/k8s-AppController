@@ -51,28 +51,28 @@ Suppose you have some yaml files with single k8s object definitions (pod and job
 
 Create file with dependencies:
 ```yaml
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: dependency-1
 parent: pod/<pod_resource_name_1>
 child: job/<job_resource_name_2>
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: dependency-2
 parent: pod/<pod_resource_name_2>
 child: pod/<pod_resource_name_3>
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: dependency-3
 parent: job/<job_resource_name_1>
 child: job/<job_resource_name_3>
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: dependency-4
