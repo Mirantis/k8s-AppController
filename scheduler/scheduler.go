@@ -15,7 +15,6 @@
 package scheduler
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -107,7 +106,7 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (*DependencyG
 			depGraph[sr.Key()] = sr
 			log.Println("Found service definition", r.Service.Name, r.Service)
 		} else {
-			return nil, errors.New(fmt.Sprintln("Found unsupported resource", r))
+			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
 	}
 
