@@ -113,3 +113,145 @@ func TestIsBlocked(t *testing.T) {
 		t.Errorf("Scheduled resource is not blocked but it must be")
 	}
 }
+
+func TestDetectCyclesAcyclic(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"})
+
+	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+
+	cycles := DetectCycles(*depGraphPtr)
+
+	if len(cycles) != 0 {
+		t.Errorf("Cycles detected in an acyclic graph: %v", cycles)
+	}
+}
+
+func TestDetectCyclesSimpleCycle(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"},
+		mocks.Dependency{Parent: "pod/ready-2", Child: "pod/ready-1"})
+
+	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+
+	cycles := DetectCycles(*depGraphPtr)
+
+	if len(cycles) != 1 {
+		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
+		return
+	}
+}
+
+func TestDetectCyclesSelf(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/ready-1")
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-1"})
+
+	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+
+	cycles := DetectCycles(*depGraphPtr)
+
+	if len(cycles) != 1 {
+		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
+		return
+	}
+
+	if len(cycles[0]) != 2 {
+		t.Errorf("Expected cycle length to be %d, got %d", 2, len(cycles[0]))
+	}
+
+	if cycles[0][0].Key() != "pod/ready-1" {
+		t.Errorf("Expected cycle node key to be %s, got %s", "pod/ready-1", cycles[0][0].Key())
+	}
+	if cycles[0][1].Key() != "pod/ready-1" {
+		t.Errorf("Expected cycle node key to be %s, got %s", "pod/ready-1", cycles[0][0].Key())
+	}
+}
+
+func TestDetectCyclesLongCycle(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4", "pod/5")
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
+		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
+		mocks.Dependency{Parent: "pod/3", Child: "pod/4"},
+		mocks.Dependency{Parent: "pod/4", Child: "pod/1"},
+	)
+
+	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+
+	cycles := DetectCycles(*depGraphPtr)
+
+	if len(cycles) != 1 {
+		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
+		return
+	}
+
+	if len(cycles[0]) != 4 {
+		t.Errorf("Expected cycle length to be %d, got %d", 4, len(cycles[0]))
+	}
+}
+
+func TestDetectCyclesComplex(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4", "pod/5")
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
+		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
+		mocks.Dependency{Parent: "pod/3", Child: "pod/1"},
+		mocks.Dependency{Parent: "pod/4", Child: "pod/1"},
+		mocks.Dependency{Parent: "pod/1", Child: "pod/5"},
+		mocks.Dependency{Parent: "pod/5", Child: "pod/4"},
+	)
+
+	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+
+	cycles := DetectCycles(*depGraphPtr)
+
+	if len(cycles) != 1 {
+		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
+		return
+	}
+
+	if len(cycles[0]) != 5 {
+		t.Errorf("Expected cycle length to be %d, got %d", 5, len(cycles[0]))
+	}
+}
+
+func TestDetectCyclesMultiple(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+		"pod/1", "pod/2", "pod/3", "pod/4", "pod/5", "pod/6", "pod/7")
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
+		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
+		mocks.Dependency{Parent: "pod/3", Child: "pod/4"},
+		mocks.Dependency{Parent: "pod/4", Child: "pod/2"},
+		mocks.Dependency{Parent: "pod/1", Child: "pod/5"},
+		mocks.Dependency{Parent: "pod/5", Child: "pod/6"},
+		mocks.Dependency{Parent: "pod/6", Child: "pod/7"},
+		mocks.Dependency{Parent: "pod/7", Child: "pod/5"},
+	)
+
+	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+
+	cycles := DetectCycles(*depGraphPtr)
+
+	if len(cycles) != 2 {
+		t.Errorf("Expected %d cycles, got %d", 2, len(cycles))
+		return
+	}
+
+	if len(cycles[0]) != 3 {
+		t.Errorf("Expected cycle length to be %d, got %d", 3, len(cycles[0]))
+	}
+
+	if len(cycles[1]) != 3 {
+		t.Errorf("Expected cycle length to be %d, got %d", 3, len(cycles[1]))
+	}
+}
