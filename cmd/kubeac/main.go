@@ -16,8 +16,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/scheduler"
@@ -51,6 +53,23 @@ func main() {
 	depGraph, err := scheduler.BuildDependencyGraph(c, sel)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	log.Println("Checking for circular dependencies.")
+	cycles := scheduler.DetectCycles(*depGraph)
+	if len(cycles) > 0 {
+		message := "Cycles detected, terminating:\n"
+		for _, cycle := range cycles {
+			keys := make([]string, 0, len(cycle))
+			for _, vertex := range cycle {
+				keys = append(keys, vertex.Key())
+			}
+			message = fmt.Sprintf("%sCycle: %s\n", message, strings.Join(keys, ", "))
+		}
+
+		log.Fatal(message)
+	} else {
+		log.Println("No cycles detected.")
 	}
 
 	scheduler.Create(*depGraph)

@@ -151,8 +151,6 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (*DependencyG
 	}
 
 	return &depGraph, nil
-
-	//TODO Check cycles in graph
 }
 
 func createResources(toCreate chan *ScheduledResource, created chan string) {
