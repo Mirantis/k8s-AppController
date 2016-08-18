@@ -15,6 +15,7 @@
 package scheduler
 
 import (
+	"container/list"
 	"fmt"
 	"log"
 	"strings"
@@ -150,8 +151,6 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (*DependencyG
 	}
 
 	return &depGraph, nil
-
-	//TODO Check cycles in graph
 }
 
 func createResources(toCreate chan *ScheduledResource, created chan string) {
@@ -227,4 +226,81 @@ func Create(depGraph DependencyGraph) {
 	close(created)
 
 	//TODO Make sure every KO gets created eventually
+}
+
+//Kosaraju's algorithm implementation https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
+//We are depending on the fact that any strongly connected component of a graph is a cycle
+//if it consists of more than one vertex
+func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {
+	//is vertex visited in first phase of the algorithm
+	visited := make(map[string]bool)
+	//is vertex assigned to strongly connected component
+	assigned := make(map[string]bool)
+
+	//each key is root of strongly connected component
+	//the slice consists of all vertices belonging to strongly connected component to which root belongs
+	components := make(map[string][]*ScheduledResource)
+
+	orderedVertices := list.New()
+
+	for key := range depGraph {
+		visited[key] = false
+		assigned[key] = false
+	}
+
+	for key := range depGraph {
+		visitVertex(depGraph[key], visited, orderedVertices)
+	}
+
+	for e := orderedVertices.Front(); e != nil; e = e.Next() {
+		vertex := e.Value.(*ScheduledResource)
+		assignVertex(vertex, vertex, assigned, components)
+	}
+
+	//if any strongly connected component consist of more than one vertex - it's a cycle
+	cycles := make([][]*ScheduledResource, 0)
+	for _, component := range components {
+		if len(component) > 1 {
+			cycles = append(cycles, component)
+		}
+	}
+
+	//detect self cycles - not part of Kosaraju's algorithm
+	for key, vertex := range depGraph {
+		for _, child := range vertex.RequiredBy {
+			if key == child.Key() {
+				cycles = append(cycles, []*ScheduledResource{vertex, vertex})
+			}
+		}
+	}
+	return cycles
+}
+
+func visitVertex(vertex *ScheduledResource, visited map[string]bool, orderedVertices *list.List) {
+	if visited[vertex.Key()] == false {
+		visited[vertex.Key()] = true
+		for _, v := range vertex.RequiredBy {
+			visitVertex(v, visited, orderedVertices)
+		}
+		orderedVertices.PushFront(vertex)
+	}
+}
+
+func assignVertex(vertex, root *ScheduledResource, assigned map[string]bool, components map[string][]*ScheduledResource) {
+	if assigned[vertex.Key()] == false {
+		var component []*ScheduledResource
+		//if component is not yet initiated, make the slice
+		component, ok := components[root.Key()]
+		if !ok {
+			component = make([]*ScheduledResource, 0, 1)
+			components[root.Key()] = component
+		}
+
+		components[root.Key()] = append(component, vertex)
+		assigned[vertex.Key()] = true
+
+		for _, v := range vertex.Requires {
+			assignVertex(v, root, assigned, components)
+		}
+	}
 }
