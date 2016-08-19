@@ -201,10 +201,16 @@ func createResources(toCreate chan *ScheduledResource, created chan string) {
 	}
 }
 
-func Create(depGraph DependencyGraph) {
+func Create(depGraph DependencyGraph, concurrency int) {
 
 	depCount := len(depGraph)
-	toCreate := make(chan *ScheduledResource, depCount)
+
+	channelSize := depCount
+	if concurrency > 0 && concurrency < depCount {
+		channelSize = concurrency
+	}
+
+	toCreate := make(chan *ScheduledResource, channelSize)
 	created := make(chan string, depCount)
 
 	go createResources(toCreate, created)
@@ -228,7 +234,8 @@ func Create(depGraph DependencyGraph) {
 	//TODO Make sure every KO gets created eventually
 }
 
-//Kosaraju's algorithm implementation https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
+//DetectCycles implements Kosaraju's algorithm https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
+//for dedecting cycles in graph.
 //We are depending on the fact that any strongly connected component of a graph is a cycle
 //if it consists of more than one vertex
 func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {

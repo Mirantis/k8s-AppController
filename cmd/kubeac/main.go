@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Mirantis/k8s-AppController/client"
@@ -27,7 +28,28 @@ import (
 )
 
 func main() {
-	labelSelector := flag.String("l", "", "label selector")
+	var err error
+
+	concurrencyString := os.Getenv("KUBERNETES_CONCURRENCY")
+
+	var concurrencyDefault int
+	if len(concurrencyString) > 0 {
+		concurrencyDefault, err = strconv.Atoi(concurrencyString)
+		if err != nil {
+			log.Printf("KUBERNETES_CONCURRENCY is set to '%s' but it does not look like an integer: %v",
+				concurrencyString, err)
+			concurrencyDefault = 0
+		}
+	}
+
+	var concurrency int
+	flag.IntVar(&concurrency, "c", concurrencyDefault, "concurrency")
+
+	log.Println("Using concurrency:", concurrency)
+
+	var labelSelector string
+	flag.StringVar(&labelSelector, "l", "", "label selector")
+
 	flag.Parse()
 
 	var url string
@@ -43,12 +65,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sel, err := labels.Parse(*labelSelector)
+	sel, err := labels.Parse(labelSelector)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Using label selector:", *labelSelector)
+	log.Println("Using label selector:", labelSelector)
 
 	depGraph, err := scheduler.BuildDependencyGraph(c, sel)
 	if err != nil {
@@ -72,7 +94,7 @@ func main() {
 		log.Println("No cycles detected.")
 	}
 
-	scheduler.Create(*depGraph)
+	scheduler.Create(*depGraph, concurrency)
 
 	log.Println("Done")
 
