@@ -30,13 +30,13 @@ import (
 func main() {
 	var err error
 
-	concurrencyString := os.Getenv("KUBERNETES_CONCURRENCY")
+	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 
 	var concurrencyDefault int
 	if len(concurrencyString) > 0 {
 		concurrencyDefault, err = strconv.Atoi(concurrencyString)
 		if err != nil {
-			log.Printf("KUBERNETES_CONCURRENCY is set to '%s' but it does not look like an integer: %v",
+			log.Printf("KUBERNETES_AC_CONCURRENCY is set to '%s' but it does not look like an integer: %v",
 				concurrencyString, err)
 			concurrencyDefault = 0
 		}
