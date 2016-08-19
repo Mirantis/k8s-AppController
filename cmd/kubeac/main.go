@@ -45,12 +45,12 @@ func main() {
 	var concurrency int
 	flag.IntVar(&concurrency, "c", concurrencyDefault, "concurrency")
 
-	log.Println("Using concurrency:", concurrency)
-
 	var labelSelector string
 	flag.StringVar(&labelSelector, "l", "", "label selector")
 
 	flag.Parse()
+
+	log.Println("Using concurrency:", concurrency)
 
 	var url string
 	if len(flag.Args()) > 0 {
