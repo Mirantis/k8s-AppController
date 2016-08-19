@@ -78,7 +78,7 @@ func main() {
 	}
 
 	log.Println("Checking for circular dependencies.")
-	cycles := scheduler.DetectCycles(*depGraph)
+	cycles := scheduler.DetectCycles(depGraph)
 	if len(cycles) > 0 {
 		message := "Cycles detected, terminating:\n"
 		for _, cycle := range cycles {
@@ -94,7 +94,7 @@ func main() {
 		log.Println("No cycles detected.")
 	}
 
-	scheduler.Create(*depGraph, concurrency)
+	scheduler.Create(depGraph, concurrency)
 
 	log.Println("Done")
 

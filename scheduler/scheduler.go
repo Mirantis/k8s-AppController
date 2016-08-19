@@ -73,7 +73,7 @@ func newScheduledResource(r Resource) *ScheduledResource {
 	}
 }
 
-func BuildDependencyGraph(c client.Interface, sel labels.Selector) (*DependencyGraph, error) {
+func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGraph, error) {
 
 	log.Println("Getting resource definitions")
 	resDefList, err := c.ResourceDefinitions().List(api.ListOptions{LabelSelector: sel})
@@ -150,7 +150,7 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (*DependencyG
 			depGraph[d.Parent].RequiredBy, depGraph[d.Child])
 	}
 
-	return &depGraph, nil
+	return depGraph, nil
 }
 
 func createResources(toCreate chan *ScheduledResource, created chan string) {
