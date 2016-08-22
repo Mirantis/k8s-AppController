@@ -12,8 +12,8 @@ RUN go build -o wrap cmd/wrap/main.go
 RUN mv kubeac /usr/bin/kubeac
 RUN mv wrap /usr/bin/wrap
 
-RUN echo "@testing http://dl-4.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-RUN apk --no-cache add runit@testing
+RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+RUN apk --no-cache add runit@community
 
 RUN mkdir -p /etc/sv/ac
 ADD ac_service.sh /etc/sv/ac/run
