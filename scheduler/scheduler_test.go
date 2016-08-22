@@ -26,12 +26,10 @@ func TestBuildDependencyGraph(t *testing.T) {
 	c.DependenciesInterface = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"})
 
-	depGraphPtr, err := BuildDependencyGraph(c, nil)
+	depGraph, err := BuildDependencyGraph(c, nil)
 	if err != nil {
 		t.Error(err)
 	}
-
-	depGraph := *depGraphPtr
 
 	if len(depGraph) != 2 {
 		t.Errorf("Wrong length of dependency graph, expected %d, actual %d",
@@ -120,9 +118,9 @@ func TestDetectCyclesAcyclic(t *testing.T) {
 	c.DependenciesInterface = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"})
 
-	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+	depGraph, _ := BuildDependencyGraph(c, nil)
 
-	cycles := DetectCycles(*depGraphPtr)
+	cycles := DetectCycles(depGraph)
 
 	if len(cycles) != 0 {
 		t.Errorf("Cycles detected in an acyclic graph: %v", cycles)
@@ -136,9 +134,9 @@ func TestDetectCyclesSimpleCycle(t *testing.T) {
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"},
 		mocks.Dependency{Parent: "pod/ready-2", Child: "pod/ready-1"})
 
-	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+	depGraph, _ := BuildDependencyGraph(c, nil)
 
-	cycles := DetectCycles(*depGraphPtr)
+	cycles := DetectCycles(depGraph)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -152,9 +150,9 @@ func TestDetectCyclesSelf(t *testing.T) {
 	c.DependenciesInterface = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-1"})
 
-	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+	depGraph, _ := BuildDependencyGraph(c, nil)
 
-	cycles := DetectCycles(*depGraphPtr)
+	cycles := DetectCycles(depGraph)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -183,9 +181,9 @@ func TestDetectCyclesLongCycle(t *testing.T) {
 		mocks.Dependency{Parent: "pod/4", Child: "pod/1"},
 	)
 
-	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+	depGraph, _ := BuildDependencyGraph(c, nil)
 
-	cycles := DetectCycles(*depGraphPtr)
+	cycles := DetectCycles(depGraph)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -209,9 +207,9 @@ func TestDetectCyclesComplex(t *testing.T) {
 		mocks.Dependency{Parent: "pod/5", Child: "pod/4"},
 	)
 
-	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+	depGraph, _ := BuildDependencyGraph(c, nil)
 
-	cycles := DetectCycles(*depGraphPtr)
+	cycles := DetectCycles(depGraph)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -238,9 +236,9 @@ func TestDetectCyclesMultiple(t *testing.T) {
 		mocks.Dependency{Parent: "pod/7", Child: "pod/5"},
 	)
 
-	depGraphPtr, _ := BuildDependencyGraph(c, nil)
+	depGraph, _ := BuildDependencyGraph(c, nil)
 
-	cycles := DetectCycles(*depGraphPtr)
+	cycles := DetectCycles(depGraph)
 
 	if len(cycles) != 2 {
 		t.Errorf("Expected %d cycles, got %d", 2, len(cycles))
