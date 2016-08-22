@@ -1,7 +1,0 @@
-metadata:
-  name: definition.appcontroller.k8s2
-apiVersion: extensions/v1beta1
-kind: ThirdPartyResource
-description: "Resource definitions for App Controller"
-versions:
-- name: v1alpha1

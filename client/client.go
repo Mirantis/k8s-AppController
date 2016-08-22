@@ -79,10 +79,9 @@ func newForConfig(c restclient.Config) (Interface, error) {
 	}, nil
 }
 
-func New(url string) (Interface, error) {
-	var rc *restclient.Config
-	var err error
-
+// GetConfig returns restclient.Config for given URL.
+// If url is empty, assume in-cluster config. Otherwise, return config for remote cluster.
+func GetConfig(url string) (rc *restclient.Config, err error) {
 	if url == "" {
 		log.Println("No Kubernetes cluster URL provided. Assume in-cluster.")
 		rc, err = restclient.InClusterConfig()
@@ -94,6 +93,13 @@ func New(url string) (Interface, error) {
 			Host: url,
 		}
 	}
+	return
+}
 
+func New(url string) (Interface, error) {
+	rc, err := GetConfig(url)
+	if err != nil {
+		return nil, err
+	}
 	return newForConfig(*rc)
 }
