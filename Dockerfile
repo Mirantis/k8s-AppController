@@ -9,8 +9,10 @@ RUN apk --no-cache add git
 RUN go get ./...
 RUN go build -o kubeac cmd/kubeac/main.go
 RUN go build -o wrap cmd/wrap/main.go
+RUN go build -o bootstrap cmd/bootstrap/main.go
 RUN mv kubeac /usr/bin/kubeac
 RUN mv wrap /usr/bin/wrap
+RUN mv bootstrap /usr/bin/bootstrap
 
 RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
 RUN apk --no-cache add runit@community
