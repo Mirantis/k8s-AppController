@@ -24,4 +24,6 @@ cat pod7.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod7 | kubectl.sh crea
 cat pod8.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod8 | kubectl.sh create -f -
 cat pod9.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod9 | kubectl.sh create -f -
 
+cat replicaset.yaml | kubectl.sh exec -i k8s-appcontroller wrap frontend | kubectl.sh create -f -
+
 kubectl.sh exec k8s-appcontroller ac-run

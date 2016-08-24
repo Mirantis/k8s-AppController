@@ -1,0 +1,21 @@
+# example from https://github.com/kubernetes/kubernetes/blob/293793cf0d3c13f9ece496d22d1f2353531fa9d5/docs/user-guide/replicaset/frontend.yaml
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  name: frontend
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - name: php-redis
+        image: gcr.io/google_samples/gb-frontend:v3
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        ports:
+        - containerPort: 80
