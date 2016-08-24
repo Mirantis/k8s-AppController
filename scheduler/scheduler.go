@@ -50,13 +50,24 @@ type ScheduledResource struct {
 	sync.RWMutex
 }
 
+// IsBlocked checks whether d can be created. It checks cached resource status,
+// unless the requirement is a Service - it gets the status from the API in that case
 func (d *ScheduledResource) IsBlocked() bool {
 	isBlocked := false
 
 	for _, r := range d.Requires {
+		if isBlocked {
+			break
+		}
 		r.RLock()
-		if r.Status != Ready {
-			isBlocked = true
+		switch r.Resource.(type) {
+		case resources.Service:
+			status, err := r.Resource.Status()
+			if err != nil || status != "ready" {
+				isBlocked = true
+			}
+		default:
+			isBlocked = r.Status != Ready
 		}
 		r.RUnlock()
 	}
@@ -74,7 +85,7 @@ func newResourceForPod(name string, resDefs []client.ResourceDefinition, c clien
 		}
 	}
 
-	log.Printf("Resource definition for pod '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for pod '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingPod(name, c.Pods())
 }
 
@@ -86,7 +97,7 @@ func newResourceForJob(name string, resDefs []client.ResourceDefinition, c clien
 		}
 	}
 
-	log.Printf("Resource definition for job '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for job '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingJob(name, c.Jobs())
 }
 
@@ -94,11 +105,11 @@ func newResourceForService(name string, resDefs []client.ResourceDefinition, c c
 	for _, rd := range resDefs {
 		if rd.Service != nil && rd.Service.Name == name {
 			log.Println("Found resource definition for service", name)
-			return resources.NewService(rd.Service, c.Services())
+			return resources.NewService(rd.Service, c.Services(), c)
 		}
 	}
 
-	log.Printf("Resource definition for service '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for service '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingService(name, c.Services())
 }
 
@@ -198,7 +209,7 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		} else if r.Job != nil {
 			sr = newScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
 		} else if r.Service != nil {
-			sr = newScheduledResourceFor(resources.NewService(r.Service, c.Services()))
+			sr = newScheduledResourceFor(resources.NewService(r.Service, c.Services(), c))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
@@ -223,7 +234,8 @@ func createResources(toCreate chan *ScheduledResource, created chan string) {
 			}
 
 			for {
-				time.Sleep(time.Millisecond * 100)
+				log.Printf("Checking status for %s", r.Key())
+				time.Sleep(time.Millisecond * 1000)
 				status, err := r.Resource.Status()
 				if err != nil {
 					log.Printf("Error getting status for resource %s: %v", r.Key(), err)
@@ -240,20 +252,26 @@ func createResources(toCreate chan *ScheduledResource, created chan string) {
 			log.Printf("Resource %s created", r.Key())
 
 			for _, req := range r.RequiredBy {
-				if !req.IsBlocked() {
-					req.RLock()
-					if req.Status == Init {
-						req.RUnlock()
-						req.Lock()
-						if req.Status == Init {
-							req.Status = Creating
-							toCreate <- req
+				go func(req *ScheduledResource) {
+					for {
+						time.Sleep(time.Millisecond * 100)
+						if !req.IsBlocked() {
+							req.RLock()
+							if req.Status == Init {
+								req.RUnlock()
+								req.Lock()
+								if req.Status == Init {
+									req.Status = Creating
+									toCreate <- req
+								}
+								req.Unlock()
+							} else {
+								req.RUnlock()
+							}
+							break
 						}
-						req.Unlock()
-					} else {
-						req.RUnlock()
 					}
-				}
+				}(req)
 			}
 			created <- r.Key()
 		}(r)
