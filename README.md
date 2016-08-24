@@ -40,12 +40,6 @@ Run AppController pod:
 
 `kubectl create -f manifests/appcontroller.yaml`
 
-Create third party resource kinds:
-
-`kubectl create -f manifests/dependencies.yaml`
-
-`kubectl create -f manifests/resdefs.yaml`
-
 Suppose you have some yaml files with single k8s object definitions (pod and jobs are supported right now). Create AppController ResourceDefintions for them:
 
 `cat path_to_your_pod.yaml | kubectl exec -i k8s-appcontroller wrap <resource_name> | kubectl create -f -`
