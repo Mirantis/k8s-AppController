@@ -66,11 +66,75 @@ func (d *ScheduledResource) IsBlocked() bool {
 
 type DependencyGraph map[string]*ScheduledResource
 
-func newScheduledResource(r Resource) *ScheduledResource {
+func newResourceForPod(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+	for _, rd := range resDefs {
+		if rd.Pod != nil && rd.Pod.Name == name {
+			log.Println("Found resource definition for pod", name)
+			return resources.NewPod(rd.Pod, c.Pods())
+		}
+	}
+
+	log.Printf("Resource definition for pod '%s' not found, so it is expected to exist already")
+	return resources.NewExistingPod(name, c.Pods())
+}
+
+func newResourceForJob(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+	for _, rd := range resDefs {
+		if rd.Job != nil && rd.Job.Name == name {
+			log.Println("Found resource definition for job", name)
+			return resources.NewJob(rd.Job, c.Jobs())
+		}
+	}
+
+	log.Printf("Resource definition for job '%s' not found, so it is expected to exist already")
+	return resources.NewExistingJob(name, c.Jobs())
+}
+
+func newResourceForService(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+	for _, rd := range resDefs {
+		if rd.Service != nil && rd.Service.Name == name {
+			log.Println("Found resource definition for service", name)
+			return resources.NewService(rd.Service, c.Services())
+		}
+	}
+
+	log.Printf("Resource definition for service '%s' not found, so it is expected to exist already")
+	return resources.NewExistingService(name, c.Services())
+}
+
+func newScheduledResource(kind string, name string,
+	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
+
+	var r Resource
+
+	if kind == "pod" {
+		r = newResourceForPod(name, resDefs, c)
+	} else if kind == "job" {
+		r = newResourceForJob(name, resDefs, c)
+	} else if kind == "service" {
+		r = newResourceForService(name, resDefs, c)
+	} else {
+		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod','job' or 'service'", kind)
+	}
+
+	return newScheduledResourceFor(r), nil
+}
+
+func newScheduledResourceFor(r Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
 		Resource: r,
 	}
+}
+
+func keyParts(key string) (kind string, name string, err error) {
+	parts := strings.Split(key, "/")
+
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("Not a proper resource key: %s. Expected KIND/NAME", key)
+	}
+
+	return parts[0], parts[1], nil
 }
 
 func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGraph, error) {
@@ -81,6 +145,8 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		return nil, err
 	}
 
+	resDefs := resDefList.Items
+
 	log.Println("Getting dependencies")
 	depList, err := c.Dependencies().List(api.ListOptions{LabelSelector: sel})
 	if err != nil {
@@ -89,65 +155,58 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 
 	depGraph := DependencyGraph{}
 
-	pods := c.Pods()
-	jobs := c.Jobs()
-	services := c.Services()
+	for _, d := range depList.Items {
+		parent := d.Parent
+		child := d.Child
 
+		// NOTE(ikhudoshyn): We should normalize parent's and child's key
+		// to the form KIND/NAME, so that no extra metainformation
+		// (e.g. success factor for replica set) will not be a part of the key
+
+		log.Println("Found dependency", parent, "->", child)
+
+		for _, key := range []string{parent, child} {
+			if _, ok := depGraph[key]; !ok {
+				log.Printf("Resource %s not found in dependecy graph yet, adding.", key)
+
+				kind, name, err := keyParts(key)
+				if err != nil {
+					return nil, err
+				}
+
+				sr, err := newScheduledResource(kind, name, resDefs, c)
+				if err != nil {
+					return nil, err
+				}
+
+				depGraph[key] = sr
+			}
+		}
+
+		depGraph[child].Requires = append(
+			depGraph[d.Child].Requires, depGraph[parent])
+		depGraph[parent].RequiredBy = append(
+			depGraph[parent].RequiredBy, depGraph[child])
+	}
+
+	log.Println("Looking for resource definitions not in dependency list")
 	for _, r := range resDefList.Items {
+		var sr *ScheduledResource
+
 		if r.Pod != nil {
-			sr := newScheduledResource(resources.NewPod(r.Pod, pods))
-			depGraph[sr.Key()] = sr
-			log.Println("Found pod definition", r.Pod.Name, r.Pod)
+			sr = newScheduledResourceFor(resources.NewPod(r.Pod, c.Pods()))
 		} else if r.Job != nil {
-			sr := newScheduledResource(resources.NewJob(r.Job, jobs))
-			depGraph[sr.Key()] = sr
-			log.Println("Found job definition", r.Job.Name, r.Job)
+			sr = newScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
 		} else if r.Service != nil {
-			sr := newScheduledResource(resources.NewService(r.Service, services))
-			depGraph[sr.Key()] = sr
-			log.Println("Found service definition", r.Service.Name, r.Service)
+			sr = newScheduledResourceFor(resources.NewService(r.Service, c.Services()))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
-	}
 
-	for _, d := range depList.Items {
-		log.Println("Found dependency", d.Parent, "->", d.Child)
-
-		if _, ok := depGraph[d.Child]; !ok {
-			log.Printf("Resource %s is not defined. Skipping dependency %s -> %s",
-				d.Child, d.Parent, d.Child)
-			continue
+		if _, ok := depGraph[sr.Key()]; !ok {
+			log.Printf("Resource %s not found in dependecy graph yet, adding.", sr.Key())
+			depGraph[sr.Key()] = sr
 		}
-
-		if _, ok := depGraph[d.Parent]; !ok {
-			log.Printf("Resource %s is not defined, but %s requires it. So %s is expected to exist",
-				d.Parent, d.Child, d.Parent)
-
-			keyParts := strings.Split(d.Parent, "/")
-
-			if len(keyParts) < 2 {
-				return nil, fmt.Errorf("Not a proper resource key: %s. Expected RESOURCE_TYPE/NAME", d.Parent)
-			}
-
-			typ := keyParts[0]
-			name := keyParts[1]
-
-			if typ == "pod" {
-				depGraph[d.Parent] = newScheduledResource(resources.NewExistingPod(name, pods))
-			} else if typ == "job" {
-				depGraph[d.Parent] = newScheduledResource(resources.NewExistingJob(name, jobs))
-			} else if typ == "service" {
-				depGraph[d.Parent] = newScheduledResource(resources.NewExistingService(name, services))
-			} else {
-				return nil, fmt.Errorf("Not a proper resource type: %s. Expected 'pod','job' or 'service'", typ)
-			}
-		}
-
-		depGraph[d.Child].Requires = append(
-			depGraph[d.Child].Requires, depGraph[d.Parent])
-		depGraph[d.Parent].RequiredBy = append(
-			depGraph[d.Parent].RequiredBy, depGraph[d.Child])
 	}
 
 	return depGraph, nil
