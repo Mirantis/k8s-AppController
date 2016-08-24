@@ -28,7 +28,16 @@ type serviceClient struct {
 }
 
 func MakeService(name string) *api.Service {
-	service := &api.Service{}
+	var service *api.Service
+
+	if name == "failed" {
+		service = &api.Service{Spec: api.ServiceSpec{Selector: map[string]string{"failed": "yes"}}}
+	} else if name == "success" {
+		service = &api.Service{Spec: api.ServiceSpec{Selector: map[string]string{"success": "yes"}}}
+	} else {
+		service = &api.Service{}
+	}
+
 	service.Name = name
 
 	return service

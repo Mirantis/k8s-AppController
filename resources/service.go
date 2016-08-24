@@ -16,21 +16,52 @@ package resources
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
+
+	"github.com/Mirantis/k8s-AppController/client"
 )
 
 type Service struct {
-	Service *api.Service
-	Client  unversioned.ServiceInterface
+	Service   *api.Service
+	Client    unversioned.ServiceInterface
+	APIClient client.Interface
 }
 
-func serviceStatus(s unversioned.ServiceInterface, name string) (string, error) {
-	_, err := s.Get(name)
+func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client.Interface) (string, error) {
+	service, err := s.Get(name)
+
 	if err != nil {
 		return "error", err
+	}
+
+	log.Printf("Checking service status for selector %v", service.Spec.Selector)
+	for k, v := range service.Spec.Selector {
+		stringSelector := fmt.Sprintf("%s=%s", k, v)
+		log.Printf("Checking status for %s", stringSelector)
+		selector, err := labels.Parse(stringSelector)
+
+		options := api.ListOptions{LabelSelector: selector}
+
+		pods, err := apiClient.Pods().List(options)
+		if err != nil {
+			return "error", err
+		}
+		for _, pod := range pods.Items {
+			log.Printf("Checking status for pod %s", pod.Name)
+			p := NewPod(&pod, apiClient.Pods())
+			status, err := p.Status()
+			if err != nil {
+				return "error", err
+			}
+			if status != "ready" {
+				return "not ready", fmt.Errorf("Pod %s is not ready", pod.Name)
+			}
+		}
 	}
 
 	return "ready", nil
@@ -64,16 +95,18 @@ func (s Service) Create() error {
 }
 
 func (s Service) Status() (string, error) {
-	return serviceStatus(s.Client, s.Service.Name)
+	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
 }
 
-func NewService(service *api.Service, client unversioned.ServiceInterface) Service {
-	return Service{Service: service, Client: client}
+//NewService is Service constructor. Needs apiClient for service status checks
+func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface) Service {
+	return Service{Service: service, Client: client, APIClient: apiClient}
 }
 
 type ExistingService struct {
-	Name   string
-	Client unversioned.ServiceInterface
+	Name      string
+	Client    unversioned.ServiceInterface
+	APIClient client.Interface
 }
 
 func (s ExistingService) UpdateMeta(map[string]string) error {
@@ -99,7 +132,7 @@ func (s ExistingService) Create() error {
 }
 
 func (s ExistingService) Status() (string, error) {
-	return serviceStatus(s.Client, s.Name)
+	return serviceStatus(s.Client, s.Name, s.APIClient)
 }
 
 func NewExistingService(name string, client unversioned.ServiceInterface) ExistingService {
