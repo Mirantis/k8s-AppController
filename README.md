@@ -36,11 +36,9 @@ Clone repo:
 `git clone https://github.com/Mirantis/k8s-AppController.git`
 `cd k8s-AppController`
 
-Create third party resource kinds:
+Run AppController pod:
 
-`kubectl create -f manifests/dependencies.yaml`
-
-`kubectl create -f manifests/resdefs.yaml`
+`kubectl create -f manifests/appcontroller.yaml`
 
 Suppose you have some yaml files with single k8s object definitions (pod and jobs are supported right now). Create AppController ResourceDefintions for them:
 
@@ -72,10 +70,6 @@ child: job/<job_resource_name_1>
 Load it to k8s:
 
 `kubectl create -f dependencies_file.yaml`
-
-Run AppController pod:
-
-`kubectl create -f manifests/appcontroller.yaml`
 
 Start appcontroller process:
 
