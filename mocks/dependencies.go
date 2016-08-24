@@ -22,6 +22,7 @@ import (
 type Dependency struct {
 	Parent string
 	Child  string
+	Meta   map[string]string
 }
 
 type dependencyClient struct {
@@ -37,6 +38,7 @@ func (d *dependencyClient) List(opts api.ListOptions) (*client.DependencyList, e
 			client.Dependency{
 				Parent: dep.Parent,
 				Child:  dep.Child,
+				Meta:   make(map[string]string),
 			},
 		)
 	}

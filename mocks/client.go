@@ -23,6 +23,7 @@ type Client struct {
 	unversioned.PodInterface
 	unversioned.JobInterface
 	unversioned.ServiceInterface
+	unversioned.ReplicaSetInterface
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
@@ -39,6 +40,10 @@ func (c *Client) Services() unversioned.ServiceInterface {
 	return c.ServiceInterface
 }
 
+func (c *Client) ReplicaSets() unversioned.ReplicaSetInterface {
+	return c.ReplicaSetInterface
+}
+
 func (c *Client) Dependencies() client.DependenciesInterface {
 	return c.DependenciesInterface
 }
@@ -52,6 +57,7 @@ func NewClient() *Client {
 		NewPodClient(),
 		NewJobClient(),
 		NewServiceClient(),
+		NewReplicaSetClient(),
 		NewDependencyClient(),
 		NewResourceDefinitionClient(),
 	}
