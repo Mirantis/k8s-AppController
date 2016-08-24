@@ -212,10 +212,12 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 	return depGraph, nil
 }
 
-func createResources(toCreate chan *ScheduledResource, created chan string) {
+func createResources(toCreate chan *ScheduledResource, created chan string, ccLimiter chan struct{}) {
 
 	for r := range toCreate {
-		go func(r *ScheduledResource) {
+		go func(r *ScheduledResource, created chan string, ccLimiter chan struct{}) {
+			//Acquire sepmaphor
+			ccLimiter <- struct{}{}
 			log.Println("Creating resource", r.Key())
 			err := r.Create()
 			if err != nil {
@@ -256,7 +258,9 @@ func createResources(toCreate chan *ScheduledResource, created chan string) {
 				}
 			}
 			created <- r.Key()
-		}(r)
+			//Release semaphor
+			<-ccLimiter
+		}(r, created, ccLimiter)
 	}
 }
 
@@ -264,15 +268,16 @@ func Create(depGraph DependencyGraph, concurrency int) {
 
 	depCount := len(depGraph)
 
-	channelSize := depCount
-	if concurrency > 0 && concurrency < depCount {
-		channelSize = concurrency
+	concurrencyLimiterLen := depCount
+	if concurrency > 0 && concurrency < concurrencyLimiterLen {
+		concurrencyLimiterLen = concurrency
 	}
 
-	toCreate := make(chan *ScheduledResource, channelSize)
+	ccLimiter := make(chan struct{}, concurrencyLimiterLen)
+	toCreate := make(chan *ScheduledResource, depCount)
 	created := make(chan string, depCount)
 
-	go createResources(toCreate, created)
+	go createResources(toCreate, created, ccLimiter)
 
 	for _, r := range depGraph {
 		if len(r.Requires) == 0 {
@@ -294,7 +299,7 @@ func Create(depGraph DependencyGraph, concurrency int) {
 }
 
 //DetectCycles implements Kosaraju's algorithm https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
-//for dedecting cycles in graph.
+//for detecting cycles in graph.
 //We are depending on the fact that any strongly connected component of a graph is a cycle
 //if it consists of more than one vertex
 func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {

@@ -30,13 +30,13 @@ import (
 func main() {
 	var err error
 
-	concurrencyString := os.Getenv("KUBERNETES_CONCURRENCY")
+	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 
 	var concurrencyDefault int
 	if len(concurrencyString) > 0 {
 		concurrencyDefault, err = strconv.Atoi(concurrencyString)
 		if err != nil {
-			log.Printf("KUBERNETES_CONCURRENCY is set to '%s' but it does not look like an integer: %v",
+			log.Printf("KUBERNETES_AC_CONCURRENCY is set to '%s' but it does not look like an integer: %v",
 				concurrencyString, err)
 			concurrencyDefault = 0
 		}
@@ -45,12 +45,12 @@ func main() {
 	var concurrency int
 	flag.IntVar(&concurrency, "c", concurrencyDefault, "concurrency")
 
-	log.Println("Using concurrency:", concurrency)
-
 	var labelSelector string
 	flag.StringVar(&labelSelector, "l", "", "label selector")
 
 	flag.Parse()
+
+	log.Println("Using concurrency:", concurrency)
 
 	var url string
 	if len(flag.Args()) > 0 {
