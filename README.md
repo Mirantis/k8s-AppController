@@ -36,6 +36,10 @@ Clone repo:
 `git clone https://github.com/Mirantis/k8s-AppController.git`
 `cd k8s-AppController`
 
+Run AppController pod:
+
+`kubectl create -f manifests/appcontroller.yaml`
+
 Create third party resource kinds:
 
 `kubectl create -f manifests/dependencies.yaml`
@@ -72,10 +76,6 @@ child: job/<job_resource_name_1>
 Load it to k8s:
 
 `kubectl create -f dependencies_file.yaml`
-
-Run AppController pod:
-
-`kubectl create -f manifests/appcontroller.yaml`
 
 Start appcontroller process:
 
