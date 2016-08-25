@@ -15,7 +15,9 @@
 package scheduler
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Mirantis/k8s-AppController/mocks"
 )
@@ -252,4 +254,30 @@ func TestDetectCyclesMultiple(t *testing.T) {
 	if len(cycles[1]) != 3 {
 		t.Errorf("Expected cycle length to be %d, got %d", 3, len(cycles[1]))
 	}
+}
+
+func TestLimitConcurrency(t *testing.T) {
+	for concurrency := range [...]int{0, 10, 50} {
+		counter := mocks.NewCounterWithMemo()
+
+		depGraph := DependencyGraph{}
+
+		for i := 0; i < 100; i++ {
+			key := fmt.Sprintf("resource%d", i)
+			r := mocks.NewCountingResource(key, counter, time.Second*2)
+			sr := NewScheduledResourceFor(r)
+			depGraph[sr.Key()] = sr
+		}
+
+		Create(depGraph, concurrency)
+
+		// Concurrency = 0, means 'disabled' i.e. equal to depGraph size
+		if concurrency == 0 {
+			concurrency = len(depGraph)
+		}
+		if counter.Max() != concurrency {
+			t.Errorf("Expected max concurrency counter %d, but got %d", concurrency, counter.Max())
+		}
+	}
+
 }

@@ -102,7 +102,7 @@ func newResourceForService(name string, resDefs []client.ResourceDefinition, c c
 	return resources.NewExistingService(name, c.Services())
 }
 
-func newScheduledResource(kind string, name string,
+func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
 	var r Resource
@@ -117,10 +117,10 @@ func newScheduledResource(kind string, name string,
 		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod','job' or 'service'", kind)
 	}
 
-	return newScheduledResourceFor(r), nil
+	return NewScheduledResourceFor(r), nil
 }
 
-func newScheduledResourceFor(r Resource) *ScheduledResource {
+func NewScheduledResourceFor(r Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
 		Resource: r,
@@ -174,7 +174,7 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 					return nil, err
 				}
 
-				sr, err := newScheduledResource(kind, name, resDefs, c)
+				sr, err := NewScheduledResource(kind, name, resDefs, c)
 				if err != nil {
 					return nil, err
 				}
@@ -194,11 +194,11 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		var sr *ScheduledResource
 
 		if r.Pod != nil {
-			sr = newScheduledResourceFor(resources.NewPod(r.Pod, c.Pods()))
+			sr = NewScheduledResourceFor(resources.NewPod(r.Pod, c.Pods()))
 		} else if r.Job != nil {
-			sr = newScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
+			sr = NewScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
 		} else if r.Service != nil {
-			sr = newScheduledResourceFor(resources.NewService(r.Service, c.Services()))
+			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services()))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
