@@ -13,7 +13,9 @@ AppController interacts with bare Kubernetes objects by creating them (if they a
 
 ### Dependencies
 
-Dependencies are objects that represent vertices in your deployment graph. You can define them and easily create them with kubectl. Dependencies are ThirdPartyResource which is API extension provided by AppController. It's worth mentioning, that Dependencies can represent dependency between pre-existing K8s object (not orchestrated by AppController) and Resource Definitions, so parts of your deployment graph can depend on objects that were created in your cluster before you even started AppController-aided-deployment.
+Dependencies are objects that represent vertices in your deployment graph. You can define them and easily create them with kubectl. Dependencies are ThirdPartyResource which is API extension provided by AppController. It's worth mentioning, that Dependencies can represent dependency between pre-existing K8s object (not orchestrated by AppController) and Resource Definitions, so parts of your deployment graph can depend on objects that were created in your cluster before you even started AppController-aided-deployment. Dependency could have metadata which can contain additional informations about how to determine if it's fulfilled. Current implementation assings this metadata into parent resource and merges it with metadatas from other dependencies definitions so resulting check for resource status uses same values for each dependency. Current implementation does not permit a different values for same metadata key in different dependencies.
+
+Dependency on Replica Set accepts `success_factor` key with stringified percentage integer value of how many replicas should be ready to fulfill the status check.
 
 ### Resource Definitions
 
@@ -21,6 +23,7 @@ Resource Definitions are objects that represent Kubernetes Objects that are not 
 * Jobs
 * Pods
 * Services
+* Replica Sets
 
 Resource Definitions are (the same as Dependencies) ThirdPartyResource API extension.
 
@@ -66,6 +69,15 @@ metadata:
   name: dependency-3
 parent: job/<job_resource_name_1>
 child: job/<job_resource_name_3>
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency-4
+parent: replicaset/<replicaset_resource_name_1>
+child: job/<job_resource_name_1>
+meta:
+  success_factor: "80"
 ```
 Load it to k8s:
 
