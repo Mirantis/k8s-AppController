@@ -31,6 +31,12 @@ type replicaSetClient struct {
 func MakeReplicaSet(name string) *extensions.ReplicaSet {
 	replicaSet := &extensions.ReplicaSet{}
 	replicaSet.Name = name
+	replicaSet.Spec.Replicas = 3
+	if name == "fail" {
+		replicaSet.Status.Replicas = 2
+	} else {
+		replicaSet.Status.Replicas = 3
+	}
 
 	return replicaSet
 }
