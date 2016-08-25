@@ -349,7 +349,7 @@ func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {
 	}
 
 	//if any strongly connected component consist of more than one vertex - it's a cycle
-	cycles := make([][]*ScheduledResource, 0)
+	var cycles [][]*ScheduledResource
 	for _, component := range components {
 		if len(component) > 1 {
 			cycles = append(cycles, component)
