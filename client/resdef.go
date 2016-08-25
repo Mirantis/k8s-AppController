@@ -22,6 +22,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 )
 
@@ -32,9 +33,10 @@ type ResourceDefinition struct {
 	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	//TODO: add other object types
-	Pod     *api.Pod     `json:"pod,omitempty"`
-	Job     *batch.Job   `json:"job,omitempty"`
-	Service *api.Service `json:"service,omitempty"`
+	Pod        *api.Pod               `json:"pod,omitempty"`
+	Job        *batch.Job             `json:"job,omitempty"`
+	Service    *api.Service           `json:"service,omitempty"`
+	ReplicaSet *extensions.ReplicaSet `json:"replicaset,omitempty"`
 }
 
 type ResourceDefinitionList struct {

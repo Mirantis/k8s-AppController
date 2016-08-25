@@ -32,6 +32,7 @@ type Resource interface {
 	Key() string
 	Status() (string, error)
 	Create() error
+	UpdateMeta(map[string]string) error
 }
 
 type ScheduledResourceStatus int
@@ -102,6 +103,18 @@ func newResourceForService(name string, resDefs []client.ResourceDefinition, c c
 	return resources.NewExistingService(name, c.Services())
 }
 
+func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+	for _, rd := range resDefs {
+		if rd.ReplicaSet != nil && rd.ReplicaSet.Name == name {
+			log.Println("Found resource definition for replica set", name)
+			return resources.NewReplicaSet(rd.ReplicaSet, c.ReplicaSets())
+		}
+	}
+
+	log.Printf("Resource definition for replica set '%s' not found, so it is expected to exist already")
+	return resources.NewExistingReplicaSet(name, c.ReplicaSets())
+}
+
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
@@ -113,8 +126,10 @@ func NewScheduledResource(kind string, name string,
 		r = newResourceForJob(name, resDefs, c)
 	} else if kind == "service" {
 		r = newResourceForService(name, resDefs, c)
+	} else if kind == "replicaset" {
+		r = newResourceForReplicaSet(name, resDefs, c)
 	} else {
-		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod','job' or 'service'", kind)
+		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod', 'job', 'service' or 'replicaset'", kind)
 	}
 
 	return NewScheduledResourceFor(r), nil
@@ -187,6 +202,9 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			depGraph[d.Child].Requires, depGraph[parent])
 		depGraph[parent].RequiredBy = append(
 			depGraph[parent].RequiredBy, depGraph[child])
+		if err := depGraph[parent].Resource.UpdateMeta(d.Meta); err != nil {
+			return nil, err
+		}
 	}
 
 	log.Println("Looking for resource definitions not in dependency list")
@@ -199,6 +217,8 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			sr = NewScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
 		} else if r.Service != nil {
 			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services()))
+		} else if r.ReplicaSet != nil {
+			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}

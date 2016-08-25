@@ -22,6 +22,15 @@ child: pod/eventually-alive-pod3
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
+  name: df552b4e-bbae-4afc-be18-52e740bb6076
+parent: replicaset/frontend
+child: job/test-job2
+meta:
+  success_factor: "40"
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
   name: f5c82257-f33b-d49b-e767-cd43309f11ad
 parent: pod/eventually-alive-pod2
 child: job/test-job2

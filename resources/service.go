@@ -40,6 +40,10 @@ func serviceKey(name string) string {
 	return "service/" + name
 }
 
+func (s Service) UpdateMeta(meta map[string]string) error {
+	return nil
+}
+
 func (s Service) Key() string {
 	return serviceKey(s.Service.Name)
 }
@@ -70,6 +74,10 @@ func NewService(service *api.Service, client unversioned.ServiceInterface) Servi
 type ExistingService struct {
 	Name   string
 	Client unversioned.ServiceInterface
+}
+
+func (s ExistingService) UpdateMeta(map[string]string) error {
+	return nil
 }
 
 func (s ExistingService) Key() string {

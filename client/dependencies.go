@@ -30,8 +30,9 @@ type Dependency struct {
 	// Standard object metadata
 	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Parent string `json:"parent"`
-	Child  string `json:"child"`
+	Parent string            `json:"parent"`
+	Child  string            `json:"child"`
+	Meta   map[string]string `json:"meta,omitempty"`
 }
 
 type DependencyList struct {

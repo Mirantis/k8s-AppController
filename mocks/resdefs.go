@@ -42,6 +42,8 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 			rd.Job = MakeJob(n)
 		} else if typ == "service" {
 			rd.Service = MakeService(n)
+		} else if typ == "replicaset" {
+			rd.ReplicaSet = MakeReplicaSet(n)
 		} else {
 			log.Fatal("Unrecognized resource type for name", typ)
 		}
