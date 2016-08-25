@@ -257,12 +257,12 @@ func TestDetectCyclesMultiple(t *testing.T) {
 }
 
 func TestLimitConcurrency(t *testing.T) {
-	for concurrency := range [...]int{0, 10, 50} {
+	for concurrency := range [...]int{0, 3, 5, 10} {
 		counter := mocks.NewCounterWithMemo()
 
 		depGraph := DependencyGraph{}
 
-		for i := 0; i < 100; i++ {
+		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
 			r := mocks.NewCountingResource(key, counter, time.Second*2)
 			sr := NewScheduledResourceFor(r)

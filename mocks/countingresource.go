@@ -49,6 +49,11 @@ func (c *CountingResource) Create() error {
 	return nil
 }
 
+//Update Meta
+func (c *CountingResource) UpdateMeta(m map[string]string) error {
+	return nil
+}
+
 //NewCountingResource creates new instance of CountingResource
 func NewCountingResource(key string, counter *CounterWithMemo, timeout time.Duration) *CountingResource {
 	return &CountingResource{
