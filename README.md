@@ -65,7 +65,7 @@ kind: Dependency
 metadata:
   name: dependency-3
 parent: job/<job_resource_name_1>
-child: job/<job_resource_name_1>
+child: job/<job_resource_name_3>
 ```
 Load it to k8s:
 
