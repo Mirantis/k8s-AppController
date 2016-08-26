@@ -23,3 +23,6 @@ ADD run_runit.sh /usr/bin/run_runit
 ADD ac-run.sh /usr/bin/ac-run
 ADD ac-stop.sh /usr/bin/ac-stop
 RUN touch /etc/sv/ac/down
+
+# shrink size
+RUN rm -fr /go
