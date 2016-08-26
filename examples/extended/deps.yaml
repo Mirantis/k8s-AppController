@@ -1,28 +1,28 @@
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: a3d575af-51c0-161d-d1a1-0ce4c1d8d959
+  name: bef42d38-5fe9-638c-8433-2d09df3d2452
 parent: pod/eventually-alive-pod
 child: job/test-job
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: eb427dac-fd7a-af7b-21dc-86036844fbf8
+  name: 21049039-cdf5-375a-3ec0-d7af78eee66c
 parent: job/test-job
 child: pod/eventually-alive-pod2
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 99c01148-64de-3d26-ea94-0c79569d7b71
+  name: d34a468f-771e-954b-949e-540c29831344
 parent: job/test-job
 child: pod/eventually-alive-pod3
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: df552b4e-bbae-4afc-be18-52e740bb6076
+  name: 718900c7-e135-645a-6e29-c08903a707fc
 parent: replicaset/frontend
 child: job/test-job2
 meta:
@@ -31,104 +31,125 @@ meta:
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: f5c82257-f33b-d49b-e767-cd43309f11ad
+  name: 71285d90-2725-0715-840d-a5f2227ccd2c
 parent: pod/eventually-alive-pod2
 child: job/test-job2
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 0838ee9e-0c4f-6111-3628-9238ebc6a53a
+  name: 997a64d1-7bc7-8f88-1a16-9b212babb3a3
 parent: pod/eventually-alive-pod3
 child: job/test-job2
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: a2ef61aa-316e-341c-f107-d043d4e1d8a4
+  name: f37e0035-f8f5-cd6e-9bb2-6b469d1826ab
 parent: job/existing-test-job
 child: pod/eventually-alive-pod
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: f96fbc4e-9360-1818-9bc4-309acafb6db9
+  name: 5450b2aa-427d-b2ce-ca06-3df5ccb3c7c2
 parent: job/test-job
 child: pod/eventually-alive-pod4
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: d1a178a8-3803-24b9-1a35-1033c83db64a
+  name: cf61561a-2746-e747-f9ce-b71222c2d71d
 parent: pod/eventually-alive-pod4
 child: job/test-job2
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 89b78534-694c-2c89-eb6c-32fae9c3b76a
+  name: 21b59572-c712-e6c2-976c-ae3ea93d9470
 parent: job/existing-test-job
 child: pod/eventually-alive-pod5
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 78493219-8ecc-cac0-b711-4afe21d983b3
+  name: c057e099-ea1c-ffe0-bf12-2cff9d955572
 parent: pod/eventually-alive-pod5
 child: job/test-job3
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 82d3b31a-aef4-0e74-344e-507ca68918ab
+  name: 661585b9-4436-2dff-7875-bff8199108f4
 parent: pod/eventually-alive-pod6
 child: pod/eventually-alive-pod9
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 041f8e3e-e0a8-319c-26d5-6652ec50d630
+  name: 43faa213-1117-a59f-40a0-3e920bace394
 parent: pod/eventually-alive-pod7
 child: pod/eventually-alive-pod9
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 4f8fb13f-8da7-afae-59cd-90c61201dc2b
+  name: 401c418e-fe7d-ba2b-9fe0-4c16e9e9312b
 parent: pod/eventually-alive-pod8
 child: pod/eventually-alive-pod9
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: c274de96-ff0a-c0cf-817b-bf6bc946b6c1
+  name: fc381faa-eba7-0235-ac18-e3a6d69866f4
 parent: job/test-job3
 child: job/test-job4
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 81e7528d-98f4-01e5-e38a-698f96904241
+  name: 0e2b8997-b35b-548a-242d-1ee05bdac8a9
 parent: job/test-job4
 child: pod/eventually-alive-pod6
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: f6e8cba9-0d6a-4b61-65a2-e5bc635981fe
+  name: 94340f64-a227-796e-6335-6759b1533f4c
 parent: job/test-job4
 child: pod/eventually-alive-pod7
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: 5ce310ce-c334-3fb2-636f-b2ce8489d4de
+  name: 90fdf15d-94ec-4dba-0f01-646b0aa5d06e
 parent: job/test-job4
 child: pod/eventually-alive-pod8
 ---
 apiVersion: appcontroller.k8s1/v1alpha1
 kind: Dependency
 metadata:
-  name: d377be21-667e-bc54-c18c-3a222d569b88
+  name: b9eeae5e-9635-447a-68a1-1d0f933e2060
 parent: pod/eventually-alive-pod3
 child: job/test-job4
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: bdf09214-3168-2a33-4d9e-ef96a966fe3e
+parent: service/my-service
+child: pod/eventually-alive-pod6
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: c44fa4f5-dd3a-5a7a-7ac8-09aa8797dbd2
+parent: service/my-service
+child: pod/eventually-alive-pod7
+---
+apiVersion: appcontroller.k8s1/v1alpha1
+kind: Dependency
+metadata:
+  name: 614dbd32-040f-3992-4a0d-874499af3233
+parent: pod/eventually-alive-pod2
+child: service/my-service
