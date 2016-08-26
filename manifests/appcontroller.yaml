@@ -3,7 +3,7 @@ kind: Pod
 metadata:
   name: k8s-appcontroller
   annotations:
-    pod.alpha.kubernetes.io/init-containers: '[{"name": "kubeac-bootstrap", "image": "mirantis/k8s-appcontroller", "command": ["bootstrap", "/go/src/github.com/Mirantis/k8s-AppController/manifests"]}]'
+    pod.alpha.kubernetes.io/init-containers: '[{"name": "kubeac-bootstrap", "image": "mirantis/k8s-appcontroller", "command": ["bootstrap", "/manifests"]}]'
 spec:
   restartPolicy: Always
   containers:
