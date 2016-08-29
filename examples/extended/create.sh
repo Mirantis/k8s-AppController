@@ -5,7 +5,8 @@ kubectl.sh create -f existing_job.yaml
 
 kubectl.sh create -f ../../manifests/appcontroller.yaml
 
-sleep 10
+#wait for appcontroller pod creation
+sleep 20
 
 kubectl.sh create -f deps.yaml
 
@@ -26,4 +27,7 @@ cat pod9.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod9 | kubectl.sh crea
 
 cat replicaset.yaml | kubectl.sh exec -i k8s-appcontroller wrap frontend | kubectl.sh create -f -
 
+cat service.yaml | kubectl.sh exec -i k8s-appcontroller wrap service | kubectl.sh create -f -
+
 kubectl.sh exec k8s-appcontroller ac-run
+kubectl.sh logs -f k8s-appcontroller
