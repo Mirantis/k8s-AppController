@@ -12,37 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package format
 
-import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-
-	"github.com/Mirantis/k8s-AppController/cmd/wrap/format"
-)
-
-func getInput(stream *os.File, indent int) string {
-	result := ""
-	spaces := strings.Repeat(" ", indent)
-
-	scanner := bufio.NewScanner(stream)
-	for scanner.Scan() {
-		// add spaces for identation
-		result += spaces + scanner.Text() + "\n"
-	}
-	return result
+type Format interface {
+	ExtractKind(k8sObject string) (string, error)
+	Wrap(k8sObject string, name string) (string, error)
+	IndentLevel() int
 }
 
-func main() {
-	f := format.Yaml{}
-
-	definition := getInput(os.Stdin, f.IndentLevel())
-
-	out, err := f.Wrap(definition, os.Args[1])
-	if err != nil {
-		panic(err)
-	}
-	fmt.Print(out)
+type KindExtractor struct {
+	Kind string "kind"
 }
