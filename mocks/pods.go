@@ -53,7 +53,7 @@ func (p *podClient) List(opts api.ListOptions) (*api.PodList, error) {
 	}
 
 	//use ListOptions.LabelSelector to check if there should be any pending pods
-	if opts.LabelSelector.String() == "failed=yes" {
+	if strings.Index(opts.LabelSelector.String(), "failedpod=yes") >= 0 {
 		for i := 0; i < 2; i++ {
 			pods = append(pods, *MakePod(fmt.Sprintf("pending-lolo%d", i)))
 		}

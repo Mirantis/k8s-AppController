@@ -34,16 +34,35 @@ func TestCheckServiceStatusReady(t *testing.T) {
 	}
 }
 
-//TestCheckServiceStatusNotReady tests if service which selects failed pods is not ready
-func TestCheckServiceStatusNotReady(t *testing.T) {
+//TestCheckServiceStatusPodNotReady tests if service which selects failed pods is not ready
+func TestCheckServiceStatusPodNotReady(t *testing.T) {
 	c := mocks.NewClient()
-	status, err := serviceStatus(c.Services(), "failed", c)
+	status, err := serviceStatus(c.Services(), "failedpod", c)
+
+	if err == nil {
+		t.Fatal("Error should be returned, got nil")
+	}
+
+	expectedError := "Pod pending-lolo0 is not ready"
+	if err.Error() != expectedError {
+		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
+	}
+
+	if status != "not ready" {
+		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	}
+}
+
+//TestCheckServiceStatusJobNotReady tests if service which selects failed pods is not ready
+func TestCheckServiceStatusJobNotReady(t *testing.T) {
+	c := mocks.NewClient()
+	status, err := serviceStatus(c.Services(), "failedjob", c)
 
 	if err == nil {
 		t.Error("Error should be returned, got nil")
 	}
 
-	expectedError := "Pod pending-lolo0 is not ready"
+	expectedError := "Job pending-lolo0 is not ready"
 	if err.Error() != expectedError {
 		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
 	}

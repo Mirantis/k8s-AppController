@@ -7,6 +7,7 @@ sleep 15
 
 kubectl.sh create -f deps.yaml
 
+cat job.yaml | kubectl.sh exec -i k8s-appcontroller wrap job | kubectl.sh create -f -
 
 cat service.yaml | kubectl.sh exec -i k8s-appcontroller wrap service | kubectl.sh create -f -
 cat pod.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod1 | kubectl.sh create -f -

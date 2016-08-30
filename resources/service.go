@@ -62,6 +62,22 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 				return "not ready", fmt.Errorf("Pod %s is not ready", pod.Name)
 			}
 		}
+
+		jobs, err := apiClient.Jobs().List(options)
+		if err != nil {
+			return "error", err
+		}
+		for _, job := range jobs.Items {
+			log.Printf("Checking status for job %s", job.Name)
+			j := NewJob(&job, apiClient.Jobs())
+			status, err := j.Status()
+			if err != nil {
+				return "error", err
+			}
+			if status != "ready" {
+				return "not ready", fmt.Errorf("Job %s is not ready", job.Name)
+			}
+		}
 	}
 
 	return "ready", nil

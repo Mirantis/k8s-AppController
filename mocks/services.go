@@ -27,16 +27,11 @@ import (
 type serviceClient struct {
 }
 
+//MakeService creates a service based on its name
 func MakeService(name string) *api.Service {
 	var service *api.Service
 
-	if name == "failed" {
-		service = &api.Service{Spec: api.ServiceSpec{Selector: map[string]string{"failed": "yes"}}}
-	} else if name == "success" {
-		service = &api.Service{Spec: api.ServiceSpec{Selector: map[string]string{"success": "yes"}}}
-	} else {
-		service = &api.Service{}
-	}
+	service = &api.Service{Spec: api.ServiceSpec{Selector: map[string]string{name: "yes"}}}
 
 	service.Name = name
 

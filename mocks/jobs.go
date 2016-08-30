@@ -44,7 +44,19 @@ func MakeJob(name string) *batch.Job {
 }
 
 func (j *jobClient) List(opts api.ListOptions) (*batch.JobList, error) {
-	panic("not implemented")
+	var jobs []batch.Job
+	for i := 0; i < 3; i++ {
+		jobs = append(jobs, *MakeJob(fmt.Sprintf("ready-trolo%d", i)))
+	}
+
+	//use ListOptions.LabelSelector to check if there should be any pending jobs
+	if strings.Index(opts.LabelSelector.String(), "failedjob=yes") >= 0 {
+		for i := 0; i < 2; i++ {
+			jobs = append(jobs, *MakeJob(fmt.Sprintf("pending-lolo%d", i)))
+		}
+	}
+
+	return &batch.JobList{Items: jobs}, nil
 }
 
 func (j *jobClient) Get(name string) (*batch.Job, error) {
