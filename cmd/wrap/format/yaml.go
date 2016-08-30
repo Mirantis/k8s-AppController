@@ -12,37 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package format
 
 import (
-	"bufio"
-	"fmt"
-	"os"
 	"strings"
 
-	"github.com/Mirantis/k8s-AppController/cmd/wrap/format"
+	"gopkg.in/yaml.v2"
 )
 
-func getInput(stream *os.File, indent int) string {
-	result := ""
-	spaces := strings.Repeat(" ", indent)
-
-	scanner := bufio.NewScanner(stream)
-	for scanner.Scan() {
-		// add spaces for identation
-		result += spaces + scanner.Text() + "\n"
-	}
-	return result
+type Yaml struct {
 }
 
-func main() {
-	f := format.Yaml{}
+func (f Yaml) ExtractKind(k8sObject string) (string, error) {
+	var kind KindExtractor
+	err := yaml.Unmarshal([]byte(k8sObject), &kind)
+	return strings.ToLower(kind.Kind), err
+}
 
-	definition := getInput(os.Stdin, f.IndentLevel())
+func (f Yaml) Wrap(k8sObject, name string) (string, error) {
+	base := `apiVersion: appcontroller.k8s2/v1alpha1
+kind: Definition
+metadata:
+  name: ` + name + "\n"
 
-	out, err := f.Wrap(definition, os.Args[1])
+	kind, err := f.ExtractKind(k8sObject)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	fmt.Print(out)
+	return base + kind + ":\n" + k8sObject, nil
+}
+
+func (f Yaml) IndentLevel() int {
+	return 2
 }
