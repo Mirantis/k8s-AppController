@@ -23,12 +23,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func getInput(stream *os.File) string {
+func getInput(stream *os.File, indent int) string {
 	result := ""
+	spaces := strings.Repeat(" ", indent)
+
 	scanner := bufio.NewScanner(stream)
 	for scanner.Scan() {
-		//add two spaces of identation
-		result += "  " + scanner.Text() + "\n"
+		// add spaces for identation
+		result += spaces + scanner.Text() + "\n"
 	}
 	return result
 }
@@ -57,7 +59,7 @@ metadata:
 }
 
 func main() {
-	definition := getInput(os.Stdin)
+	definition := getInput(os.Stdin, 2)
 	out, err := getWrappedYaml(definition, os.Args[1])
 	if err != nil {
 		panic(err)
