@@ -16,7 +16,9 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -36,11 +38,29 @@ func getInput(stream *os.File, indent int) string {
 }
 
 func main() {
-	f := format.Yaml{}
+	var fileFormat string
+	flag.StringVar(&fileFormat, "f", "yaml", "file format")
+
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) != 1 {
+		log.Fatal("Expected one positional argument: name")
+	}
+
+	var f format.Format
+	switch fileFormat {
+	case "yaml":
+		f = format.Yaml{}
+	case "json":
+		f = format.Json{}
+	default:
+		log.Fatal("Unknonwn file format. Expected one of: yaml, json")
+	}
 
 	definition := getInput(os.Stdin, f.IndentLevel())
 
-	out, err := f.Wrap(definition, os.Args[1])
+	out, err := f.Wrap(definition, args[0])
 	if err != nil {
 		panic(err)
 	}
