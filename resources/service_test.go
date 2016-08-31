@@ -43,7 +43,7 @@ func TestCheckServiceStatusPodNotReady(t *testing.T) {
 		t.Fatal("Error should be returned, got nil")
 	}
 
-	expectedError := "Pod pending-lolo0 is not ready"
+	expectedError := "Resource pod/pending-lolo0 is not ready"
 	if err.Error() != expectedError {
 		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
@@ -62,7 +62,26 @@ func TestCheckServiceStatusJobNotReady(t *testing.T) {
 		t.Error("Error should be returned, got nil")
 	}
 
-	expectedError := "Job pending-lolo0 is not ready"
+	expectedError := "Resource job/pending-lolo0 is not ready"
+	if err.Error() != expectedError {
+		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
+	}
+
+	if status != "not ready" {
+		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	}
+}
+
+//TestCheckServiceStatusReplicaSetNotReady tests if service which selects failed replicasets is not ready
+func TestCheckServiceStatusReplicaSetNotReady(t *testing.T) {
+	c := mocks.NewClient()
+	status, err := serviceStatus(c.Services(), "failedreplicaSet", c)
+
+	if err == nil {
+		t.Error("Error should be returned, got nil")
+	}
+
+	expectedError := "Resource replicaset/fail is not ready"
 	if err.Error() != expectedError {
 		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
