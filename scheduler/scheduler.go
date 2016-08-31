@@ -28,13 +28,6 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
-type Resource interface {
-	Key() string
-	Status() (string, error)
-	Create() error
-	UpdateMeta(map[string]string) error
-}
-
 type ScheduledResourceStatus int
 
 const (
@@ -47,7 +40,7 @@ type ScheduledResource struct {
 	Requires   []*ScheduledResource
 	RequiredBy []*ScheduledResource
 	Status     ScheduledResourceStatus
-	Resource
+	resources.Resource
 	sync.RWMutex
 }
 
@@ -78,7 +71,7 @@ func (d *ScheduledResource) IsBlocked() bool {
 
 type DependencyGraph map[string]*ScheduledResource
 
-func newResourceForPod(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForPod(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.Pod != nil && rd.Pod.Name == name {
 			log.Println("Found resource definition for pod", name)
@@ -90,7 +83,7 @@ func newResourceForPod(name string, resDefs []client.ResourceDefinition, c clien
 	return resources.NewExistingPod(name, c.Pods())
 }
 
-func newResourceForJob(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForJob(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.Job != nil && rd.Job.Name == name {
 			log.Println("Found resource definition for job", name)
@@ -102,7 +95,7 @@ func newResourceForJob(name string, resDefs []client.ResourceDefinition, c clien
 	return resources.NewExistingJob(name, c.Jobs())
 }
 
-func newResourceForService(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForService(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.Service != nil && rd.Service.Name == name {
 			log.Println("Found resource definition for service", name)
@@ -114,7 +107,7 @@ func newResourceForService(name string, resDefs []client.ResourceDefinition, c c
 	return resources.NewExistingService(name, c.Services())
 }
 
-func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.ReplicaSet != nil && rd.ReplicaSet.Name == name {
 			log.Println("Found resource definition for replica set", name)
@@ -129,7 +122,7 @@ func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, 
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
-	var r Resource
+	var r resources.Resource
 
 	if kind == "pod" {
 		r = newResourceForPod(name, resDefs, c)
@@ -146,7 +139,8 @@ func NewScheduledResource(kind string, name string,
 	return NewScheduledResourceFor(r), nil
 }
 
-func NewScheduledResourceFor(r Resource) *ScheduledResource {
+//NewScheduledResourceFor returns new scheduled resource for given resource in init state
+func NewScheduledResourceFor(r resources.Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
 		Resource: r,

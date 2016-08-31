@@ -51,35 +51,48 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 		if err != nil {
 			return "error", err
 		}
-		for _, pod := range pods.Items {
-			log.Printf("Checking status for pod %s", pod.Name)
-			p := NewPod(&pod, apiClient.Pods())
-			status, err := p.Status()
-			if err != nil {
-				return "error", err
-			}
-			if status != "ready" {
-				return "not ready", fmt.Errorf("Pod %s is not ready", pod.Name)
-			}
-		}
-
 		jobs, err := apiClient.Jobs().List(options)
 		if err != nil {
 			return "error", err
 		}
+		replicasets, err := apiClient.ReplicaSets().List(options)
+		if err != nil {
+			return "error", err
+		}
+		resources := make([]Resource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
+		for _, pod := range pods.Items {
+			p := pod
+			resources = append(resources, NewPod(&p, apiClient.Pods()))
+		}
 		for _, job := range jobs.Items {
-			log.Printf("Checking status for job %s", job.Name)
-			j := NewJob(&job, apiClient.Jobs())
-			status, err := j.Status()
-			if err != nil {
-				return "error", err
-			}
-			if status != "ready" {
-				return "not ready", fmt.Errorf("Job %s is not ready", job.Name)
-			}
+			j := job
+			resources = append(resources, NewJob(&j, apiClient.Jobs()))
+		}
+		for _, rs := range replicasets.Items {
+			r := rs
+			resources = append(resources, NewReplicaSet(&r, apiClient.ReplicaSets()))
+
+		}
+		status, err := resourceListReady(resources)
+		if status != "ready" || err != nil {
+			return status, err
 		}
 	}
 
+	return "ready", nil
+}
+
+func resourceListReady(resources []Resource) (string, error) {
+	for _, r := range resources {
+		log.Printf("Checking status for resource %s", r.Key())
+		status, err := r.Status()
+		if err != nil {
+			return "error", err
+		}
+		if status != "ready" {
+			return "not ready", fmt.Errorf("Resource %s is not ready", r.Key())
+		}
+	}
 	return "ready", nil
 }
 
