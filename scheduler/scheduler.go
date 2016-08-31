@@ -28,36 +28,41 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
-type Resource interface {
-	Key() string
-	Status() (string, error)
-	Create() error
-	UpdateMeta(map[string]string) error
-}
-
 type ScheduledResourceStatus int
 
 const (
 	Init ScheduledResourceStatus = iota
 	Creating
 	Ready
+	CheckInterval = time.Millisecond * 1000
 )
 
 type ScheduledResource struct {
 	Requires   []*ScheduledResource
 	RequiredBy []*ScheduledResource
 	Status     ScheduledResourceStatus
-	Resource
+	resources.Resource
 	sync.RWMutex
 }
 
+// IsBlocked checks whether d can be created. It checks cached resource status,
+// unless the requirement is a Service - it gets the status from the API in that case
 func (d *ScheduledResource) IsBlocked() bool {
 	isBlocked := false
 
 	for _, r := range d.Requires {
+		if isBlocked {
+			break
+		}
 		r.RLock()
-		if r.Status != Ready {
-			isBlocked = true
+		switch r.Resource.(type) {
+		case resources.Service:
+			status, err := r.Resource.Status()
+			if err != nil || status != "ready" {
+				isBlocked = true
+			}
+		default:
+			isBlocked = r.Status != Ready
 		}
 		r.RUnlock()
 	}
@@ -67,7 +72,7 @@ func (d *ScheduledResource) IsBlocked() bool {
 
 type DependencyGraph map[string]*ScheduledResource
 
-func newResourceForPod(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForPod(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.Pod != nil && rd.Pod.Name == name {
 			log.Println("Found resource definition for pod", name)
@@ -75,11 +80,11 @@ func newResourceForPod(name string, resDefs []client.ResourceDefinition, c clien
 		}
 	}
 
-	log.Printf("Resource definition for pod '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for pod '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingPod(name, c.Pods())
 }
 
-func newResourceForJob(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForJob(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.Job != nil && rd.Job.Name == name {
 			log.Println("Found resource definition for job", name)
@@ -87,23 +92,23 @@ func newResourceForJob(name string, resDefs []client.ResourceDefinition, c clien
 		}
 	}
 
-	log.Printf("Resource definition for job '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for job '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingJob(name, c.Jobs())
 }
 
-func newResourceForService(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForService(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.Service != nil && rd.Service.Name == name {
 			log.Println("Found resource definition for service", name)
-			return resources.NewService(rd.Service, c.Services())
+			return resources.NewService(rd.Service, c.Services(), c)
 		}
 	}
 
-	log.Printf("Resource definition for service '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for service '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingService(name, c.Services())
 }
 
-func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, c client.Interface) Resource {
+func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
 	for _, rd := range resDefs {
 		if rd.ReplicaSet != nil && rd.ReplicaSet.Name == name {
 			log.Println("Found resource definition for replica set", name)
@@ -118,7 +123,7 @@ func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, 
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
-	var r Resource
+	var r resources.Resource
 
 	if kind == "pod" {
 		r = newResourceForPod(name, resDefs, c)
@@ -135,7 +140,8 @@ func NewScheduledResource(kind string, name string,
 	return NewScheduledResourceFor(r), nil
 }
 
-func NewScheduledResourceFor(r Resource) *ScheduledResource {
+//NewScheduledResourceFor returns new scheduled resource for given resource in init state
+func NewScheduledResourceFor(r resources.Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
 		Resource: r,
@@ -216,7 +222,7 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		} else if r.Job != nil {
 			sr = NewScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
 		} else if r.Service != nil {
-			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services()))
+			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services(), c))
 		} else if r.ReplicaSet != nil {
 			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
 		} else {
@@ -244,13 +250,15 @@ func createResources(toCreate chan *ScheduledResource, created chan string, ccLi
 				log.Printf("Error creating resource %s: %v", r.Key(), err)
 			}
 
+			log.Printf("Checking status for %s", r.Key())
 			for {
-				time.Sleep(time.Millisecond * 100)
+				time.Sleep(CheckInterval)
 				status, err := r.Resource.Status()
 				if err != nil {
 					log.Printf("Error getting status for resource %s: %v", r.Key(), err)
 				}
 				if status == "ready" {
+					log.Printf("%s is ready", r.Key())
 					break
 				}
 			}
@@ -262,20 +270,26 @@ func createResources(toCreate chan *ScheduledResource, created chan string, ccLi
 			log.Printf("Resource %s created", r.Key())
 
 			for _, req := range r.RequiredBy {
-				if !req.IsBlocked() {
-					req.RLock()
-					if req.Status == Init {
-						req.RUnlock()
-						req.Lock()
-						if req.Status == Init {
-							req.Status = Creating
-							toCreate <- req
+				go func(req *ScheduledResource) {
+					for {
+						time.Sleep(CheckInterval)
+						if !req.IsBlocked() {
+							req.RLock()
+							if req.Status == Init {
+								req.RUnlock()
+								req.Lock()
+								if req.Status == Init {
+									req.Status = Creating
+									toCreate <- req
+								}
+								req.Unlock()
+							} else {
+								req.RUnlock()
+							}
+							break
 						}
-						req.Unlock()
-					} else {
-						req.RUnlock()
 					}
-				}
+				}(req)
 			}
 			created <- r.Key()
 			//Release semaphor

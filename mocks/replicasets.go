@@ -42,7 +42,17 @@ func MakeReplicaSet(name string) *extensions.ReplicaSet {
 }
 
 func (r *replicaSetClient) List(opts api.ListOptions) (*extensions.ReplicaSetList, error) {
-	panic("not implemented")
+	var replicaSets []extensions.ReplicaSet
+	for i := 0; i < 3; i++ {
+		replicaSets = append(replicaSets, *MakeReplicaSet(fmt.Sprintf("ready-trolo%d", i)))
+	}
+
+	//use ListOptions.LabelSelector to check if there should be any failed replicaSets
+	if strings.Index(opts.LabelSelector.String(), "failedreplicaSet=yes") >= 0 {
+		replicaSets = append(replicaSets, *MakeReplicaSet("fail"))
+	}
+
+	return &extensions.ReplicaSetList{Items: replicaSets}, nil
 }
 
 func (r *replicaSetClient) Get(name string) (*extensions.ReplicaSet, error) {
