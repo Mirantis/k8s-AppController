@@ -133,7 +133,7 @@ func (r ExistingReplicaSet) Create() error {
 
 	if err == nil {
 		log.Printf("Found replica set %s, status: %s ", r.Name, status)
-		log.Println("Skipping creation of service", r.Name)
+		log.Println("Skipping creation of replica set", r.Name)
 		return nil
 	}
 

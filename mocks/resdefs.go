@@ -44,8 +44,10 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 			rd.Service = MakeService(n)
 		} else if typ == "replicaset" {
 			rd.ReplicaSet = MakeReplicaSet(n)
+		} else if typ == "petset" {
+			rd.PetSet = MakePetSet(n)
 		} else {
-			log.Fatal("Unrecognized resource type for name", typ)
+			log.Fatal("Unrecognized resource type for name ", typ)
 		}
 
 		list.Items = append(list.Items, rd)

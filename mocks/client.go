@@ -15,8 +15,9 @@
 package mocks
 
 import (
-	"github.com/Mirantis/k8s-AppController/client"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
 )
 
 type Client struct {
@@ -24,6 +25,7 @@ type Client struct {
 	unversioned.JobInterface
 	unversioned.ServiceInterface
 	unversioned.ReplicaSetInterface
+	unversioned.PetSetInterface
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
@@ -44,6 +46,10 @@ func (c *Client) ReplicaSets() unversioned.ReplicaSetInterface {
 	return c.ReplicaSetInterface
 }
 
+func (c *Client) PetSets() unversioned.PetSetInterface {
+	return c.PetSetInterface
+}
+
 func (c *Client) Dependencies() client.DependenciesInterface {
 	return c.DependenciesInterface
 }
@@ -58,6 +64,7 @@ func NewClient() *Client {
 		NewJobClient(),
 		NewServiceClient(),
 		NewReplicaSetClient(),
+		NewPetSetClient(),
 		NewDependencyClient(),
 		NewResourceDefinitionClient(),
 	}

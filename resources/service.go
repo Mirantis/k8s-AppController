@@ -44,6 +44,9 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 		stringSelector := fmt.Sprintf("%s=%s", k, v)
 		log.Printf("Checking status for %s", stringSelector)
 		selector, err := labels.Parse(stringSelector)
+		if err != nil {
+			return "error", err
+		}
 
 		options := api.ListOptions{LabelSelector: selector}
 
@@ -59,6 +62,10 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 		if err != nil {
 			return "error", err
 		}
+		petsets, err := apiClient.PetSets().List(options)
+		if err != nil {
+			return "error", err
+		}
 		resources := make([]Resource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 		for _, pod := range pods.Items {
 			p := pod
@@ -71,7 +78,10 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 		for _, rs := range replicasets.Items {
 			r := rs
 			resources = append(resources, NewReplicaSet(&r, apiClient.ReplicaSets()))
-
+		}
+		for _, ps := range petsets.Items {
+			p := ps
+			resources = append(resources, NewPetSet(&p, apiClient.PetSets(), apiClient))
 		}
 		status, err := resourceListReady(resources)
 		if status != "ready" || err != nil {
@@ -79,20 +89,6 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 		}
 	}
 
-	return "ready", nil
-}
-
-func resourceListReady(resources []Resource) (string, error) {
-	for _, r := range resources {
-		log.Printf("Checking status for resource %s", r.Key())
-		status, err := r.Status()
-		if err != nil {
-			return "error", err
-		}
-		if status != "ready" {
-			return "not ready", fmt.Errorf("Resource %s is not ready", r.Key())
-		}
-	}
 	return "ready", nil
 }
 

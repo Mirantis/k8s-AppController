@@ -14,10 +14,29 @@
 
 package resources
 
+import (
+	"fmt"
+	"log"
+)
+
 //Resource is an interface for AppController supported resources
 type Resource interface {
 	Key() string
 	Status() (string, error)
 	Create() error
 	UpdateMeta(map[string]string) error
+}
+
+func resourceListReady(resources []Resource) (string, error) {
+	for _, r := range resources {
+		log.Printf("Checking status for resource %s", r.Key())
+		status, err := r.Status()
+		if err != nil {
+			return "error", err
+		}
+		if status != "ready" {
+			return "not ready", fmt.Errorf("Resource %s is not ready", r.Key())
+		}
+	}
+	return "ready", nil
 }

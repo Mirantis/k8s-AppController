@@ -29,5 +29,7 @@ cat replicaset.yaml | kubectl.sh exec -i k8s-appcontroller wrap frontend | kubec
 
 cat service.yaml | kubectl.sh exec -i k8s-appcontroller wrap service | kubectl.sh create -f -
 
+cat petset.yaml | kubectl.sh exec -i k8s-appcontroller wrap petset | kubectl.sh create -f -
+
 kubectl.sh exec k8s-appcontroller ac-run
 kubectl.sh logs -f k8s-appcontroller
