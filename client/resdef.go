@@ -37,6 +37,7 @@ type ResourceDefinition struct {
 	Job        *batch.Job             `json:"job,omitempty"`
 	Service    *api.Service           `json:"service,omitempty"`
 	ReplicaSet *extensions.ReplicaSet `json:"replicaset,omitempty"`
+	DaemonSet  *extensions.DaemonSet  `json:"daemonset,omitempty"`
 }
 
 type ResourceDefinitionList struct {

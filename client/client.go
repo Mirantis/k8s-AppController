@@ -27,6 +27,7 @@ type Interface interface {
 	Jobs() unversioned.JobInterface
 	Services() unversioned.ServiceInterface
 	ReplicaSets() unversioned.ReplicaSetInterface
+	DaemonSets() unversioned.DaemonSetInterface
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
 }
@@ -61,6 +62,10 @@ func (c client) Services() unversioned.ServiceInterface {
 
 func (c client) ReplicaSets() unversioned.ReplicaSetInterface {
 	return c.Client.Extensions().ReplicaSets(api.NamespaceDefault)
+}
+
+func (c client) DaemonSets() unversioned.DaemonSetInterface {
+	return c.Client.Extensions().DaemonSets(api.NamespaceDefault)
 }
 
 func newForConfig(c restclient.Config) (Interface, error) {
