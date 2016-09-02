@@ -24,6 +24,7 @@ type Client struct {
 	unversioned.JobInterface
 	unversioned.ServiceInterface
 	unversioned.ReplicaSetInterface
+	unversioned.DaemonSetInterface
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
@@ -44,6 +45,10 @@ func (c *Client) ReplicaSets() unversioned.ReplicaSetInterface {
 	return c.ReplicaSetInterface
 }
 
+func (c *Client) DaemonSets() unversioned.DaemonSetInterface {
+	return c.DaemonSetInterface
+}
+
 func (c *Client) Dependencies() client.DependenciesInterface {
 	return c.DependenciesInterface
 }
@@ -58,6 +63,7 @@ func NewClient() *Client {
 		NewJobClient(),
 		NewServiceClient(),
 		NewReplicaSetClient(),
+		NewDaemonSetClient(),
 		NewDependencyClient(),
 		NewResourceDefinitionClient(),
 	}
