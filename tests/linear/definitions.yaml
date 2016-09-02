@@ -1,0 +1,87 @@
+apiVersion: appcontroller.k8s2/v1alpha1
+kind: Definition
+metadata:
+  name: test-pod
+	labels:
+		app: service1
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: test-pod
+  spec:
+    containers:
+    - command: ["/bin/sh"]
+      args:
+      - -c
+      - sleep 30; echo ok > /tmp/health; sleep 600
+      image: gcr.io/google_containers/busybox
+      readinessProbe:
+        exec:
+          command:
+          - /bin/cat
+          - /tmp/health
+      name: test-container
+---
+apiVersion: appcontroller.k8s2/v1alpha1
+kind: Definition
+metadata:
+  name: test-job
+job:
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: test-job
+  spec:
+    template:
+      metadata:
+        name: test-job
+      spec:
+        containers:
+        - name: test-container
+          image: gcr.io/google_containers/busybox
+          command: [ "/bin/sh", "-c", "sleep 10; env"]
+        restartPolicy: Never
+---
+apiVersion: appcontroller.k8s2/v1alpha1
+kind: Definition
+metadata:
+  name: test-service
+service:
+  kind: Service
+  apiVersion: v1
+  metadata:
+    name: test-service
+  spec:
+    selector:
+      app: service1
+    ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+---
+apiVersion: appcontroller.k8s2/v1alpha1
+kind: Definition
+metadata:
+  name: test-replicaset
+replicaset:
+  apiVersion: extensions/v1beta1
+  kind: ReplicaSet
+  metadata:
+    name: test-replicaset
+  spec:
+    replicas: 3
+    template:
+      metadata:
+        labels:
+          app: guestbook
+          tier: frontend
+      spec:
+        containers:
+        - name: php-redis
+          image: gcr.io/google_samples/gb-frontend:v3
+          env:
+          - name: GET_HOSTS_FROM
+            value: dns
+          ports:
+          - containerPort: 80
