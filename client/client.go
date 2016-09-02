@@ -28,6 +28,7 @@ type Interface interface {
 	Services() unversioned.ServiceInterface
 	ReplicaSets() unversioned.ReplicaSetInterface
 	PetSets() unversioned.PetSetInterface
+	DaemonSets() unversioned.DaemonSetInterface
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
 }
@@ -73,6 +74,11 @@ func (c client) ReplicaSets() unversioned.ReplicaSetInterface {
 // PetSets returns K8s PetSet client for default namespace
 func (c client) PetSets() unversioned.PetSetInterface {
 	return c.Client.Apps().PetSets(api.NamespaceDefault)
+}
+
+//DaemonSets return K8s DaemonSet client for default namespace
+func (c client) DaemonSets() unversioned.DaemonSetInterface {
+	return c.Client.Extensions().DaemonSets(api.NamespaceDefault)
 }
 
 func newForConfig(c restclient.Config) (Interface, error) {

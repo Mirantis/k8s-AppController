@@ -39,6 +39,7 @@ type ResourceDefinition struct {
 	Service    *api.Service           `json:"service,omitempty"`
 	ReplicaSet *extensions.ReplicaSet `json:"replicaset,omitempty"`
 	PetSet     *apps.PetSet           `json:"petset,omitempty"`
+	DaemonSet  *extensions.DaemonSet  `json:"daemonset,omitempty"`
 }
 
 type ResourceDefinitionList struct {

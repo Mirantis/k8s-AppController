@@ -146,6 +146,17 @@ func newResourceForPetSet(name string, resDefs []client.ResourceDefinition, c cl
 	return resources.NewExistingPetSet(name, c.PetSets(), c)
 }
 
+func newResourceForDaemonSet(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
+	for _, rd := range resDefs {
+		if rd.DaemonSet != nil && rd.DaemonSet.Name == name {
+			log.Println("Found resource definition for daemon set", name)
+			return resources.NewDaemonSet(rd.DaemonSet, c.DaemonSets())
+		}
+	}
+
+	log.Printf("Resource definition for daemon set '%s' not found, so it is expected to exist already", name)
+	return resources.NewExistingDaemonSet(name, c.DaemonSets())
+}
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
@@ -161,8 +172,10 @@ func NewScheduledResource(kind string, name string,
 		r = newResourceForReplicaSet(name, resDefs, c)
 	} else if kind == "petset" {
 		r = newResourceForPetSet(name, resDefs, c)
+	} else if kind == "daemonset" {
+		r = newResourceForDaemonSet(name, resDefs, c)
 	} else {
-		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod', 'job', 'service' or 'replicaset'", kind)
+		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod', 'job', 'service', 'replicaset' or 'daemonset'", kind)
 	}
 
 	return NewScheduledResourceFor(r), nil
@@ -256,6 +269,8 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
 		} else if r.PetSet != nil {
 			sr = NewScheduledResourceFor(resources.NewPetSet(r.PetSet, c.PetSets(), c))
+		} else if r.DaemonSet != nil {
+			sr = NewScheduledResourceFor(resources.NewDaemonSet(r.DaemonSet, c.DaemonSets()))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
