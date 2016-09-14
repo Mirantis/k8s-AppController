@@ -31,6 +31,7 @@ Resource Definitions are (the same as Dependencies) ThirdPartyResource API exten
 [![asciicast](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1.png)](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1)
 
 [Voice demo from sig-apps meeting](https://youtu.be/BXRToNV4Rdw?t=178)
+[Voice demo from kubernetes community meeting](https://youtu.be/NzkoocVeFMQ?t=31)
 
 # Usage
 
