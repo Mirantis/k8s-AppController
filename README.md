@@ -24,6 +24,7 @@ Resource Definitions are objects that represent Kubernetes Objects that are not 
 * Pods
 * Services
 * Replica Sets
+* Pet Sets
 
 Resource Definitions are (the same as Dependencies) ThirdPartyResource API extension.
 
