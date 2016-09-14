@@ -21,6 +21,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
@@ -37,6 +38,7 @@ type ResourceDefinition struct {
 	Job        *batch.Job             `json:"job,omitempty"`
 	Service    *api.Service           `json:"service,omitempty"`
 	ReplicaSet *extensions.ReplicaSet `json:"replicaset,omitempty"`
+	PetSet     *apps.PetSet           `json:"petset,omitempty"`
 }
 
 type ResourceDefinitionList struct {

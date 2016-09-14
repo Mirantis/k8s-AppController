@@ -27,6 +27,7 @@ type Interface interface {
 	Jobs() unversioned.JobInterface
 	Services() unversioned.ServiceInterface
 	ReplicaSets() unversioned.ReplicaSetInterface
+	PetSets() unversioned.PetSetInterface
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
 }
@@ -39,28 +40,39 @@ type client struct {
 
 var _ Interface = &client{}
 
+// Dependencies returns dependency client for ThirdPartyResource created by AppController
 func (c client) Dependencies() DependenciesInterface {
 	return c.DependenciesInterface
 }
 
+// ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
 func (c client) ResourceDefinitions() ResourceDefinitionsInterface {
 	return c.ResourceDefinitionsInterface
 }
 
+// Pods returns K8s Pod client for default namespace
 func (c client) Pods() unversioned.PodInterface {
 	return c.Client.Pods(api.NamespaceDefault)
 }
 
+// Jobs returns K8s Job client for default namespace
 func (c client) Jobs() unversioned.JobInterface {
 	return c.Client.Extensions().Jobs(api.NamespaceDefault)
 }
 
+// Services returns K8s Service client for default namespace
 func (c client) Services() unversioned.ServiceInterface {
 	return c.Client.Services(api.NamespaceDefault)
 }
 
+// ReplicaSets returns K8s ReplicaSet client for default namespace
 func (c client) ReplicaSets() unversioned.ReplicaSetInterface {
 	return c.Client.Extensions().ReplicaSets(api.NamespaceDefault)
+}
+
+// PetSets returns K8s PetSet client for default namespace
+func (c client) PetSets() unversioned.PetSetInterface {
+	return c.Client.Apps().PetSets(api.NamespaceDefault)
 }
 
 func newForConfig(c restclient.Config) (Interface, error) {

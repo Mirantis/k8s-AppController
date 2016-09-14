@@ -279,5 +279,30 @@ func TestLimitConcurrency(t *testing.T) {
 			t.Errorf("Expected max concurrency counter %d, but got %d", concurrency, counter.Max())
 		}
 	}
+}
 
+// TestGraphAllResourceTypes aims to test if all resource types supported by AppController are able to be part of deployment graph
+func TestGraphAllResourceTypes(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+		"pod/ready-1",
+		"job/ready-2",
+		"replicaset/ready-3",
+		"service/ready-4",
+		"petset/ready-5")
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "pod/ready-1", Child: "job/ready-2"},
+		mocks.Dependency{Parent: "job/ready-2", Child: "replicaset/ready-3"},
+		mocks.Dependency{Parent: "replicaset/ready-3", Child: "service/ready-4"},
+		mocks.Dependency{Parent: "service/ready-4", Child: "petset/ready-5"})
+
+	depGraph, err := BuildDependencyGraph(c, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(depGraph) != 5 {
+		t.Errorf("Wrong length of dependency graph, expected %d, actual %d",
+			5, len(depGraph))
+	}
 }
