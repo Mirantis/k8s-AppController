@@ -31,10 +31,6 @@ func podKey(name string) string {
 	return "pod/" + name
 }
 
-func (p Pod) UpdateMeta(meta map[string]string) error {
-	return nil
-}
-
 func (p Pod) Key() string {
 	return podKey(p.Pod.Name)
 }
@@ -68,7 +64,7 @@ func isReady(pod *api.Pod) bool {
 
 func (p Pod) Create() error {
 	log.Println("Looking for pod", p.Pod.Name)
-	status, err := p.Status()
+	status, err := p.Status(nil)
 
 	if err == nil {
 		log.Printf("Found pod %s, status: %s ", p.Pod.Name, status)
@@ -81,7 +77,7 @@ func (p Pod) Create() error {
 	return err
 }
 
-func (p Pod) Status() (string, error) {
+func (p Pod) Status(meta map[string]string) (string, error) {
 	return podStatus(p.Client, p.Pod.Name)
 }
 
@@ -94,17 +90,13 @@ type ExistingPod struct {
 	Client unversioned.PodInterface
 }
 
-func (p ExistingPod) UpdateMeta(meta map[string]string) error {
-	return nil
-}
-
 func (p ExistingPod) Key() string {
 	return podKey(p.Name)
 }
 
 func (p ExistingPod) Create() error {
 	log.Println("Looking for pod", p.Name)
-	status, err := p.Status()
+	status, err := p.Status(nil)
 
 	if err == nil {
 		log.Printf("Found pod %s, status: %s ", p.Name, status)
@@ -116,7 +108,7 @@ func (p ExistingPod) Create() error {
 	return errors.New("Pod not found")
 }
 
-func (p ExistingPod) Status() (string, error) {
+func (p ExistingPod) Status(meta map[string]string) (string, error) {
 	return podStatus(p.Client, p.Name)
 }
 

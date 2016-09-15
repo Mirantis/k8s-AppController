@@ -92,22 +92,35 @@ func TestBuildDependencyGraph(t *testing.T) {
 }
 
 func TestIsBlocked(t *testing.T) {
-	one := &ScheduledResource{Status: Init}
+	one := &ScheduledResource{
+		Resource: mocks.NewResource("fake1", "not ready"),
+		Status:   Init,
+		Meta:     map[string]map[string]string{},
+	}
 
 	if one.IsBlocked() {
 		t.Errorf("Scheduled resource is blocked but it must not")
 	}
 
-	two := &ScheduledResource{Status: Ready}
-	three := &ScheduledResource{Status: Ready}
+	two := &ScheduledResource{
+		Resource: mocks.NewResource("fake2", "ready"),
+		Status:   Ready,
+		Meta:     map[string]map[string]string{},
+	}
 
-	one.Requires = []*ScheduledResource{two, three}
+	one.Requires = []*ScheduledResource{two}
 
 	if one.IsBlocked() {
 		t.Errorf("Scheduled resource is blocked but it must not")
 	}
 
-	one.Requires[0].Status = Creating
+	three := &ScheduledResource{
+		Resource: mocks.NewResource("fake3", "not ready"),
+		Status:   Ready,
+		Meta:     map[string]map[string]string{},
+	}
+
+	one.Requires = append(one.Requires, three)
 
 	if !one.IsBlocked() {
 		t.Errorf("Scheduled resource is not blocked but it must be")

@@ -12,30 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resources
+package mocks
 
-import (
-	"fmt"
-	"log"
-)
-
-//Resource is an interface for AppController supported resources
-type Resource interface {
-	Key() string
-	Status(meta map[string]string) (string, error)
-	Create() error
+//Resource is a fake resource
+type Resource struct {
+	key    string
+	status string
 }
 
-func resourceListReady(resources []Resource) (string, error) {
-	for _, r := range resources {
-		log.Printf("Checking status for resource %s", r.Key())
-		status, err := r.Status(nil)
-		if err != nil {
-			return "error", err
-		}
-		if status != "ready" {
-			return "not ready", fmt.Errorf("Resource %s is not ready", r.Key())
-		}
+//Key returns a key of the Resource
+func (c Resource) Key() string {
+	return c.key
+}
+
+//Status returns a status of the Resource
+func (c *Resource) Status(meta map[string]string) (string, error) {
+	return c.status, nil
+}
+
+//Create does nothing
+func (c *Resource) Create() error {
+	return nil
+}
+
+//NewResource creates new instance of Resource
+func NewResource(key string, status string) *Resource {
+	return &Resource{
+		key:    key,
+		status: status,
 	}
-	return "ready", nil
 }
