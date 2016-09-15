@@ -28,6 +28,7 @@ import (
 type daemonSetClient struct {
 }
 
+//MakeDaemonSet creates a daemonset base in its name
 func MakeDaemonSet(name string) *extensions.DaemonSet {
 	daemonSet := &extensions.DaemonSet{}
 	daemonSet.Name = name
@@ -88,6 +89,7 @@ func (r *daemonSetClient) ProxyGet(scheme string, name string, port string, path
 	panic("not implemented")
 }
 
+//NewDaemonSetClient is a daemonset client constructor
 func NewDaemonSetClient() unversioned.DaemonSetInterface {
 	return &daemonSetClient{}
 }
