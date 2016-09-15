@@ -33,7 +33,7 @@ func (c CountingResource) Key() string {
 
 //Status returns a status of the CountingResource. It also updates the status
 //after provided timeout and decrements counter
-func (c *CountingResource) Status() (string, error) {
+func (c *CountingResource) Status(meta map[string]string) (string, error) {
 	if time.Since(c.startTime) >= c.timeout && c.status != "ready" {
 		c.counter.Dec()
 		c.status = "ready"

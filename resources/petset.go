@@ -89,7 +89,7 @@ func (p PetSet) Key() string {
 // Create looks for a PetSet in Kubernetes cluster and creates it if it's not there
 func (p PetSet) Create() error {
 	log.Println("Looking for pet set", p.PetSet.Name)
-	status, err := p.Status()
+	status, err := p.Status(nil)
 
 	if err == nil {
 		log.Printf("Found pet set %s, status: %s ", p.PetSet.Name, status)
@@ -103,7 +103,7 @@ func (p PetSet) Create() error {
 }
 
 // Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p PetSet) Status() (string, error) {
+func (p PetSet) Status(meta map[string]string) (string, error) {
 	return petSetStatus(p.Client, p.PetSet.Name, p.APIClient)
 }
 
@@ -132,7 +132,7 @@ func (p ExistingPetSet) Key() string {
 // Create looks for existing PetSet and returns an error if there is no such PetSet in a cluster
 func (p ExistingPetSet) Create() error {
 	log.Println("Looking for pet set", p.Name)
-	status, err := p.Status()
+	status, err := p.Status(nil)
 
 	if err == nil {
 		log.Printf("Found pet set %s, status: %s ", p.Name, status)
@@ -145,7 +145,7 @@ func (p ExistingPetSet) Create() error {
 }
 
 // Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p ExistingPetSet) Status() (string, error) {
+func (p ExistingPetSet) Status(meta map[string]string) (string, error) {
 	return petSetStatus(p.Client, p.Name, p.APIClient)
 }
 

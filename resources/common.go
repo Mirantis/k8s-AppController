@@ -22,7 +22,7 @@ import (
 //Resource is an interface for AppController supported resources
 type Resource interface {
 	Key() string
-	Status() (string, error)
+	Status(meta map[string]string) (string, error)
 	Create() error
 	UpdateMeta(map[string]string) error
 }
@@ -30,7 +30,7 @@ type Resource interface {
 func resourceListReady(resources []Resource) (string, error) {
 	for _, r := range resources {
 		log.Printf("Checking status for resource %s", r.Key())
-		status, err := r.Status()
+		status, err := r.Status(nil)
 		if err != nil {
 			return "error", err
 		}

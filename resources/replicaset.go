@@ -84,7 +84,7 @@ func (r ReplicaSet) Key() string {
 
 func (r ReplicaSet) Create() error {
 	log.Println("Looking for replica set", r.ReplicaSet.Name)
-	status, err := r.Status()
+	status, err := r.Status(nil)
 
 	if err == nil {
 		log.Printf("Found replica set %s, status: %s ", r.ReplicaSet.Name, status)
@@ -97,7 +97,7 @@ func (r ReplicaSet) Create() error {
 	return err
 }
 
-func (r ReplicaSet) Status() (string, error) {
+func (r ReplicaSet) Status(meta map[string]string) (string, error) {
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, r.Meta)
 }
 
@@ -129,7 +129,7 @@ func (r ExistingReplicaSet) Key() string {
 
 func (r ExistingReplicaSet) Create() error {
 	log.Println("Looking for replica set", r.Name)
-	status, err := r.Status()
+	status, err := r.Status(nil)
 
 	if err == nil {
 		log.Printf("Found replica set %s, status: %s ", r.Name, status)
@@ -141,7 +141,7 @@ func (r ExistingReplicaSet) Create() error {
 	return errors.New("Replica set not found")
 }
 
-func (r ExistingReplicaSet) Status() (string, error) {
+func (r ExistingReplicaSet) Status(meta map[string]string) (string, error) {
 	return replicaSetStatus(r.Client, r.Name, r.Meta)
 }
 

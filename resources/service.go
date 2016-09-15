@@ -106,7 +106,7 @@ func (s Service) Key() string {
 
 func (s Service) Create() error {
 	log.Println("Looking for service", s.Service.Name)
-	status, err := s.Status()
+	status, err := s.Status(nil)
 
 	if err == nil {
 		log.Printf("Found service %s, status: %s ", s.Service.Name, status)
@@ -119,7 +119,7 @@ func (s Service) Create() error {
 	return err
 }
 
-func (s Service) Status() (string, error) {
+func (s Service) Status(meta map[string]string) (string, error) {
 	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
 }
 
@@ -144,7 +144,7 @@ func (s ExistingService) Key() string {
 
 func (s ExistingService) Create() error {
 	log.Println("Looking for service", s.Name)
-	status, err := s.Status()
+	status, err := s.Status(nil)
 
 	if err == nil {
 		log.Printf("Found service %s, status: %s ", s.Name, status)
@@ -156,7 +156,7 @@ func (s ExistingService) Create() error {
 	return errors.New("Service not found")
 }
 
-func (s ExistingService) Status() (string, error) {
+func (s ExistingService) Status(meta map[string]string) (string, error) {
 	return serviceStatus(s.Client, s.Name, s.APIClient)
 }
 

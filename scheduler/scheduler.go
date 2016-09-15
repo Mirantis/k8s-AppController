@@ -34,6 +34,9 @@ const (
 	Init ScheduledResourceStatus = iota
 	Creating
 	Ready
+)
+
+const (
 	CheckInterval = time.Millisecond * 1000
 )
 
@@ -42,11 +45,13 @@ type ScheduledResource struct {
 	RequiredBy []*ScheduledResource
 	Status     ScheduledResourceStatus
 	resources.Resource
+	// parentKey -> dependencyMetadata
+	Meta map[string]map[string]string
 	sync.RWMutex
 }
 
-// IsBlocked checks whether d can be created. It checks cached resource status,
-// unless the requirement is a Service - it gets the status from the API in that case
+// IsBlocked checks whether d can be created. It checks status of resources,
+// it depends on, via API
 func (d *ScheduledResource) IsBlocked() bool {
 	isBlocked := false
 
@@ -54,17 +59,10 @@ func (d *ScheduledResource) IsBlocked() bool {
 		if isBlocked {
 			break
 		}
-		r.RLock()
-		switch r.Resource.(type) {
-		case resources.Service:
-			status, err := r.Resource.Status()
-			if err != nil || status != "ready" {
-				isBlocked = true
-			}
-		default:
-			isBlocked = r.Status != Ready
+		status, err := r.Resource.Status(r.Meta[d.Key()])
+		if err != nil || status != "ready" {
+			isBlocked = true
 		}
-		r.RUnlock()
 	}
 
 	return isBlocked
@@ -116,7 +114,7 @@ func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, 
 		}
 	}
 
-	log.Printf("Resource definition for replica set '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for replica set '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingReplicaSet(name, c.ReplicaSets())
 }
 
@@ -128,7 +126,7 @@ func newResourceForPetSet(name string, resDefs []client.ResourceDefinition, c cl
 		}
 	}
 
-	log.Printf("Resource definition for pet set '%s' not found, so it is expected to exist already")
+	log.Printf("Resource definition for pet set '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingPetSet(name, c.PetSets(), c)
 }
 
@@ -159,6 +157,7 @@ func NewScheduledResourceFor(r resources.Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
 		Resource: r,
+		Meta:     map[string]map[string]string{},
 	}
 }
 
@@ -219,7 +218,10 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		}
 
 		depGraph[child].Requires = append(
-			depGraph[d.Child].Requires, depGraph[parent])
+			depGraph[child].Requires, depGraph[parent])
+
+		//depGraph[child].Meta[parent] = d.Meta
+
 		depGraph[parent].RequiredBy = append(
 			depGraph[parent].RequiredBy, depGraph[child])
 		if err := depGraph[parent].Resource.UpdateMeta(d.Meta); err != nil {
@@ -266,10 +268,37 @@ func createResources(toCreate chan *ScheduledResource, created chan string, ccLi
 				log.Printf("Error creating resource %s: %v", r.Key(), err)
 			}
 
+			// NOTE(gluke77): We start goroutines for dependencies
+			// before the resource becomes ready, since dependencies
+			// could have metadata defining their own readiness condition
+			for _, req := range r.RequiredBy {
+				go func(req *ScheduledResource) {
+					for {
+						time.Sleep(CheckInterval)
+						req.RLock()
+						if req.Status == Init {
+							req.RUnlock()
+							req.Lock()
+							if req.Status == Init && !req.IsBlocked() {
+								req.Status = Creating
+								toCreate <- req
+								req.Unlock()
+								break
+							} else {
+								req.Unlock()
+							}
+						} else {
+							req.RUnlock()
+							break
+						}
+					}
+				}(req)
+			}
+
 			log.Printf("Checking status for %s", r.Key())
 			for {
 				time.Sleep(CheckInterval)
-				status, err := r.Resource.Status()
+				status, err := r.Resource.Status(nil)
 				if err != nil {
 					log.Printf("Error getting status for resource %s: %v", r.Key(), err)
 				}
@@ -284,29 +313,6 @@ func createResources(toCreate chan *ScheduledResource, created chan string, ccLi
 			r.Unlock()
 
 			log.Printf("Resource %s created", r.Key())
-
-			for _, req := range r.RequiredBy {
-				go func(req *ScheduledResource) {
-					for {
-						time.Sleep(CheckInterval)
-						if !req.IsBlocked() {
-							req.RLock()
-							if req.Status == Init {
-								req.RUnlock()
-								req.Lock()
-								if req.Status == Init {
-									req.Status = Creating
-									toCreate <- req
-								}
-								req.Unlock()
-							} else {
-								req.RUnlock()
-							}
-							break
-						}
-					}
-				}(req)
-			}
 			created <- r.Key()
 			//Release semaphor
 			<-ccLimiter
