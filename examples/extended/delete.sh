@@ -22,4 +22,5 @@ cat pod9.yaml | kubectl.sh exec -i k8s-appcontroller wrap pod9 | kubectl.sh dele
 
 cat replicaset.yaml | kubectl.sh exec -i k8s-appcontroller wrap frontend | kubectl.sh delete -f -
 
+cat daemonset.yaml | kubectl.sh exec -i k8s-appcontroller wrap frontend | kubectl.sh delete -f -
 kubectl.sh delete -f ../../manifests/appcontroller.yaml

@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata: 
+  name: test-daemonset
+spec:
+  template:
+    metadata:
+      labels:
+        app: daemonset 
+    spec:
+      containers:
+      - name: test-daemonset
+        image: gcr.io/google_containers/busybox
+        command:
+        - sh 
+        - -c
+        - "sleep 6000"
+
