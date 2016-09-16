@@ -16,49 +16,51 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"github.com/Mirantis/k8s-AppController/cmd/wrap/format"
 )
 
-func getInput(stream *os.File) string {
+func getInput(stream *os.File, indent int) string {
 	result := ""
+	spaces := strings.Repeat(" ", indent)
+
 	scanner := bufio.NewScanner(stream)
 	for scanner.Scan() {
-		//add two spaces of identation
-		result += "  " + scanner.Text() + "\n"
+		// add spaces for identation
+		result += spaces + scanner.Text() + "\n"
 	}
 	return result
 }
 
-type KindExtractor struct {
-	Kind string "kind"
-}
-
-func getKind(k8sObject string) (string, error) {
-	var kind KindExtractor
-	err := yaml.Unmarshal([]byte(k8sObject), &kind)
-	return strings.ToLower(kind.Kind), err
-}
-
-func getWrappedYaml(k8sObject, name string) (string, error) {
-	base := `apiVersion: appcontroller.k8s2/v1alpha1
-kind: Definition
-metadata:
-  name: ` + name + "\n"
-
-	kind, err := getKind(k8sObject)
-	if err != nil {
-		return "", err
-	}
-	return base + kind + ":\n" + k8sObject, nil
-}
-
 func main() {
-	definition := getInput(os.Stdin)
-	out, err := getWrappedYaml(definition, os.Args[1])
+	var fileFormat string
+	flag.StringVar(&fileFormat, "f", "yaml", "file format")
+
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) != 1 {
+		log.Fatal("Expected one positional argument: name")
+	}
+
+	var f format.Format
+	switch fileFormat {
+	case "yaml":
+		f = format.Yaml{}
+	case "json":
+		f = format.Json{}
+	default:
+		log.Fatal("Unknonwn file format. Expected one of: yaml, json")
+	}
+
+	definition := getInput(os.Stdin, f.IndentLevel())
+
+	out, err := f.Wrap(definition, args[0])
 	if err != nil {
 		panic(err)
 	}
