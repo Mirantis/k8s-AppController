@@ -15,11 +15,15 @@
 package format
 
 type Format interface {
-	ExtractKind(k8sObject string) (string, error)
-	Wrap(k8sObject string, name string) (string, error)
+	ExtractData(k8sObject string) (DataExtractor, error)
+	Wrap(k8sObject string) (string, error)
 	IndentLevel() int
 }
 
-type KindExtractor struct {
-	Kind string "kind"
+// DataExtractor is a type for extracting data relevant for wrap tool from serialized k8s objects
+type DataExtractor struct {
+	Kind     string "kind"
+	Metadata struct {
+		Name string "name"
+	} "metadata"
 }

@@ -15,6 +15,7 @@
 package format
 
 import (
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -23,23 +24,32 @@ import (
 type Yaml struct {
 }
 
-func (f Yaml) ExtractKind(k8sObject string) (string, error) {
-	var kind KindExtractor
-	err := yaml.Unmarshal([]byte(k8sObject), &kind)
-	return strings.ToLower(kind.Kind), err
+// ExtractData returns data relevant for wrap tool from serialized k8s object
+func (f Yaml) ExtractData(k8sObject string) (DataExtractor, error) {
+	var data DataExtractor
+	err := yaml.Unmarshal([]byte(k8sObject), &data)
+	data.Kind = strings.ToLower(data.Kind)
+	return data, err
 }
 
-func (f Yaml) Wrap(k8sObject, name string) (string, error) {
-	base := `apiVersion: appcontroller.k8s2/v1alpha1
+// Wrap wraps k8sObject into Definition ThirdPArtyResource
+func (f Yaml) Wrap(k8sObject string) (string, error) {
+	objects := strings.Split(k8sObject, fmt.Sprintf("%s---", strings.Repeat(" ", f.IndentLevel())))
+
+	result := make([]string, 0, len(objects))
+	for _, o := range objects {
+		data, err := f.ExtractData(o)
+		if err != nil {
+			return "", err
+		}
+		base := `apiVersion: appcontroller.k8s2/v1alpha1
 kind: Definition
 metadata:
-  name: ` + name + "\n"
-
-	kind, err := f.ExtractKind(k8sObject)
-	if err != nil {
-		return "", err
+  name: ` + data.Kind + "-" + data.Metadata.Name + "\n"
+		result = append(result, base+data.Kind+":\n"+strings.Trim(o, "\n"))
 	}
-	return base + kind + ":\n" + k8sObject, nil
+
+	return strings.Join(result, "\n---\n"), nil
 }
 
 func (f Yaml) IndentLevel() int {

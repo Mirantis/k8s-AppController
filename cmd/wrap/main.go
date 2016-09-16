@@ -43,11 +43,6 @@ func main() {
 
 	flag.Parse()
 
-	args := flag.Args()
-	if len(args) != 1 {
-		log.Fatal("Expected one positional argument: name")
-	}
-
 	var f format.Format
 	switch fileFormat {
 	case "yaml":
@@ -60,7 +55,7 @@ func main() {
 
 	definition := getInput(os.Stdin, f.IndentLevel())
 
-	out, err := f.Wrap(definition, args[0])
+	out, err := f.Wrap(definition)
 	if err != nil {
 		panic(err)
 	}
