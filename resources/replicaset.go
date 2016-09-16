@@ -16,7 +16,6 @@ package resources
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"strconv"
 
@@ -27,7 +26,6 @@ import (
 type ReplicaSet struct {
 	ReplicaSet *extensions.ReplicaSet
 	Client     unversioned.ReplicaSetInterface
-	Meta       map[string]string
 }
 
 func getSuccessFactor(meta map[string]string) (int32, error) {
@@ -66,25 +64,13 @@ func replicaSetKey(name string) string {
 	return "replicaset/" + name
 }
 
-func (r ReplicaSet) UpdateMeta(meta map[string]string) error {
-	for key, value := range meta {
-		oldValue, exists := r.Meta[key]
-		if exists && oldValue != value {
-			return fmt.Errorf("Resource %v already has meta %v set to %v. Can not set it to %v",
-				r, key, oldValue, value)
-		}
-		r.Meta[key] = value
-	}
-	return nil
-}
-
 func (r ReplicaSet) Key() string {
 	return replicaSetKey(r.ReplicaSet.Name)
 }
 
 func (r ReplicaSet) Create() error {
 	log.Println("Looking for replica set", r.ReplicaSet.Name)
-	status, err := r.Status()
+	status, err := r.Status(nil)
 
 	if err == nil {
 		log.Printf("Found replica set %s, status: %s ", r.ReplicaSet.Name, status)
@@ -97,30 +83,17 @@ func (r ReplicaSet) Create() error {
 	return err
 }
 
-func (r ReplicaSet) Status() (string, error) {
-	return replicaSetStatus(r.Client, r.ReplicaSet.Name, r.Meta)
+func (r ReplicaSet) Status(meta map[string]string) (string, error) {
+	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
 }
 
 func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface) ReplicaSet {
-	return ReplicaSet{ReplicaSet: replicaSet, Client: client, Meta: make(map[string]string)}
+	return ReplicaSet{ReplicaSet: replicaSet, Client: client}
 }
 
 type ExistingReplicaSet struct {
 	Name   string
 	Client unversioned.ReplicaSetInterface
-	Meta   map[string]string
-}
-
-func (r ExistingReplicaSet) UpdateMeta(meta map[string]string) error {
-	for key, value := range meta {
-		oldValue, exists := r.Meta[key]
-		if exists && oldValue != value {
-			return fmt.Errorf("Resource %v already has meta %v set to %v. Can not set it to %v",
-				r, key, oldValue, value)
-		}
-		r.Meta[key] = value
-	}
-	return nil
 }
 
 func (r ExistingReplicaSet) Key() string {
@@ -129,7 +102,7 @@ func (r ExistingReplicaSet) Key() string {
 
 func (r ExistingReplicaSet) Create() error {
 	log.Println("Looking for replica set", r.Name)
-	status, err := r.Status()
+	status, err := r.Status(nil)
 
 	if err == nil {
 		log.Printf("Found replica set %s, status: %s ", r.Name, status)
@@ -141,10 +114,10 @@ func (r ExistingReplicaSet) Create() error {
 	return errors.New("Replica set not found")
 }
 
-func (r ExistingReplicaSet) Status() (string, error) {
-	return replicaSetStatus(r.Client, r.Name, r.Meta)
+func (r ExistingReplicaSet) Status(meta map[string]string) (string, error) {
+	return replicaSetStatus(r.Client, r.Name, meta)
 }
 
 func NewExistingReplicaSet(name string, client unversioned.ReplicaSetInterface) ExistingReplicaSet {
-	return ExistingReplicaSet{Name: name, Client: client, Meta: make(map[string]string)}
+	return ExistingReplicaSet{Name: name, Client: client}
 }

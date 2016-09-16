@@ -46,21 +46,17 @@ func jobStatus(j unversioned.JobInterface, name string) (string, error) {
 	return "not ready", nil
 }
 
-func (s Job) UpdateMeta(meta map[string]string) error {
-	return nil
-}
-
 func (s Job) Key() string {
 	return jobKey(s.Job.Name)
 }
 
-func (s Job) Status() (string, error) {
+func (s Job) Status(meta map[string]string) (string, error) {
 	return jobStatus(s.Client, s.Job.Name)
 }
 
 func (s Job) Create() error {
 	log.Println("Looking for job", s.Job.Name)
-	status, err := s.Status()
+	status, err := s.Status(nil)
 
 	if err == nil {
 		log.Printf("Found job %s, status:%s", s.Job.Name, status)
@@ -82,21 +78,17 @@ type ExistingJob struct {
 	Client unversioned.JobInterface
 }
 
-func (s ExistingJob) UpdateMeta(meta map[string]string) error {
-	return nil
-}
-
 func (s ExistingJob) Key() string {
 	return jobKey(s.Name)
 }
 
-func (s ExistingJob) Status() (string, error) {
+func (s ExistingJob) Status(meta map[string]string) (string, error) {
 	return jobStatus(s.Client, s.Name)
 }
 
 func (s ExistingJob) Create() error {
 	log.Println("Looking for job", s.Name)
-	status, err := s.Status()
+	status, err := s.Status(nil)
 
 	if err == nil {
 		log.Printf("Found job %s, status:%s", s.Name, status)
