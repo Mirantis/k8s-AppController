@@ -21,21 +21,21 @@ import (
 func TestKindJson(t *testing.T) {
 	f := Json{}
 	text := `{"kind": "Job"}`
-	kind, err := f.ExtractKind(text)
+	kind, err := f.ExtractData(text)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if kind != "job" {
+	if kind.Kind != "job" {
 		t.Errorf("Extracted kind should be \"job\", is %s", kind)
 	}
 }
 
 func TestWrapJson(t *testing.T) {
 	f := Json{}
-	text := `{"kind": "Job"}` + "\n"
+	text := `{"kind": "Job", "metadata": {"name": "name"}}` + "\n"
 
-	wrapped, err := f.Wrap(text, "name")
+	wrapped, err := f.Wrap(text)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,9 +43,9 @@ func TestWrapJson(t *testing.T) {
     "apiVersion": "appcontroller.k8s2/v1alpha1",
     "kind": "Definition",
     "metadata": {
-        "name": "name"
+        "name": "job-name"
     },
-    "job": {"kind": "Job"}
+    "job": {"kind": "Job", "metadata": {"name": "name"}}
 }` + "\n"
 	if wrapped != expected {
 		t.Errorf("Wrapped doesn't match expected output\nExpected:\n%s\nAactual:\n%s", expected, wrapped)

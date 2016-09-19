@@ -22,25 +22,29 @@ import (
 type Json struct {
 }
 
-func (f Json) ExtractKind(k8sObject string) (string, error) {
-	var kind KindExtractor
-	err := json.Unmarshal([]byte(k8sObject), &kind)
-	return strings.ToLower(kind.Kind), err
+// ExtractData returns data relevant for wrap tool from serialized k8s object
+func (f Json) ExtractData(k8sObject string) (DataExtractor, error) {
+	var data DataExtractor
+	err := json.Unmarshal([]byte(k8sObject), &data)
+	data.Kind = strings.ToLower(data.Kind)
+	return data, err
 }
 
-func (f Json) Wrap(k8sObject, name string) (string, error) {
+// Wrap wraps k8sObject into Definition ThirdPArtyResource
+func (f Json) Wrap(k8sObject string) (string, error) {
+	data, err := f.ExtractData(k8sObject)
+
 	base := `{
     "apiVersion": "appcontroller.k8s2/v1alpha1",
     "kind": "Definition",
     "metadata": {
-        "name": "` + name + `"
+        "name": "` + data.Kind + "-" + data.Metadata.Name + `"
     },` + "\n"
 
-	kind, err := f.ExtractKind(k8sObject)
 	if err != nil {
 		return "", err
 	}
-	return base + `    "` + kind + `": ` + strings.TrimLeft(k8sObject, " ") + "}\n", nil
+	return base + `    "` + data.Kind + `": ` + strings.TrimLeft(k8sObject, " ") + "}\n", nil
 }
 
 func (f Json) IndentLevel() int {
