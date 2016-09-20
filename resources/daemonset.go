@@ -40,14 +40,14 @@ func (d DaemonSet) Key() string {
 }
 
 // Status returns DaemonSet status as a string "ready" means that its dependencies can be created
-func (d DaemonSet) Status() (string, error) {
+func (d DaemonSet) Status(meta map[string]string) (string, error) {
 	return daemonSetStatus(d.Client, d.DaemonSet.Name)
 }
 
 //Create looks for DaemonSet in K8s and creates it if not present
 func (d DaemonSet) Create() error {
 	log.Println("Looking for daemonset", d.DaemonSet.Name)
-	status, err := d.Status()
+	status, err := d.Status(nil)
 
 	if err == nil {
 		log.Printf("Found daemonset %s, status: %s", d.DaemonSet.Name, status)
@@ -80,14 +80,14 @@ func (d ExistingDaemonSet) Key() string {
 }
 
 // Status returns DaemonSet status as a string "ready" means that its dependencies can be created
-func (d ExistingDaemonSet) Status() (string, error) {
+func (d ExistingDaemonSet) Status(meta map[string]string) (string, error) {
 	return daemonSetStatus(d.Client, d.Name)
 }
 
 //Create looks for existing DaemonSet and returns error if there is no such DaemonSet
 func (d ExistingDaemonSet) Create() error {
 	log.Println("Looking for daemonset", d.Name)
-	status, err := d.Status()
+	status, err := d.Status(nil)
 
 	if err == nil {
 		log.Printf("Found daemonset %s, status: %s", d.Name, status)
