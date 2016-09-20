@@ -164,4 +164,4 @@ kind: Dependency
 metadata:
   name: 5548d688-e143-4317-b4ca-d92b184f9c85
 parent: daemonset/test-daemonset
-child: pod/eventually-alive-pod4
+child: job/test-job
