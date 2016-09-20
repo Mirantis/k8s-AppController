@@ -26,6 +26,7 @@ type Client struct {
 	unversioned.ServiceInterface
 	unversioned.ReplicaSetInterface
 	unversioned.PetSetInterface
+	unversioned.DaemonSetInterface
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
@@ -50,6 +51,11 @@ func (c *Client) PetSets() unversioned.PetSetInterface {
 	return c.PetSetInterface
 }
 
+//DaemonSets return a DaemonSetInterface of k8s
+func (c *Client) DaemonSets() unversioned.DaemonSetInterface {
+	return c.DaemonSetInterface
+}
+
 func (c *Client) Dependencies() client.DependenciesInterface {
 	return c.DependenciesInterface
 }
@@ -65,6 +71,7 @@ func NewClient() *Client {
 		NewServiceClient(),
 		NewReplicaSetClient(),
 		NewPetSetClient(),
+		NewDaemonSetClient(),
 		NewDependencyClient(),
 		NewResourceDefinitionClient(),
 	}
