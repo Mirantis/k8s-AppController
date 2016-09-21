@@ -12,49 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cmd
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"k8s.io/kubernetes/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/scheduler"
-	"k8s.io/kubernetes/pkg/labels"
 )
 
-func main() {
+func deploy(cmd *cobra.Command, args []string) {
 	var err error
 
-	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
-
-	var concurrencyDefault int
-	if len(concurrencyString) > 0 {
-		concurrencyDefault, err = strconv.Atoi(concurrencyString)
-		if err != nil {
-			log.Printf("KUBERNETES_AC_CONCURRENCY is set to '%s' but it does not look like an integer: %v",
-				concurrencyString, err)
-			concurrencyDefault = 0
-		}
+	concurrency, err := cmd.Flags().GetInt("concurrency")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	var concurrency int
-	flag.IntVar(&concurrency, "c", concurrencyDefault, "concurrency")
-
-	var labelSelector string
-	flag.StringVar(&labelSelector, "l", "", "label selector")
-
-	flag.Parse()
+	labelSelector, err := cmd.Flags().GetString("label")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Println("Using concurrency:", concurrency)
 
 	var url string
-	if len(flag.Args()) > 0 {
-		url = flag.Args()[0]
+	if len(args) > 0 {
+		url = args[0]
 	}
 	if url == "" {
 		url = os.Getenv("KUBERNETES_CLUSTER_URL")
@@ -98,4 +88,11 @@ func main() {
 
 	log.Println("Done")
 
+}
+
+var Deploy = &cobra.Command{
+	Use:   "deploy",
+	Short: "Start deployment of AppController graph",
+	Long:  "Start deployment of AppController graph",
+	Run:   deploy,
 }
