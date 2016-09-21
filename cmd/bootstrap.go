@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cmd
 
 import (
 	"bufio"
@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -65,8 +66,8 @@ func getDependencyFromPath(path string) extensions.ThirdPartyResource {
 	return tpr
 }
 
-func main() {
-	thirdPartyResourcesPath := os.Args[1]
+func bootstrap(cmd *cobra.Command, args []string) {
+	thirdPartyResourcesPath := os.Args[2]
 
 	dependencyTPR := getDependencyFromPath(thirdPartyResourcesPath + "/dependencies.json")
 	definitionTPR := getDependencyFromPath(thirdPartyResourcesPath + "/resdefs.json")
@@ -81,4 +82,11 @@ func main() {
 
 	createTPRIfNotExists(dependencyTPR, c)
 	createTPRIfNotExists(definitionTPR, c)
+}
+
+var Bootstrap = &cobra.Command{
+	Use:   "bootstrap",
+	Short: "Bootstrap AppController",
+	Long:  "Create ThirdPartyResources required for AppController pod to function properly",
+	Run:   bootstrap,
 }
