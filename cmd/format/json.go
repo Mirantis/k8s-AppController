@@ -19,11 +19,12 @@ import (
 	"strings"
 )
 
-type Json struct {
+// JSON implements format.Format interface
+type JSON struct {
 }
 
 // ExtractData returns data relevant for wrap tool from serialized k8s object
-func (f Json) ExtractData(k8sObject string) (DataExtractor, error) {
+func (f JSON) ExtractData(k8sObject string) (DataExtractor, error) {
 	var data DataExtractor
 	err := json.Unmarshal([]byte(k8sObject), &data)
 	data.Kind = strings.ToLower(data.Kind)
@@ -31,7 +32,7 @@ func (f Json) ExtractData(k8sObject string) (DataExtractor, error) {
 }
 
 // Wrap wraps k8sObject into Definition ThirdPArtyResource
-func (f Json) Wrap(k8sObject string) (string, error) {
+func (f JSON) Wrap(k8sObject string) (string, error) {
 	data, err := f.ExtractData(k8sObject)
 
 	base := `{
@@ -47,6 +48,7 @@ func (f Json) Wrap(k8sObject string) (string, error) {
 	return base + `    "` + data.Kind + `": ` + strings.TrimLeft(k8sObject, " ") + "}\n", nil
 }
 
-func (f Json) IndentLevel() int {
+// IndentLevel returns indent level for JSON format
+func (f JSON) IndentLevel() int {
 	return 4
 }

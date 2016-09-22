@@ -49,7 +49,7 @@ func wrap(cmd *cobra.Command, args []string) {
 	case "yaml":
 		f = format.Yaml{}
 	case "json":
-		f = format.Json{}
+		f = format.JSON{}
 	default:
 		log.Fatal("Unknonwn file format. Expected one of: yaml, json")
 	}
@@ -63,6 +63,7 @@ func wrap(cmd *cobra.Command, args []string) {
 	fmt.Print(out)
 }
 
+// Wrap is cobra command for wrapping K8s objects in AppController definitions
 var Wrap = &cobra.Command{
 	Use:   "wrap",
 	Short: "Echo wrapped k8s object to stdout",

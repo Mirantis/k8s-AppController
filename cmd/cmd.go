@@ -22,8 +22,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// RootCmd is top-level AppController command. It is not executable, but it has sub-commands attached
 var RootCmd *cobra.Command
 
+// Init initializes RootCmd, adds flags to subcommands and attaches subcommands to root command
 func Init() {
 	var err error
 	var labelSelector string

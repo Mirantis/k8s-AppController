@@ -14,6 +14,7 @@
 
 package format
 
+// Format is an interface for data formats for wrapper
 type Format interface {
 	ExtractData(k8sObject string) (DataExtractor, error)
 	Wrap(k8sObject string) (string, error)

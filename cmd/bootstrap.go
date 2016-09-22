@@ -84,6 +84,7 @@ func bootstrap(cmd *cobra.Command, args []string) {
 	createTPRIfNotExists(definitionTPR, c)
 }
 
+// Bootstrap is cobra command for bootstrapping AppController, meant to be run in an init container
 var Bootstrap = &cobra.Command{
 	Use:   "bootstrap",
 	Short: "Bootstrap AppController",

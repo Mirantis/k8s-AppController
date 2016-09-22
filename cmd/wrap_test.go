@@ -21,6 +21,7 @@ import (
 	"testing"
 )
 
+// TestInput checks if input is properly retrieved from files
 func TestInput(t *testing.T) {
 	var inputTests = []struct {
 		content  string

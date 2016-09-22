@@ -21,6 +21,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Yaml implements format.Format interface
 type Yaml struct {
 }
 
@@ -52,6 +53,7 @@ metadata:
 	return strings.Join(result, "\n---\n"), nil
 }
 
+// IndentLevel returns indent level for Yaml format
 func (f Yaml) IndentLevel() int {
 	return 2
 }
