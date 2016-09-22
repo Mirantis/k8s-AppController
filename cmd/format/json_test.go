@@ -18,8 +18,9 @@ import (
 	"testing"
 )
 
-func TestKindJson(t *testing.T) {
-	f := Json{}
+// TestKindJSON tests data retrieval from k8s objects
+func TestKindJSON(t *testing.T) {
+	f := JSON{}
 	text := `{"kind": "Job"}`
 	kind, err := f.ExtractData(text)
 	if err != nil {
@@ -31,8 +32,9 @@ func TestKindJson(t *testing.T) {
 	}
 }
 
-func TestWrapJson(t *testing.T) {
-	f := Json{}
+// TestWrapJSON tests if K8s objects are properly wrapped
+func TestWrapJSON(t *testing.T) {
+	f := JSON{}
 	text := `{"kind": "Job", "metadata": {"name": "name"}}` + "\n"
 
 	wrapped, err := f.Wrap(text)

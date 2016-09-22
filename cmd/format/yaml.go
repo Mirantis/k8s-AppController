@@ -15,38 +15,45 @@
 package format
 
 import (
-	"encoding/json"
+	"fmt"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
-type Json struct {
+// Yaml implements format.Format interface
+type Yaml struct {
 }
 
 // ExtractData returns data relevant for wrap tool from serialized k8s object
-func (f Json) ExtractData(k8sObject string) (DataExtractor, error) {
+func (f Yaml) ExtractData(k8sObject string) (DataExtractor, error) {
 	var data DataExtractor
-	err := json.Unmarshal([]byte(k8sObject), &data)
+	err := yaml.Unmarshal([]byte(k8sObject), &data)
 	data.Kind = strings.ToLower(data.Kind)
 	return data, err
 }
 
 // Wrap wraps k8sObject into Definition ThirdPArtyResource
-func (f Json) Wrap(k8sObject string) (string, error) {
-	data, err := f.ExtractData(k8sObject)
+func (f Yaml) Wrap(k8sObject string) (string, error) {
+	objects := strings.Split(k8sObject, fmt.Sprintf("%s---", strings.Repeat(" ", f.IndentLevel())))
 
-	base := `{
-    "apiVersion": "appcontroller.k8s2/v1alpha1",
-    "kind": "Definition",
-    "metadata": {
-        "name": "` + data.Kind + "-" + data.Metadata.Name + `"
-    },` + "\n"
-
-	if err != nil {
-		return "", err
+	result := make([]string, 0, len(objects))
+	for _, o := range objects {
+		data, err := f.ExtractData(o)
+		if err != nil {
+			return "", err
+		}
+		base := `apiVersion: appcontroller.k8s2/v1alpha1
+kind: Definition
+metadata:
+  name: ` + data.Kind + "-" + data.Metadata.Name + "\n"
+		result = append(result, base+data.Kind+":\n"+strings.Trim(o, "\n"))
 	}
-	return base + `    "` + data.Kind + `": ` + strings.TrimLeft(k8sObject, " ") + "}\n", nil
+
+	return strings.Join(result, "\n---\n"), nil
 }
 
-func (f Json) IndentLevel() int {
-	return 4
+// IndentLevel returns indent level for Yaml format
+func (f Yaml) IndentLevel() int {
+	return 2
 }

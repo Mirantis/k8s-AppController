@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cmd
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/Mirantis/k8s-AppController/cmd/wrap/format"
+	"github.com/spf13/cobra"
+
+	"github.com/Mirantis/k8s-AppController/cmd/format"
 )
 
 func getInput(stream *os.File, indent int) string {
@@ -37,18 +38,18 @@ func getInput(stream *os.File, indent int) string {
 	return result
 }
 
-func main() {
-	var fileFormat string
-	flag.StringVar(&fileFormat, "f", "yaml", "file format")
-
-	flag.Parse()
+func wrap(cmd *cobra.Command, args []string) {
+	fileFormat, err := cmd.Flags().GetString("format")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var f format.Format
 	switch fileFormat {
 	case "yaml":
 		f = format.Yaml{}
 	case "json":
-		f = format.Json{}
+		f = format.JSON{}
 	default:
 		log.Fatal("Unknonwn file format. Expected one of: yaml, json")
 	}
@@ -60,4 +61,12 @@ func main() {
 		panic(err)
 	}
 	fmt.Print(out)
+}
+
+// Wrap is cobra command for wrapping K8s objects in AppController definitions
+var Wrap = &cobra.Command{
+	Use:   "wrap",
+	Short: "Echo wrapped k8s object to stdout",
+	Long:  "Echo wrapped k8s object to stdout",
+	Run:   wrap,
 }

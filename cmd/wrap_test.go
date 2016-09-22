@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cmd
 
 import (
 	"io"
@@ -21,6 +21,7 @@ import (
 	"testing"
 )
 
+// TestInput checks if input is properly retrieved from files
 func TestInput(t *testing.T) {
 	var inputTests = []struct {
 		content  string

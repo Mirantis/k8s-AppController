@@ -18,6 +18,7 @@ import (
 	"testing"
 )
 
+// TestKind tests data retrieval from k8s objects
 func TestKind(t *testing.T) {
 	f := Yaml{}
 	yaml := `apiVersion: batch/v1
@@ -44,6 +45,7 @@ spec:
 	}
 }
 
+// TestWrap tests if K8s objects are properly wrapped
 func TestWrap(t *testing.T) {
 	f := Yaml{}
 	yaml := `  apiVersion: batch/v1

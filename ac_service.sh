@@ -4,4 +4,4 @@ exec 2>&1
 
 source /tmp/envvars
 
-exec /usr/bin/kubeac
+exec /usr/bin/kubeac run
