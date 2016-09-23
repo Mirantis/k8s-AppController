@@ -1,4 +1,3 @@
-
 AppController [![Build Status](https://travis-ci.org/Mirantis/k8s-AppController.svg?branch=master)](https://travis-ci.org/Mirantis/k8s-AppController) [![Stories in Progress](https://badge.waffle.io/Mirantis/k8s-AppController.png?label=in%20progress&title=In%20Progress)](http://waffle.io/Mirantis/k8s-AppController)
 =============
 AppController is a pod that you can spawn in your Kubernetes cluster which will take care of your complex deployments for you.
@@ -48,7 +47,7 @@ Run AppController pod:
 
 Suppose you have some yaml files with single k8s object definitions (pod and jobs are supported right now). Create AppController ResourceDefintions for them:
 
-`cat path_to_your_pod.yaml | kubectl exec -i k8s-appcontroller wrap <resource_name> | kubectl create -f -`
+`cat path_to_your_pod.yaml | kubectl exec -i k8s-appcontroller kubeac wrap | kubectl create -f -`
 
 Create file with dependencies:
 ```yaml
