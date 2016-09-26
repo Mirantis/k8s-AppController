@@ -1,0 +1,4 @@
+- pod/test-pod
+- job/test-job
+- service/test-service
+- replicaset/test-replicaset
