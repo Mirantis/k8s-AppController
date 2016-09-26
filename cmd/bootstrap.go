@@ -39,15 +39,18 @@ func getFileContents(stream *os.File) string {
 
 func createTPRIfNotExists(tpr extensions.ThirdPartyResource, client unversioned.Client) {
 	_, err := client.Extensions().ThirdPartyResources().Create(&tpr)
-	if err != nil {
+	switch err.(type) {
+	case (*errors.StatusError):
 		e := err.(*errors.StatusError)
 		if e.ErrStatus.Code != 409 {
-			log.Fatal(err)
+			log.Fatal(e)
 		} else {
 			log.Printf("%s already exists, skipping", e.ErrStatus.Details.Name)
 		}
-	} else {
+	case nil:
 		log.Printf("Created %s", tpr.ObjectMeta.Name)
+	default:
+		log.Fatal(err)
 	}
 	return
 }
