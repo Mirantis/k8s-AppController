@@ -29,7 +29,7 @@ var RootCmd *cobra.Command
 func Init() {
 	var err error
 	var labelSelector string
-	Run.Flags().StringVarP(&labelSelector, "label", "l", "", "label selector")
+	Run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides APPCONTROLLER_LABEL_SELECTOR env variable in AppController pod.")
 
 	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 

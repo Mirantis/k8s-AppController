@@ -39,6 +39,9 @@ func deploy(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if labelSelector == "" {
+		labelSelector = os.Getenv("APPCONTROLLER_LABEL_SELECTOR")
+	}
 
 	log.Println("Using concurrency:", concurrency)
 
