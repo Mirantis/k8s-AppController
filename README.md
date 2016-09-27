@@ -92,3 +92,19 @@ Start appcontroller process:
 You can stop appcontroller process by:
 
 `kubectl exec k8s-appcontroller ac-stop`
+
+# Multiple AppControllers
+
+You can have multiple AppController pods running in your Kubernetes cluster. You can separate your workloads by labeling your Dependencies and Definitions.
+
+Your AppController objects will be retrieved by AppController for processing based on the selector you provide inside pod environment variable `APPCONTROLLER_LABEL_SELECTOR`. You can pass this variable to pod using Kubernetes environment variable passing mechanism (empty environment variable is already in `manifests/appcontroller.yaml` file for you to fill).
+
+## Example
+
+Example value of this variable could be `app=app1`. AppController pod with this value in `APPCONTROLLER_LABEL_SELECTOR` variable will work only with Dependencies and Definitions that contain `app: app1` key-value pair in their `metadata.labels` section.
+
+
+## Special cases
+If the selector is empty, the AppController pod will use all Dependencies and Definitions available in cluster.
+
+You can also override this behaviour by using `-l` flag for `kubeac deploy` command available on AppController pod, but this should be only done for testing purposes and is not encouraged in production.
