@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -35,12 +36,9 @@ func deploy(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	labelSelector, err := cmd.Flags().GetString("label")
+	labelSelector, err := getLabelSelector(cmd)
 	if err != nil {
 		log.Fatal(err)
-	}
-	if labelSelector == "" {
-		labelSelector = os.Getenv("APPCONTROLLER_LABEL_SELECTOR")
 	}
 
 	log.Println("Using concurrency:", concurrency)
@@ -93,10 +91,39 @@ func deploy(cmd *cobra.Command, args []string) {
 
 }
 
-// Run is cobra command for performing AppController graph deployment
-var Run = &cobra.Command{
-	Use:   "run",
-	Short: "Start deployment of AppController graph",
-	Long:  "Start deployment of AppController graph",
-	Run:   deploy,
+func getLabelSelector(cmd *cobra.Command) (string, error) {
+	labelSelector, err := cmd.Flags().GetString("label")
+	if labelSelector == "" {
+		labelSelector = os.Getenv("APPCONTROLLER_LABEL_SELECTOR")
+	}
+	return labelSelector, err
+}
+
+// InitRunCommand returns cobra command for performing AppController graph deployment
+func InitRunCommand() (*cobra.Command, error) {
+	run := &cobra.Command{
+		Use:   "run",
+		Short: "Start deployment of AppController graph",
+		Long:  "Start deployment of AppController graph",
+		Run:   deploy,
+	}
+
+	var labelSelector string
+	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides APPCONTROLLER_LABEL_SELECTOR env variable in AppController pod.")
+
+	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
+
+	var err error
+	var concurrencyDefault int
+	if len(concurrencyString) > 0 {
+		concurrencyDefault, err = strconv.Atoi(concurrencyString)
+		if err != nil {
+			log.Printf("KUBERNETES_AC_CONCURRENCY is set to '%s' but it does not look like an integer: %v",
+				concurrencyString, err)
+			concurrencyDefault = 0
+		}
+	}
+	var concurrency int
+	run.Flags().IntVarP(&concurrency, "concurrency", "c", concurrencyDefault, "concurrency")
+	return run, err
 }
