@@ -36,6 +36,32 @@ const (
 	Ready
 )
 
+type DeploymentStatus int
+
+const (
+	Empty DeploymentStatus = iota
+	Prepared
+	Running
+	Finished
+	TimedOut
+)
+
+func (s DeploymentStatus) String() string {
+	switch s {
+	case Empty:
+		return "No dependencies loaded"
+	case Prepared:
+		return "Deployment not started"
+	case Running:
+		return "Deployment is running"
+	case Finished:
+		return "Deployment finished"
+	case TimedOut:
+		return "Deployment timed out"
+	}
+	panic("Unreachable")
+}
+
 const (
 	CheckInterval = time.Millisecond * 1000
 )
@@ -250,6 +276,7 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			depGraph[child].Requires, depGraph[parent])
 
 		depGraph[child].Meta[parent] = d.Meta
+		depGraph[parent].Meta[parent] = d.Meta
 
 		depGraph[parent].RequiredBy = append(
 			depGraph[parent].RequiredBy, depGraph[child])
@@ -458,4 +485,44 @@ func assignVertex(vertex, root *ScheduledResource, assigned map[string]bool, com
 			assignVertex(v, root, assigned, components)
 		}
 	}
+}
+
+func (graph DependencyGraph) GetStatus() (DeploymentStatus, string, error) {
+	report := make([]string, len(graph), len(graph))
+	var readyExist, nonReadyExist bool
+	var status DeploymentStatus
+	var blockedStr string
+	i := 0
+	for key, resource := range graph {
+		status, err := resource.Resource.Status(resource.Meta[key])
+		if err != nil {
+			status = err.Error()
+			nonReadyExist = true
+		}
+		if status == "ready" {
+			fmt.Printf("status ready")
+			readyExist = true
+		} else {
+			fmt.Printf("else")
+			nonReadyExist = true
+		}
+		if resource.IsBlocked() {
+			blockedStr = ", Blocked"
+		}
+		report[i] = fmt.Sprintf(
+			"%s, STATUS: %s%s", key, status, blockedStr,
+		)
+		i += 1
+	}
+	switch {
+	case readyExist && nonReadyExist:
+		status = Running
+	case readyExist:
+		status = Finished
+	case nonReadyExist:
+		status = Prepared
+	default:
+		status = Empty
+	}
+	return status, strings.Join(report, "\n"), nil
 }
