@@ -29,10 +29,14 @@ func Init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	status, err := InitGetStatusCommand()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var format string
 	Wrap.Flags().StringVarP(&format, "format", "f", "yaml", "file format")
 
 	RootCmd = &cobra.Command{Use: "ac"}
-	RootCmd.AddCommand(Bootstrap, run, Wrap)
+	RootCmd.AddCommand(Bootstrap, run, Wrap, status)
 }

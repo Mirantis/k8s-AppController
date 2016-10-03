@@ -28,18 +28,50 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
+// ScheduledResourceStatus describes possible status of a single resource
 type ScheduledResourceStatus int
 
+// Possible values for ScheduledResourceStatus
 const (
 	Init ScheduledResourceStatus = iota
 	Creating
 	Ready
 )
 
+// DeploymentStatus describes possible status of whole deployment process
+type DeploymentStatus int
+
+// Possible values for DeploymentStatus
+const (
+	Empty DeploymentStatus = iota
+	Prepared
+	Running
+	Finished
+	TimedOut
+)
+
+func (s DeploymentStatus) String() string {
+	switch s {
+	case Empty:
+		return "No dependencies loaded"
+	case Prepared:
+		return "Deployment not started"
+	case Running:
+		return "Deployment is running"
+	case Finished:
+		return "Deployment finished"
+	case TimedOut:
+		return "Deployment timed out"
+	}
+	panic("Unreachable")
+}
+
+// CheckInterval is an interval between rechecking the tree for updates
 const (
 	CheckInterval = time.Millisecond * 1000
 )
 
+// ScheduledResource is a wrapper for Resource with attached relationship data
 type ScheduledResource struct {
 	Requires   []*ScheduledResource
 	RequiredBy []*ScheduledResource
@@ -84,6 +116,8 @@ func (d *ScheduledResource) IsBlocked() bool {
 	return isBlocked
 }
 
+// DependencyGraph is a full deployment graph as a mapping from job keys to
+// ScheduledResource pointers
 type DependencyGraph map[string]*ScheduledResource
 
 func newResourceForPod(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
@@ -157,6 +191,8 @@ func newResourceForDaemonSet(name string, resDefs []client.ResourceDefinition, c
 	log.Printf("Resource definition for daemon set '%s' not found, so it is expected to exist already", name)
 	return resources.NewExistingDaemonSet(name, c.DaemonSets())
 }
+
+// NewScheduledResource is a constructor for ScheduledResource
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
@@ -200,6 +236,7 @@ func keyParts(key string) (kind string, name string, err error) {
 	return parts[0], parts[1], nil
 }
 
+// BuildDependencyGraph loads dependencies data and creates the DependencyGraph
 func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGraph, error) {
 
 	log.Println("Getting resource definitions")
@@ -348,6 +385,7 @@ func createResources(toCreate chan *ScheduledResource, created chan string, ccLi
 	}
 }
 
+// Create starts the deployment of a DependencyGraph
 func Create(depGraph DependencyGraph, concurrency int) {
 
 	depCount := len(depGraph)
@@ -458,4 +496,45 @@ func assignVertex(vertex, root *ScheduledResource, assigned map[string]bool, com
 			assignVertex(v, root, assigned, components)
 		}
 	}
+}
+
+// GetStatus generates data for getting the status of deployment. Returns
+// a DeploymentStatus and a human readable report string
+// TODO: Allow for other formats of report (e.g. json for visualisations)
+func (graph DependencyGraph) GetStatus() (DeploymentStatus, string, error) {
+	report := make([]string, len(graph), len(graph))
+	var readyExist, nonReadyExist bool
+	var status DeploymentStatus
+	var blockedStr string
+	i := 0
+	for key, resource := range graph {
+		status, err := resource.Resource.Status(nil)
+		if err != nil {
+			status = err.Error()
+			nonReadyExist = true
+		}
+		if status == "ready" {
+			readyExist = true
+		} else {
+			nonReadyExist = true
+		}
+		if resource.IsBlocked() {
+			blockedStr = ", Blocked"
+		}
+		report[i] = fmt.Sprintf(
+			"%s, STATUS: %s%s", key, status, blockedStr,
+		)
+		i++
+	}
+	switch {
+	case readyExist && nonReadyExist:
+		status = Running
+	case readyExist:
+		status = Finished
+	case nonReadyExist:
+		status = Prepared
+	default:
+		status = Empty
+	}
+	return status, strings.Join(report, "\n"), nil
 }
