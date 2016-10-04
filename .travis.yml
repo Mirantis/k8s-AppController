@@ -2,3 +2,6 @@ language: go
 go:
   - 1.6
   - tip
+script:
+  - go get github.com/Masterminds/glide
+  - make test
