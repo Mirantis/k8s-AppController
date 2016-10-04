@@ -93,6 +93,15 @@ You can stop appcontroller process by:
 
 `kubectl exec k8s-appcontroller ac-stop`
 
+## Building
+
+In order to build, issue::
+
+`make TAG=some-docker-tag`
+
+This would vendor the dependencies with glide and build the container with a
+given tag.  The default tag is `mirantis/k8s-appcontroller`
+
 # Multiple AppControllers
 
 You can have multiple AppController pods running in your Kubernetes cluster. You can separate your workloads by labeling your Dependencies and Definitions.
@@ -108,3 +117,5 @@ Example value of this variable could be `app=app1`. AppController pod with this 
 If the selector is empty, the AppController pod will use all Dependencies and Definitions available in cluster.
 
 You can also override this behaviour by using `-l` flag for `kubeac deploy` command available on AppController pod, but this should be only done for testing purposes and is not encouraged in production.
+
+
