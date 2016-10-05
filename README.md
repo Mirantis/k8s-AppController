@@ -97,11 +97,11 @@ You can stop appcontroller process by:
 
 You can have multiple AppController pods running in your Kubernetes cluster. You can separate your workloads by labeling your Dependencies and Definitions.
 
-Your AppController objects will be retrieved by AppController for processing based on the selector you provide inside pod environment variable `APPCONTROLLER_LABEL_SELECTOR`. You can pass this variable to pod using Kubernetes environment variable passing mechanism (empty environment variable is already in `manifests/appcontroller.yaml` file for you to fill).
+Your AppController objects will be retrieved by AppController for processing based on the selector you provide inside pod environment variable `KUBERNETES_AC_LABEL_SELECTOR`. You can pass this variable to pod using Kubernetes environment variable passing mechanism (empty environment variable is already in `manifests/appcontroller.yaml` file for you to fill).
 
 ## Example
 
-Example value of this variable could be `app=app1`. AppController pod with this value in `APPCONTROLLER_LABEL_SELECTOR` variable will work only with Dependencies and Definitions that contain `app: app1` key-value pair in their `metadata.labels` section.
+Example value of this variable could be `app=app1`. AppController pod with this value in `KUBERNETES_AC_LABEL_SELECTOR` variable will work only with Dependencies and Definitions that contain `app: app1` key-value pair in their `metadata.labels` section.
 
 
 ## Special cases

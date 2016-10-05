@@ -94,7 +94,7 @@ func deploy(cmd *cobra.Command, args []string) {
 func getLabelSelector(cmd *cobra.Command) (string, error) {
 	labelSelector, err := cmd.Flags().GetString("label")
 	if labelSelector == "" {
-		labelSelector = os.Getenv("APPCONTROLLER_LABEL_SELECTOR")
+		labelSelector = os.Getenv("KUBERNETES_AC_LABEL_SELECTOR")
 	}
 	return labelSelector, err
 }
@@ -109,7 +109,7 @@ func InitRunCommand() (*cobra.Command, error) {
 	}
 
 	var labelSelector string
-	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides APPCONTROLLER_LABEL_SELECTOR env variable in AppController pod.")
+	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
 
 	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 
