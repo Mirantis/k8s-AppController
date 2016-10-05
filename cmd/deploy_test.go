@@ -33,7 +33,7 @@ func TestEmptyLabel(t *testing.T) {
 func TestLabelEnv(t *testing.T) {
 	cmd, _ := InitRunCommand()
 	val := "TEST_KEY=TEST_VALUE"
-	os.Setenv("APPCONTROLLER_LABEL_SELECTOR", val)
+	os.Setenv("KUBERNETES_AC_LABEL_SELECTOR", val)
 	label, _ := getLabelSelector(cmd)
 
 	if label != val {
@@ -47,7 +47,7 @@ func TestLabelFlag(t *testing.T) {
 
 	val := "TEST_KEY=TEST_VALUE"
 	val2 := "TEST_OTHER_KEY=TEST_OTHER_VALUE"
-	os.Setenv("APPCONTROLLER_LABEL_SELECTOR", val)
+	os.Setenv("KUBERNETES_AC_LABEL_SELECTOR", val)
 	cmd.Flags().Parse([]string{"-l", val2})
 
 	label, _ := getLabelSelector(cmd)

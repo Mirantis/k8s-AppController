@@ -11,5 +11,5 @@ spec:
     image: mirantis/k8s-appcontroller
     command:  ["/usr/bin/run_runit"]
     env:
-    - name: APPCONTROLLER_LABEL_SELECTOR
+    - name: KUBERNETES_AC_LABEL_SELECTOR
       value: ""
