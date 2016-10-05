@@ -8,3 +8,6 @@ docker: vendor glide.lock Makefile
 vendor: Makefile
 	glide install --strip-vendor
 	glide-vc --only-code --no-tests
+
+test: vendor glide.lock Makefile
+	go test -v ./...
