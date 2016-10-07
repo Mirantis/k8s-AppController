@@ -10,4 +10,4 @@ vendor: Makefile
 	glide-vc --only-code --no-tests
 
 test: vendor glide.lock Makefile
-	go test $(go list ./... | grep -v /vendor/)
+	go list ./... | grep -v /vendor/ | xargs go test
