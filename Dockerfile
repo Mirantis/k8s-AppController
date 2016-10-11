@@ -16,7 +16,7 @@ RUN glide install --strip-vendor &&\
     mkdir -p /opt/kubeac &&\
     mv /go/src/github.com/Mirantis/k8s-AppController/manifests /opt/kubeac/manifests &&\
     glide cache-clear &&\
-    rm -fr /usr/local/go /go &&\
+    rm -fr /usr/local/go /go
 
 RUN mkdir -p /etc/sv/ac
 ADD ac_service.sh /etc/sv/ac/run
