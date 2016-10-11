@@ -321,3 +321,73 @@ func TestGraphAllResourceTypes(t *testing.T) {
 			5, len(depGraph))
 	}
 }
+
+func TestEmptyStatus(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient()
+	depGraph, err := BuildDependencyGraph(c, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, _, err := depGraph.GetStatus()
+	if status != Empty {
+		t.Errorf("Expected status to be Empty, but got %s", status)
+	}
+}
+
+func TestPreparedStatus(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+		"job/1",
+		"job/2",
+	)
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "job/1", Child: "job/2"},
+	)
+	depGraph, err := BuildDependencyGraph(c, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, _, err := depGraph.GetStatus()
+	if status != Prepared {
+		t.Errorf("Expected status to be Prepared, but got %s", status)
+	}
+}
+
+func TestRunningStatus(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+		"job/ready-1",
+		"job/2",
+	)
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "job/ready-1", Child: "job/2"},
+	)
+	depGraph, err := BuildDependencyGraph(c, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, _, err := depGraph.GetStatus()
+	if status != Running {
+		t.Errorf("Expected status to be Running, but got %s", status)
+	}
+}
+
+func TestFinishedStatus(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+		"job/ready-1",
+		"job/ready-2",
+	)
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "job/ready-1", Child: "job/ready-2"},
+	)
+	depGraph, err := BuildDependencyGraph(c, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, _, err := depGraph.GetStatus()
+	if status != Finished {
+		t.Errorf("Expected status to be Finished, but got %s", status)
+	}
+}

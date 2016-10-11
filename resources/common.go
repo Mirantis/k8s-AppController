@@ -22,6 +22,7 @@ import (
 //Resource is an interface for AppController supported resources
 type Resource interface {
 	Key() string
+	// Ensure that Status() supports nil as meta
 	Status(meta map[string]string) (string, error)
 	Create() error
 }
