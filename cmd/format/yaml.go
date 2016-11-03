@@ -43,7 +43,7 @@ func (f Yaml) Wrap(k8sObject string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		base := `apiVersion: appcontroller.k8s2/v1alpha1
+		base := `apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: ` + data.Kind + "-" + data.Metadata.Name + "\n"

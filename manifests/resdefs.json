@@ -1,6 +1,6 @@
 {
 	"metadata": {
-		"name": "definition.appcontroller.k8s2"
+		"name": "definition.appcontroller.k8s"
 	},
 	"apiVersion": "extensions/v1beta1",
 	"kind": "ThirdPartyResource",

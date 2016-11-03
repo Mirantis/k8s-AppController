@@ -60,16 +60,7 @@ type resourceDefinitions struct {
 }
 
 func newResourceDefinitions(c restclient.Config) (*resourceDefinitions, error) {
-	c.APIPath = "/apis"
-	c.ContentConfig = restclient.ContentConfig{
-		GroupVersion: &unversioned.GroupVersion{
-			Group:   "appcontroller.k8s2",
-			Version: "v1alpha1",
-		},
-		NegotiatedSerializer: api.Codecs,
-	}
-
-	rc, err := restclient.RESTClientFor(&c)
+	rc, err := thirdPartyResourceRESTClient(&c)
 	if err != nil {
 		return nil, err
 	}

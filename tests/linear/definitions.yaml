@@ -1,4 +1,4 @@
-apiVersion: appcontroller.k8s2/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: test-pod
@@ -23,7 +23,7 @@ pod:
           - /tmp/health
       name: test-container
 ---
-apiVersion: appcontroller.k8s2/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: test-job
@@ -43,7 +43,7 @@ job:
           command: [ "/bin/sh", "-c", "sleep 10; env"]
         restartPolicy: Never
 ---
-apiVersion: appcontroller.k8s2/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: test-service
@@ -60,7 +60,7 @@ service:
       port: 80
       targetPort: 9376
 ---
-apiVersion: appcontroller.k8s2/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: test-replicaset

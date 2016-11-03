@@ -1,12 +1,12 @@
 {
-    "apiVersion": "appcontroller.k8s2/v1alpha1",
+    "apiVersion": "appcontroller.k8s/v1alpha1",
     "kind": "Definition",
     "metadata": {
         "creationTimestamp": "2016-08-02T08:32:01Z",
         "name": "pod-definition-1",
         "namespace": "default",
         "resourceVersion": "78",
-        "selfLink": "/apis/appcontroller.k8s2/v1alpha1/namespaces/default/definitions/pod-definition-1",
+        "selfLink": "/apis/appcontroller.k8s/v1alpha1/namespaces/default/definitions/pod-definition-1",
         "uid": "956e5588-588b-11e6-b912-0cc47a430c04"
     },
     "pod": {

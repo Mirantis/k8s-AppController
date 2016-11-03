@@ -42,7 +42,7 @@ func TestWrapJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := `{
-    "apiVersion": "appcontroller.k8s2/v1alpha1",
+    "apiVersion": "appcontroller.k8s/v1alpha1",
     "kind": "Definition",
     "metadata": {
         "name": "job-name"
