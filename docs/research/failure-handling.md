@@ -13,7 +13,7 @@ Kubernetes object. Possible reactions include:
  2. **Rollback**: AC deletes all resourses that were created during current run.
  3. **Abort**: Immediate quit, keep all created resources.
  4. **Ignore this**: AC proceeds with creating resources as if current one was created successfully.
- 5. **Ignore all**: AC skips creation of all resources depending on the current one and all cascade dependencies, but proceeds with creating the rest of resources.
+ 5. **Ignore childer**: AC skips creation of all resources depending on the current one and all cascade dependencies, but proceeds with creating the rest of resources.
 
 Also during discussion in the community several additional features related  to the topic were requested:
 
