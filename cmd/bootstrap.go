@@ -111,7 +111,6 @@ func bootstrap(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	config.Insecure = true
 
 	c := *unversioned.NewOrDie(config)
 
