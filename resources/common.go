@@ -30,6 +30,16 @@ var KindToResource = map[string]interfaces.Resource{
 	"service":    Service{},
 }
 
+var Kinds = getKeys(KindToResource)
+
+func getKeys(m map[string]interfaces.Resource) (keys []string) {
+	for key, _ := range m {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
 func resourceListReady(resources []interfaces.Resource) (string, error) {
 	for _, r := range resources {
 		log.Printf("Checking status for resource %s", r.Key())

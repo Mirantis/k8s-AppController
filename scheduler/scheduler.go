@@ -144,7 +144,7 @@ func NewScheduledResource(kind string, name string,
 	resource_template, ok := resources.KindToResource[kind]
 	if !ok {
 		//TODO: get kinds from KindToResourceKeys
-		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod', 'job', 'service', 'replicaset' or 'daemonset'", kind)
+		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected '%s'", kind, strings.Join(resources.Kinds, "', '"))
 	}
 	r = newResource(name, resDefs, c, resource_template)
 
