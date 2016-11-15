@@ -22,10 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Mirantis/k8s-AppController/client"
-	"github.com/Mirantis/k8s-AppController/resources"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/labels"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/resources"
 )
 
 // ScheduledResourceStatus describes possible status of a single resource
@@ -76,7 +78,7 @@ type ScheduledResource struct {
 	Requires   []*ScheduledResource
 	RequiredBy []*ScheduledResource
 	Status     ScheduledResourceStatus
-	resources.Resource
+	interfaces.Resource
 	// parentKey -> dependencyMetadata
 	Meta map[string]map[string]string
 	sync.RWMutex
@@ -120,105 +122,36 @@ func (d *ScheduledResource) IsBlocked() bool {
 // ScheduledResource pointers
 type DependencyGraph map[string]*ScheduledResource
 
-func newResourceForPod(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
+func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.Resource) interfaces.Resource {
 	for _, rd := range resDefs {
-		if rd.Pod != nil && rd.Pod.Name == name {
-			log.Println("Found resource definition for pod", name)
-			return resources.NewPod(rd.Pod, c.Pods())
+		if resourceTemplate.NameMatches(rd, name) {
+			log.Println("Found resource definition for ", name)
+			return resourceTemplate.New(rd, c)
 		}
 	}
 
-	log.Printf("Resource definition for pod '%s' not found, so it is expected to exist already", name)
-	return resources.NewExistingPod(name, c.Pods())
-}
+	log.Printf("Resource definition for '%s' not found, so it is expected to exist already", name)
+	return resourceTemplate.NewExisting(name, c)
 
-func newResourceForJob(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
-	for _, rd := range resDefs {
-		if rd.Job != nil && rd.Job.Name == name {
-			log.Println("Found resource definition for job", name)
-			return resources.NewJob(rd.Job, c.Jobs())
-		}
-	}
-
-	log.Printf("Resource definition for job '%s' not found, so it is expected to exist already", name)
-	return resources.NewExistingJob(name, c.Jobs())
-}
-
-func newResourceForService(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
-	for _, rd := range resDefs {
-		if rd.Service != nil && rd.Service.Name == name {
-			log.Println("Found resource definition for service", name)
-			return resources.NewService(rd.Service, c.Services(), c)
-		}
-	}
-
-	log.Printf("Resource definition for service '%s' not found, so it is expected to exist already", name)
-	return resources.NewExistingService(name, c.Services())
-}
-
-func newResourceForReplicaSet(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
-	for _, rd := range resDefs {
-		if rd.ReplicaSet != nil && rd.ReplicaSet.Name == name {
-			log.Println("Found resource definition for replica set", name)
-			return resources.NewReplicaSet(rd.ReplicaSet, c.ReplicaSets())
-		}
-	}
-
-	log.Printf("Resource definition for replica set '%s' not found, so it is expected to exist already", name)
-	return resources.NewExistingReplicaSet(name, c.ReplicaSets())
-}
-
-func newResourceForPetSet(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
-	for _, rd := range resDefs {
-		if rd.PetSet != nil && rd.PetSet.Name == name {
-			log.Println("Found resource definition for pet set", name)
-			return resources.NewPetSet(rd.PetSet, c.PetSets(), c)
-		}
-	}
-
-	log.Printf("Resource definition for pet set '%s' not found, so it is expected to exist already", name)
-	return resources.NewExistingPetSet(name, c.PetSets(), c)
-}
-
-func newResourceForDaemonSet(name string, resDefs []client.ResourceDefinition, c client.Interface) resources.Resource {
-	for _, rd := range resDefs {
-		if rd.DaemonSet != nil && rd.DaemonSet.Name == name {
-			log.Println("Found resource definition for daemon set", name)
-			return resources.NewDaemonSet(rd.DaemonSet, c.DaemonSets())
-		}
-	}
-
-	log.Printf("Resource definition for daemon set '%s' not found, so it is expected to exist already", name)
-	return resources.NewExistingDaemonSet(name, c.DaemonSets())
 }
 
 // NewScheduledResource is a constructor for ScheduledResource
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
-	var r resources.Resource
+	var r interfaces.Resource
 
-	if kind == "pod" {
-		r = newResourceForPod(name, resDefs, c)
-	} else if kind == "job" {
-		r = newResourceForJob(name, resDefs, c)
-	} else if kind == "service" {
-		r = newResourceForService(name, resDefs, c)
-	} else if kind == "replicaset" {
-		r = newResourceForReplicaSet(name, resDefs, c)
-	} else if kind == "petset" {
-		r = newResourceForPetSet(name, resDefs, c)
-	} else if kind == "daemonset" {
-		r = newResourceForDaemonSet(name, resDefs, c)
-	} else {
-		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected 'pod', 'job', 'service', 'replicaset' or 'daemonset'", kind)
+	resourceTemplate, ok := resources.KindToResource[kind]
+	if !ok {
+		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected '%s'", kind, strings.Join(resources.Kinds, "', '"))
 	}
+	r = newResource(name, resDefs, c, resourceTemplate)
 
 	return NewScheduledResourceFor(r), nil
 }
 
 //NewScheduledResourceFor returns new scheduled resource for given resource in init state
-func NewScheduledResourceFor(r resources.Resource) *ScheduledResource {
+func NewScheduledResourceFor(r interfaces.Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
 		Resource: r,

@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 // PetSet is a wrapper for K8s PetSet object
@@ -58,7 +59,7 @@ func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.I
 	if err != nil {
 		return "error", err
 	}
-	resources := make([]Resource, 0, len(pods.Items))
+	resources := make([]interfaces.Resource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		p := pod
 		resources = append(resources, NewPod(&p, apiClient.Pods()))
@@ -102,6 +103,22 @@ func (p PetSet) Status(meta map[string]string) (string, error) {
 	return petSetStatus(p.Client, p.PetSet.Name, p.APIClient)
 }
 
+// NameMatches gets resource definition and a name and checks if
+// the PetSet part of resource definition has matching name.
+func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.PetSet != nil && def.PetSet.Name == name
+}
+
+// New returns new PetSet based on resource definition
+func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewPetSet(def.PetSet, c.PetSets(), c)
+}
+
+// NewExisting returns new ExistingPetSet based on resource definition
+func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingPetSet(name, c.PetSets(), c)
+}
+
 // NewPetSet is a constructor
 func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface) PetSet {
 	return PetSet{PetSet: petSet, Client: client, APIClient: apiClient}
@@ -112,6 +129,7 @@ type ExistingPetSet struct {
 	Name      string
 	Client    unversioned.PetSetInterface
 	APIClient client.Interface
+	PetSet
 }
 
 // Key returns PetSet name

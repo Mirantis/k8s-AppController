@@ -17,17 +17,33 @@ package resources
 import (
 	"fmt"
 	"log"
+
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
-//Resource is an interface for AppController supported resources
-type Resource interface {
-	Key() string
-	// Ensure that Status() supports nil as meta
-	Status(meta map[string]string) (string, error)
-	Create() error
+// KindToResource is a map mapping kind strings to empty structs representing proper resources
+// structs implement interfaces.Resource
+var KindToResource = map[string]interfaces.Resource{
+	"daemonset":  DaemonSet{},
+	"job":        Job{},
+	"petset":     PetSet{},
+	"pod":        Pod{},
+	"replicaset": ReplicaSet{},
+	"service":    Service{},
 }
 
-func resourceListReady(resources []Resource) (string, error) {
+// Kinds is slice of keys from KindToResource
+var Kinds = getKeys(KindToResource)
+
+func getKeys(m map[string]interfaces.Resource) (keys []string) {
+	for key := range m {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func resourceListReady(resources []interfaces.Resource) (string, error) {
 	for _, r := range resources {
 		log.Printf("Checking status for resource %s", r.Key())
 		status, err := r.Status(nil)

@@ -21,6 +21,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 type ReplicaSet struct {
@@ -87,6 +90,22 @@ func (r ReplicaSet) Status(meta map[string]string) (string, error) {
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
 }
 
+// NameMatches gets resource definition and a name and checks if
+// the ReplicaSet part of resource definition has matching name.
+func (r ReplicaSet) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.ReplicaSet != nil && def.ReplicaSet.Name == name
+}
+
+// New returns new ReplicaSet based on resource definition
+func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets())
+}
+
+// NewExisting returns new ExistingReplicaSet based on resource definition
+func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingReplicaSet(name, c.ReplicaSets())
+}
+
 func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface) ReplicaSet {
 	return ReplicaSet{ReplicaSet: replicaSet, Client: client}
 }
@@ -94,6 +113,7 @@ func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.Replica
 type ExistingReplicaSet struct {
 	Name   string
 	Client unversioned.ReplicaSetInterface
+	ReplicaSet
 }
 
 func (r ExistingReplicaSet) Key() string {
