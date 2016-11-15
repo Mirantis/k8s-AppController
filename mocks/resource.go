@@ -14,6 +14,11 @@
 
 package mocks
 
+import (
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
+)
+
 //Resource is a fake resource
 type Resource struct {
 	key    string
@@ -33,6 +38,18 @@ func (c *Resource) Status(meta map[string]string) (string, error) {
 //Create does nothing
 func (c *Resource) Create() error {
 	return nil
+}
+
+func (c *Resource) NameMatches(_ client.ResourceDefinition, _ string) bool {
+	return true
+}
+
+func (c *Resource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Resource {
+	return NewResource("fake", "ready")
+}
+
+func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.Resource {
+	return NewResource(name, "ready")
 }
 
 //NewResource creates new instance of Resource

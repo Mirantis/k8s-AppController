@@ -20,6 +20,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 type Job struct {
@@ -69,6 +72,18 @@ func (s Job) Create() error {
 	return err
 }
 
+func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.Job != nil && def.Job.Name == name
+}
+
+func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewJob(def.Job, c.Jobs())
+}
+
+func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingJob(name, c.Jobs())
+}
+
 func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
 	return Job{Job: job, Client: client}
 }
@@ -76,6 +91,7 @@ func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
 type ExistingJob struct {
 	Name   string
 	Client unversioned.JobInterface
+	Job
 }
 
 func (s ExistingJob) Key() string {

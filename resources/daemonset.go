@@ -6,6 +6,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 //DaemonSet is wrapper for K8s DaemonSet object
@@ -58,6 +61,18 @@ func (d DaemonSet) Create() error {
 	return err
 }
 
+func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.DaemonSet != nil && def.DaemonSet.Name == name
+}
+
+func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewDaemonSet(def.DaemonSet, c.DaemonSets())
+}
+
+func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingDaemonSet(name, c.DaemonSets())
+}
+
 //NewDaemonSet is a constructor
 func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetInterface) DaemonSet {
 	return DaemonSet{DaemonSet: daemonset, Client: client}
@@ -67,6 +82,7 @@ func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetI
 type ExistingDaemonSet struct {
 	Name   string
 	Client unversioned.DaemonSetInterface
+	DaemonSet
 }
 
 //UpdateMeta does nothing at the moment
