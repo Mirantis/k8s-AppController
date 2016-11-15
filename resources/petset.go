@@ -103,14 +103,18 @@ func (p PetSet) Status(meta map[string]string) (string, error) {
 	return petSetStatus(p.Client, p.PetSet.Name, p.APIClient)
 }
 
+// NameMatches gets resource definition and a name and checks if
+// the PetSet part of resource definition has matching name.
 func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.PetSet != nil && def.PetSet.Name == name
 }
 
+// New returns new PetSet based on resource definition
 func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
 	return NewPetSet(def.PetSet, c.PetSets(), c)
 }
 
+// NewExisting returns new ExistingPetSet based on resource definition
 func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingPetSet(name, c.PetSets(), c)
 }

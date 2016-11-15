@@ -61,14 +61,18 @@ func (d DaemonSet) Create() error {
 	return err
 }
 
+// NameMatches gets resource definition and a name and checks if
+// the DaemonSet part of resource definition has matching name.
 func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.DaemonSet != nil && def.DaemonSet.Name == name
 }
 
+// New returns new DaemonSet based on resource definition
 func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
 	return NewDaemonSet(def.DaemonSet, c.DaemonSets())
 }
 
+// NewExisting returns new ExistingDaemonSet based on resource definition
 func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingDaemonSet(name, c.DaemonSets())
 }

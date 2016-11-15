@@ -120,14 +120,18 @@ func (s Service) Status(meta map[string]string) (string, error) {
 	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
 }
 
+// NameMatches gets resource definition and a name and checks if
+// the Service part of resource definition has matching name.
 func (s Service) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Service != nil && def.Service.Name == name
 }
 
+// New returns new Service based on resource definition
 func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
 	return NewService(def.Service, c.Services(), c)
 }
 
+// NewExisting returns new ExistingService based on resource definition
 func (s Service) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingService(name, c.Services())
 }

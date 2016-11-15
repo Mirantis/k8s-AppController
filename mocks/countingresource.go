@@ -54,14 +54,17 @@ func (c *CountingResource) Create() error {
 	return nil
 }
 
+// NameMatches returns true
 func (c *CountingResource) NameMatches(_ client.ResourceDefinition, _ string) bool {
 	return true
 }
 
+// New returns new fake resource
 func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Resource {
 	return NewResource("fake", "ready")
 }
 
+// NewExisting returns new existing resource
 func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.Resource {
 	return NewResource(name, "ready")
 }

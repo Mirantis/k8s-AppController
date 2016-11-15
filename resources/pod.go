@@ -84,14 +84,18 @@ func (p Pod) Status(meta map[string]string) (string, error) {
 	return podStatus(p.Client, p.Pod.Name)
 }
 
+// NameMatches gets resource definition and a name and checks if
+// the Pod part of resource definition has matching name.
 func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Pod != nil && def.Pod.Name == name
 }
 
+// New returns new Pod based on resource definition
 func (p Pod) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
 	return NewPod(def.Pod, c.Pods())
 }
 
+// NewExisting returns new ExistingPod based on resource definition
 func (p Pod) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingPod(name, c.Pods())
 }
