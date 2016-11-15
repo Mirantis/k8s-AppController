@@ -17,6 +17,7 @@ package mocks
 import (
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 //Resource is a fake resource
@@ -53,6 +54,11 @@ func (c *Resource) New(_ client.ResourceDefinition, _ client.Interface) interfac
 // NewExisting returns new existing resource
 func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.Resource {
 	return NewResource(name, "ready")
+}
+
+// GetDependencyReport returns report based on status
+func (c *Resource) GetDependencyReport(meta map[string]string) report.DependencyReport {
+	return report.SimpleDependencyReport(c.key, c.status, nil)
 }
 
 //NewResource creates new instance of Resource

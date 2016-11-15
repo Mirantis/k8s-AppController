@@ -25,6 +25,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type Service struct {
@@ -136,6 +137,12 @@ func (s Service) NewExisting(name string, c client.Interface) interfaces.Resourc
 	return NewExistingService(name, c.Services())
 }
 
+// GetDependencyReport returns a DependencyReport for this Service
+func (s Service) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := serviceStatus(s.Client, s.Service.Name, s.APIClient)
+	return report.SimpleDependencyReport(s.Service.Name, status, err)
+}
+
 //NewService is Service constructor. Needs apiClient for service status checks
 func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface) Service {
 	return Service{Service: service, Client: client, APIClient: apiClient}
@@ -168,6 +175,12 @@ func (s ExistingService) Create() error {
 
 func (s ExistingService) Status(meta map[string]string) (string, error) {
 	return serviceStatus(s.Client, s.Name, s.APIClient)
+}
+
+// GetDependencyReport returns a DependencyReport for this Service
+func (s ExistingService) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := serviceStatus(s.Client, s.Name, s.APIClient)
+	return report.SimpleDependencyReport(s.Name, status, err)
 }
 
 func NewExistingService(name string, client unversioned.ServiceInterface) ExistingService {

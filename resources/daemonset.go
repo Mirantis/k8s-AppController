@@ -4,11 +4,11 @@ import (
 	"errors"
 	"log"
 
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
+	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 //DaemonSet is wrapper for K8s DaemonSet object
@@ -45,6 +45,12 @@ func (d DaemonSet) Key() string {
 // Status returns DaemonSet status as a string "ready" means that its dependencies can be created
 func (d DaemonSet) Status(meta map[string]string) (string, error) {
 	return daemonSetStatus(d.Client, d.DaemonSet.Name)
+}
+
+// GetDependencyReport returns a DependencyReport for this Service
+func (d DaemonSet) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := daemonSetStatus(d.Client, d.DaemonSet.Name)
+	return report.SimpleDependencyReport(d.DaemonSet.Name, status, err)
 }
 
 //Create looks for DaemonSet in K8s and creates it if not present
@@ -102,6 +108,12 @@ func (d ExistingDaemonSet) Key() string {
 // Status returns DaemonSet status as a string "ready" means that its dependencies can be created
 func (d ExistingDaemonSet) Status(meta map[string]string) (string, error) {
 	return daemonSetStatus(d.Client, d.Name)
+}
+
+// GetDependencyReport returns a DependencyReport for this Service
+func (d ExistingDaemonSet) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := daemonSetStatus(d.Client, d.Name)
+	return report.SimpleDependencyReport(d.Name, status, err)
 }
 
 //Create looks for existing DaemonSet and returns error if there is no such DaemonSet

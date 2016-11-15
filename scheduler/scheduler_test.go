@@ -329,7 +329,7 @@ func TestEmptyStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Empty {
 		t.Errorf("Expected status to be Empty, but got %s", status)
 	}
@@ -348,7 +348,7 @@ func TestPreparedStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Prepared {
 		t.Errorf("Expected status to be Prepared, but got %s", status)
 	}
@@ -367,7 +367,7 @@ func TestRunningStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Running {
 		t.Errorf("Expected status to be Running, but got %s", status)
 	}
@@ -386,7 +386,7 @@ func TestFinishedStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Finished {
 		t.Errorf("Expected status to be Finished, but got %s", status)
 	}

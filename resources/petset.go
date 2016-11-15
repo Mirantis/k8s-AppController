@@ -27,6 +27,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 // PetSet is a wrapper for K8s PetSet object
@@ -119,6 +120,12 @@ func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource
 	return NewExistingPetSet(name, c.PetSets(), c)
 }
 
+// GetDependencyReport returns a DependencyReport for this Petset
+func (p PetSet) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := petSetStatus(p.Client, p.PetSet.Name, p.APIClient)
+	return report.SimpleDependencyReport(p.PetSet.Name, status, err)
+}
+
 // NewPetSet is a constructor
 func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface) PetSet {
 	return PetSet{PetSet: petSet, Client: client, APIClient: apiClient}
@@ -155,6 +162,12 @@ func (p ExistingPetSet) Create() error {
 // Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
 func (p ExistingPetSet) Status(meta map[string]string) (string, error) {
 	return petSetStatus(p.Client, p.Name, p.APIClient)
+}
+
+// GetDependencyReport returns a DependencyReport for this Petset
+func (p ExistingPetSet) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := petSetStatus(p.Client, p.Name, p.APIClient)
+	return report.SimpleDependencyReport(p.Name, status, err)
 }
 
 // NewExistingPetSet is a constructor

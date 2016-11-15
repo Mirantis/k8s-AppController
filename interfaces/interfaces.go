@@ -14,7 +14,10 @@
 
 package interfaces
 
-import "github.com/Mirantis/k8s-AppController/client"
+import (
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/report"
+)
 
 //Resource is an interface for AppController supported resources
 type Resource interface {
@@ -25,4 +28,5 @@ type Resource interface {
 	NameMatches(client.ResourceDefinition, string) bool
 	New(client.ResourceDefinition, client.Interface) Resource
 	NewExisting(string, client.Interface) Resource
+	GetDependencyReport(meta map[string]string) report.DependencyReport
 }
