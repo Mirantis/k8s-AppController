@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Mirantis/k8s-AppController/mocks"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 func TestBuildDependencyGraph(t *testing.T) {
@@ -93,7 +94,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 func TestIsBlocked(t *testing.T) {
 	one := &ScheduledResource{
-		Resource: mocks.NewResource("fake1", "not ready"),
+		Reporter: report.SimpleReporter{Resource: mocks.NewResource("fake1", "not ready")},
 		Status:   Init,
 		Meta:     map[string]map[string]string{},
 	}
@@ -103,7 +104,7 @@ func TestIsBlocked(t *testing.T) {
 	}
 
 	two := &ScheduledResource{
-		Resource: mocks.NewResource("fake2", "ready"),
+		Reporter: report.SimpleReporter{Resource: mocks.NewResource("fake2", "ready")},
 		Status:   Ready,
 		Meta:     map[string]map[string]string{},
 	}
@@ -115,7 +116,7 @@ func TestIsBlocked(t *testing.T) {
 	}
 
 	three := &ScheduledResource{
-		Resource: mocks.NewResource("fake3", "not ready"),
+		Reporter: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
 		Status:   Ready,
 		Meta:     map[string]map[string]string{},
 	}
@@ -277,7 +278,7 @@ func TestLimitConcurrency(t *testing.T) {
 
 		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
-			r := mocks.NewCountingResource(key, counter, time.Second*2)
+			r := report.SimpleReporter{Resource: mocks.NewCountingResource(key, counter, time.Second*2)}
 			sr := NewScheduledResourceFor(r)
 			depGraph[sr.Key()] = sr
 		}
@@ -331,7 +332,7 @@ func TestEmptyStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Empty {
 		t.Errorf("Expected status to be Empty, but got %s", status)
 	}
@@ -350,7 +351,7 @@ func TestPreparedStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Prepared {
 		t.Errorf("Expected status to be Prepared, but got %s", status)
 	}
@@ -369,7 +370,7 @@ func TestRunningStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Running {
 		t.Errorf("Expected status to be Running, but got %s", status)
 	}
@@ -388,8 +389,54 @@ func TestFinishedStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _, err := depGraph.GetStatus()
+	status, _ := depGraph.GetStatus()
 	if status != Finished {
 		t.Errorf("Expected status to be Finished, but got %s", status)
+	}
+}
+
+// TestGraph tests a simple DependencyGraph report
+func TestGraph(t *testing.T) {
+	c := mocks.NewClient()
+	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+		"job/1",
+		"job/ready-2",
+		"job/3",
+	)
+	c.DependenciesInterface = mocks.NewDependencyClient(
+		mocks.Dependency{Parent: "job/ready-2", Child: "job/1"},
+		mocks.Dependency{Parent: "job/3", Child: "job/1"},
+	)
+	depGraph, err := BuildDependencyGraph(c, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, report := depGraph.GetStatus()
+	if status != Running {
+		t.Errorf("Expected status to be Running, but got %s", status)
+	}
+	if len(report) != 3 {
+		t.Errorf("Wrong length of a graph 3 != %d", len(report))
+	}
+	for _, nodeReport := range report {
+		if nodeReport.Dependent == "job/1" {
+			if len(nodeReport.Dependencies) != 2 {
+				t.Errorf("Wrong length of dependencies 2 != %d", len(nodeReport.Dependencies))
+				for _, dependency := range nodeReport.Dependencies {
+					if dependency.Dependency == "job/ready-2" {
+						if dependency.Blocks {
+							t.Errorf("Job 2 should not block")
+						}
+					} else if dependency.Dependency == "job/3" {
+						if !dependency.Blocks {
+							t.Errorf("Job 3 should block")
+						}
+					} else {
+						t.Errorf("Unexpected dependency %s", dependency.Dependency)
+					}
+				}
+
+			}
+		}
 	}
 }

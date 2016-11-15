@@ -27,6 +27,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 	"github.com/Mirantis/k8s-AppController/resources"
 )
 
@@ -78,7 +79,7 @@ type ScheduledResource struct {
 	Requires   []*ScheduledResource
 	RequiredBy []*ScheduledResource
 	Status     ScheduledResourceStatus
-	interfaces.Resource
+	interfaces.Reporter
 	// parentKey -> dependencyMetadata
 	Meta map[string]map[string]string
 	sync.RWMutex
@@ -96,9 +97,9 @@ func (d *ScheduledResource) IsBlocked() bool {
 
 		r.RLock()
 		meta := r.Meta[d.Key()]
-		switch r.Resource.(type) {
+		switch r.Reporter.GetResource().(type) {
 		case resources.Service:
-			status, err := r.Resource.Status(meta)
+			status, err := r.Reporter.Status(meta)
 			if err != nil || status != "ready" {
 				isBlocked = true
 			}
@@ -106,7 +107,7 @@ func (d *ScheduledResource) IsBlocked() bool {
 			if meta == nil && r.Status != Ready {
 				isBlocked = true
 			} else {
-				status, err := r.Resource.Status(meta)
+				status, err := r.Reporter.Status(meta)
 				if err != nil || status != "ready" {
 					isBlocked = true
 				}
@@ -122,7 +123,7 @@ func (d *ScheduledResource) IsBlocked() bool {
 // ScheduledResource pointers
 type DependencyGraph map[string]*ScheduledResource
 
-func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.ResourceTemplate) interfaces.Resource {
+func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.ResourceTemplate) interfaces.Reporter {
 	for _, rd := range resDefs {
 		if resourceTemplate.NameMatches(rd, name) {
 			log.Println("Found resource definition for ", name)
@@ -139,7 +140,7 @@ func newResource(name string, resDefs []client.ResourceDefinition, c client.Inte
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
-	var r interfaces.Resource
+	var r interfaces.Reporter
 
 	resourceTemplate, ok := resources.KindToResourceTemplate[kind]
 	if !ok {
@@ -151,10 +152,10 @@ func NewScheduledResource(kind string, name string,
 }
 
 //NewScheduledResourceFor returns new scheduled resource for given resource in init state
-func NewScheduledResourceFor(r interfaces.Resource) *ScheduledResource {
+func NewScheduledResourceFor(r interfaces.Reporter) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
-		Resource: r,
+		Reporter: r,
 		Meta:     map[string]map[string]string{},
 	}
 }
@@ -230,19 +231,19 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		var sr *ScheduledResource
 
 		if r.Pod != nil {
-			sr = NewScheduledResourceFor(resources.NewPod(r.Pod, c.Pods()))
+			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewPod(r.Pod, c.Pods())})
 		} else if r.Job != nil {
-			sr = NewScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
+			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewJob(r.Job, c.Jobs())})
 		} else if r.Service != nil {
-			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services(), c))
+			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewService(r.Service, c.Services(), c)})
 		} else if r.ReplicaSet != nil {
 			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
 		} else if r.PetSet != nil {
-			sr = NewScheduledResourceFor(resources.NewPetSet(r.PetSet, c.PetSets(), c))
+			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewPetSet(r.PetSet, c.PetSets(), c)})
 		} else if r.DaemonSet != nil {
-			sr = NewScheduledResourceFor(resources.NewDaemonSet(r.DaemonSet, c.DaemonSets()))
+			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewDaemonSet(r.DaemonSet, c.DaemonSets())})
 		} else if r.ConfigMap != nil {
-			sr = NewScheduledResourceFor(resources.NewConfigMap(r.ConfigMap, c.ConfigMaps()))
+			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewConfigMap(r.ConfigMap, c.ConfigMaps())})
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
@@ -298,7 +299,7 @@ func createResources(toCreate chan *ScheduledResource, created chan string, ccLi
 			log.Printf("Checking status for %s", r.Key())
 			for {
 				time.Sleep(CheckInterval)
-				status, err := r.Resource.Status(nil)
+				status, err := r.Reporter.Status(nil)
 				if err != nil {
 					log.Printf("Error getting status for resource %s: %v", r.Key(), err)
 				}
@@ -433,32 +434,54 @@ func assignVertex(vertex, root *ScheduledResource, assigned map[string]bool, com
 	}
 }
 
+// GetNodeReport acts as a more verbose version of IsBlocked. It performs the
+// same check as IsBlocked, but returns the DeploymentReport
+func (d *ScheduledResource) GetNodeReport(name string) report.NodeReport {
+	var ready bool
+	isBlocked := false
+	dependencies := make([]interfaces.DependencyReport, 0, len(d.Requires))
+	status, err := d.Reporter.Status(nil)
+	if err != nil {
+		ready = false
+	} else {
+		ready = status == "ready"
+	}
+	i := 0
+	for _, r := range d.Requires {
+		r.RLock()
+		meta := r.Meta[d.Key()]
+		depReport := r.GetDependencyReport(meta)
+		if depReport.Blocks {
+			isBlocked = true
+		}
+		dependencies = append(dependencies, depReport)
+		r.RUnlock()
+		i++
+	}
+	return report.NodeReport{
+		Dependent:    name,
+		Dependencies: dependencies,
+		Blocked:      isBlocked,
+		Ready:        ready,
+	}
+}
+
 // GetStatus generates data for getting the status of deployment. Returns
 // a DeploymentStatus and a human readable report string
 // TODO: Allow for other formats of report (e.g. json for visualisations)
-func (graph DependencyGraph) GetStatus() (DeploymentStatus, string, error) {
-	report := make([]string, len(graph), len(graph))
+func (graph *DependencyGraph) GetStatus() (DeploymentStatus, report.DeploymentReport) {
 	var readyExist, nonReadyExist bool
 	var status DeploymentStatus
-	var blockedStr string
+	report := make(report.DeploymentReport, 0, len(*graph))
 	i := 0
-	for key, resource := range graph {
-		status, err := resource.Resource.Status(nil)
-		if err != nil {
-			status = err.Error()
-			nonReadyExist = true
-		}
-		if status == "ready" {
+	for key, resource := range *graph {
+		depReport := resource.GetNodeReport(key)
+		report = append(report, depReport)
+		if depReport.Ready {
 			readyExist = true
 		} else {
 			nonReadyExist = true
 		}
-		if resource.IsBlocked() {
-			blockedStr = ", Blocked"
-		}
-		report[i] = fmt.Sprintf(
-			"%s, STATUS: %s%s", key, status, blockedStr,
-		)
 		i++
 	}
 	switch {
@@ -471,5 +494,5 @@ func (graph DependencyGraph) GetStatus() (DeploymentStatus, string, error) {
 	default:
 		status = Empty
 	}
-	return status, strings.Join(report, "\n"), nil
+	return status, report
 }

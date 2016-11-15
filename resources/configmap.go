@@ -22,6 +22,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type ConfigMap struct {
@@ -87,10 +88,12 @@ func NewExistingConfigMap(name string, client unversioned.ConfigMapsInterface) E
 	return ExistingConfigMap{Name: name, Client: client}
 }
 
-func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewConfigMap(def.ConfigMap, ci.ConfigMaps())
+// New returns a new object wrapped as Reporter
+func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewConfigMap(def.ConfigMap, ci.ConfigMaps())}
 }
 
-func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Resource {
-	return NewExistingConfigMap(name, ci.ConfigMaps())
+// NewExisting returns a new object based on existing one wrapped as Reporter
+func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{NewExistingConfigMap(name, ci.ConfigMaps())}
 }

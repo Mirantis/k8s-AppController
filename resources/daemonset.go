@@ -4,11 +4,11 @@ import (
 	"errors"
 	"log"
 
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
+	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 //DaemonSet is wrapper for K8s DaemonSet object
@@ -73,13 +73,13 @@ func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool 
 }
 
 // New returns new DaemonSet based on resource definition
-func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewDaemonSet(def.DaemonSet, c.DaemonSets())
+func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewDaemonSet(def.DaemonSet, c.DaemonSets())}
 }
 
 // NewExisting returns new ExistingDaemonSet based on resource definition
-func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingDaemonSet(name, c.DaemonSets())
+func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewExistingDaemonSet(name, c.DaemonSets())}
 }
 
 //NewDaemonSet is a constructor

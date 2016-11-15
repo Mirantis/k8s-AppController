@@ -25,6 +25,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type Service struct {
@@ -132,13 +133,13 @@ func (s Service) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 // New returns new Service based on resource definition
-func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewService(def.Service, c.Services(), c)
+func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewService(def.Service, c.Services(), c)}
 }
 
 // NewExisting returns new ExistingService based on resource definition
-func (s Service) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingService(name, c.Services())
+func (s Service) NewExisting(name string, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewExistingService(name, c.Services())}
 }
 
 //NewService is Service constructor. Needs apiClient for service status checks
