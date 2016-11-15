@@ -23,6 +23,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type Pod struct {
@@ -100,6 +101,12 @@ func (p Pod) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingPod(name, c.Pods())
 }
 
+// GetDependencyReport returns DependencyReport for this Pod
+func (p Pod) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := podStatus(p.Client, p.Pod.Name)
+	return report.SimpleDependencyReport(p.Pod.Name, status, err)
+}
+
 func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
 	return Pod{Pod: pod, Client: client}
 }
@@ -130,6 +137,12 @@ func (p ExistingPod) Create() error {
 
 func (p ExistingPod) Status(meta map[string]string) (string, error) {
 	return podStatus(p.Client, p.Name)
+}
+
+// GetDependencyReport returns DependencyReport for this Pod
+func (p ExistingPod) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := podStatus(p.Client, p.Name)
+	return report.SimpleDependencyReport(p.Name, status, err)
 }
 
 func NewExistingPod(name string, client unversioned.PodInterface) ExistingPod {

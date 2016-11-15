@@ -27,6 +27,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 	"github.com/Mirantis/k8s-AppController/resources"
 )
 
@@ -431,32 +432,54 @@ func assignVertex(vertex, root *ScheduledResource, assigned map[string]bool, com
 	}
 }
 
+// GetNodeReport acts as a more verbose version of IsBlocked. It performs the
+// same check as IsBlocked, but returns the DeploymentReport
+func (d *ScheduledResource) GetNodeReport(name string) report.NodeReport {
+	var ready bool
+	isBlocked := false
+	dependencies := make([]report.DependencyReport, 0, len(d.Requires))
+	status, err := d.Resource.Status(nil)
+	if err != nil {
+		ready = false
+	} else {
+		ready = status == "ready"
+	}
+	i := 0
+	for _, r := range d.Requires {
+		r.RLock()
+		meta := r.Meta[d.Key()]
+		depReport := r.GetDependencyReport(meta)
+		if depReport.Blocks {
+			isBlocked = true
+		}
+		dependencies = append(dependencies, depReport)
+		r.RUnlock()
+		i++
+	}
+	return report.NodeReport{
+		Dependent:    name,
+		Dependencies: dependencies,
+		Blocked:      isBlocked,
+		Ready:        ready,
+	}
+}
+
 // GetStatus generates data for getting the status of deployment. Returns
 // a DeploymentStatus and a human readable report string
 // TODO: Allow for other formats of report (e.g. json for visualisations)
-func (graph DependencyGraph) GetStatus() (DeploymentStatus, string, error) {
-	report := make([]string, len(graph), len(graph))
+func (graph *DependencyGraph) GetStatus() (DeploymentStatus, report.DeploymentReport) {
 	var readyExist, nonReadyExist bool
 	var status DeploymentStatus
-	var blockedStr string
+	report := make(report.DeploymentReport, 0, len(*graph))
 	i := 0
-	for key, resource := range graph {
-		status, err := resource.Resource.Status(nil)
-		if err != nil {
-			status = err.Error()
-			nonReadyExist = true
-		}
-		if status == "ready" {
+	for key, resource := range *graph {
+		depReport := resource.GetNodeReport(key)
+		report = append(report, depReport)
+		if depReport.Ready {
 			readyExist = true
 		} else {
 			nonReadyExist = true
 		}
-		if resource.IsBlocked() {
-			blockedStr = ", Blocked"
-		}
-		report[i] = fmt.Sprintf(
-			"%s, STATUS: %s%s", key, status, blockedStr,
-		)
 		i++
 	}
 	switch {
@@ -469,5 +492,5 @@ func (graph DependencyGraph) GetStatus() (DeploymentStatus, string, error) {
 	default:
 		status = Empty
 	}
-	return status, strings.Join(report, "\n"), nil
+	return status, report
 }

@@ -18,11 +18,12 @@ import (
 	"errors"
 	"log"
 
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 
-	"github.com/Mirantis/k8s-AppController/client"
-	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type Job struct {
@@ -63,7 +64,6 @@ func (j Job) Status(meta map[string]string) (string, error) {
 func (j Job) Create() error {
 	log.Println("Looking for job", j.Job.Name)
 	status, err := j.Status(nil)
-
 	if err == nil {
 		log.Printf("Found job %s, status:%s", j.Job.Name, status)
 		log.Println("Skipping creation of job", j.Job.Name)
@@ -73,6 +73,12 @@ func (j Job) Create() error {
 	log.Println("Creating job", j.Job.Name)
 	j.Job, err = j.Client.Create(j.Job)
 	return err
+}
+
+// GetDependencyReport returns a DependencyReport for this Job
+func (j Job) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := jobStatus(j.Client, j.Job.Name)
+	return report.SimpleDependencyReport(j.Job.Name, status, err)
 }
 
 // NameMatches gets resource definition and a name and checks if
@@ -107,6 +113,12 @@ func (s ExistingJob) Key() string {
 
 func (s ExistingJob) Status(meta map[string]string) (string, error) {
 	return jobStatus(s.Client, s.Name)
+}
+
+// GetDependencyReport returns a DependencyReport for this Job
+func (s ExistingJob) GetDependencyReport(_ map[string]string) report.DependencyReport {
+	status, err := jobStatus(s.Client, s.Name)
+	return report.SimpleDependencyReport(s.Name, status, err)
 }
 
 func (s ExistingJob) Create() error {

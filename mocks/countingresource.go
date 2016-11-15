@@ -19,6 +19,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 //CountingResource is a fake resource that becomes ready after given timeout.
@@ -67,6 +68,12 @@ func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) 
 // NewExisting returns new existing resource
 func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.Resource {
 	return NewResource(name, "ready")
+}
+
+// GetDependencyReport returns a DependencyReport based on status of this resource
+func (c *CountingResource) GetDependencyReport(meta map[string]string) report.DependencyReport {
+	status, err := c.Status(meta)
+	return report.SimpleDependencyReport(c.key, status, err)
 }
 
 //NewCountingResource creates new instance of CountingResource

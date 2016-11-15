@@ -16,6 +16,7 @@ package resources
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 
@@ -24,6 +25,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type ReplicaSet struct {
@@ -61,6 +63,41 @@ func replicaSetStatus(r unversioned.ReplicaSetInterface, name string, meta map[s
 	}
 
 	return "ready", nil
+}
+
+func replicatSetReport(r unversioned.ReplicaSetInterface, name string, meta map[string]string) report.DependencyReport {
+	rs, err := r.Get(name)
+	if err != nil {
+		return report.ErrorReport(name, err)
+	}
+	successFactor, err := getSuccessFactor(meta)
+	if err != nil {
+		return report.ErrorReport(name, err)
+	}
+	percentage := (rs.Spec.Replicas * 100 / rs.Status.Replicas)
+	message := fmt.Sprintf(
+		"%d of %d replicas up (%d %%, needed %d%%)",
+		rs.Status.Replicas,
+		rs.Spec.Replicas,
+		percentage,
+		successFactor,
+	)
+	if percentage >= successFactor {
+		return report.DependencyReport{
+			Dependency: name,
+			Blocks:     false,
+			Percentage: int(percentage),
+			Needed:     int(successFactor),
+			Message:    message,
+		}
+	}
+	return report.DependencyReport{
+		Dependency: name,
+		Blocks:     false,
+		Percentage: int(percentage),
+		Needed:     int(successFactor),
+		Message:    message,
+	}
 }
 
 func replicaSetKey(name string) string {
@@ -106,6 +143,11 @@ func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Reso
 	return NewExistingReplicaSet(name, c.ReplicaSets())
 }
 
+// GetDependencyReport returns a DependencyReport for this replicaset
+func (r ReplicaSet) GetDependencyReport(meta map[string]string) report.DependencyReport {
+	return replicatSetReport(r.Client, r.ReplicaSet.Name, meta)
+}
+
 func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface) ReplicaSet {
 	return ReplicaSet{ReplicaSet: replicaSet, Client: client}
 }
@@ -136,6 +178,11 @@ func (r ExistingReplicaSet) Create() error {
 
 func (r ExistingReplicaSet) Status(meta map[string]string) (string, error) {
 	return replicaSetStatus(r.Client, r.Name, meta)
+}
+
+// GetDependencyReport returns a DependencyReport for this replicaset
+func (r ExistingReplicaSet) GetDependencyReport(meta map[string]string) report.DependencyReport {
+	return replicatSetReport(r.Client, r.Name, meta)
 }
 
 func NewExistingReplicaSet(name string, client unversioned.ReplicaSetInterface) ExistingReplicaSet {
