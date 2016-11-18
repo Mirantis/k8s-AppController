@@ -54,6 +54,11 @@ func (c *CountingResource) Create() error {
 	return nil
 }
 
+// Delete does nothing
+func (c *CountingResource) Delete() error {
+	return nil
+}
+
 // NameMatches returns true
 func (c *CountingResource) NameMatches(_ client.ResourceDefinition, _ string) bool {
 	return true

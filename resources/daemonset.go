@@ -61,6 +61,11 @@ func (d DaemonSet) Create() error {
 	return err
 }
 
+// Delete deletes DaemonSet from the cluster
+func (d DaemonSet) Delete() error {
+	return d.Client.Delete(d.DaemonSet.Name)
+}
+
 // NameMatches gets resource definition and a name and checks if
 // the DaemonSet part of resource definition has matching name.
 func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool {

@@ -98,6 +98,11 @@ func (p PetSet) Create() error {
 	return err
 }
 
+// Delete deletes PetSet from the cluster
+func (p PetSet) Delete() error {
+	return p.Client.Delete(p.PetSet.Name, nil)
+}
+
 // Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
 func (p PetSet) Status(meta map[string]string) (string, error) {
 	return petSetStatus(p.Client, p.PetSet.Name, p.APIClient)

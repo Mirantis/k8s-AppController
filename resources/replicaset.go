@@ -86,6 +86,11 @@ func (r ReplicaSet) Create() error {
 	return err
 }
 
+// Delete deletes ReplicaSet from the cluster
+func (r ReplicaSet) Delete() error {
+	return r.Client.Delete(r.ReplicaSet.Name, nil)
+}
+
 func (r ReplicaSet) Status(meta map[string]string) (string, error) {
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
 }

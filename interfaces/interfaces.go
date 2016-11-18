@@ -22,6 +22,7 @@ type Resource interface {
 	// Ensure that Status() supports nil as meta
 	Status(meta map[string]string) (string, error)
 	Create() error
+	Delete() error
 	NameMatches(client.ResourceDefinition, string) bool
 	New(client.ResourceDefinition, client.Interface) Resource
 	NewExisting(string, client.Interface) Resource

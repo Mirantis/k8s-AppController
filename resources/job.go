@@ -75,6 +75,11 @@ func (j Job) Create() error {
 	return err
 }
 
+// Delete deletes Job from the cluster
+func (j Job) Delete() error {
+	return j.Client.Delete(j.Job.Name, nil)
+}
+
 // NameMatches gets resource definition and a name and checks if
 // the Job part of resource definition has matching name.
 func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
