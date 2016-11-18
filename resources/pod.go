@@ -80,6 +80,11 @@ func (p Pod) Create() error {
 	return err
 }
 
+// Delete deletes pod from the cluster
+func (p Pod) Delete() error {
+	return p.Client.Delete(p.Pod.Name, nil)
+}
+
 func (p Pod) Status(meta map[string]string) (string, error) {
 	return podStatus(p.Client, p.Pod.Name)
 }
