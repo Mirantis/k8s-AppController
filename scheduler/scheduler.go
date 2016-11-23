@@ -122,7 +122,7 @@ func (d *ScheduledResource) IsBlocked() bool {
 // ScheduledResource pointers
 type DependencyGraph map[string]*ScheduledResource
 
-func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.Resource) interfaces.Resource {
+func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.ResourceTemplate) interfaces.Resource {
 	for _, rd := range resDefs {
 		if resourceTemplate.NameMatches(rd, name) {
 			log.Println("Found resource definition for ", name)
@@ -141,7 +141,7 @@ func NewScheduledResource(kind string, name string,
 
 	var r interfaces.Resource
 
-	resourceTemplate, ok := resources.KindToResource[kind]
+	resourceTemplate, ok := resources.KindToResourceTemplate[kind]
 	if !ok {
 		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected '%s'", kind, strings.Join(resources.Kinds, "', '"))
 	}

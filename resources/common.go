@@ -21,9 +21,9 @@ import (
 	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
-// KindToResource is a map mapping kind strings to empty structs representing proper resources
-// structs implement interfaces.Resource
-var KindToResource = map[string]interfaces.Resource{
+// KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
+// structs implement interfaces.ResourceTemplate
+var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"daemonset":  DaemonSet{},
 	"job":        Job{},
 	"petset":     PetSet{},
@@ -32,10 +32,10 @@ var KindToResource = map[string]interfaces.Resource{
 	"service":    Service{},
 }
 
-// Kinds is slice of keys from KindToResource
-var Kinds = getKeys(KindToResource)
+// Kinds is slice of keys from KindToResourceTemplate
+var Kinds = getKeys(KindToResourceTemplate)
 
-func getKeys(m map[string]interfaces.Resource) (keys []string) {
+func getKeys(m map[string]interfaces.ResourceTemplate) (keys []string) {
 	for key := range m {
 		keys = append(keys, key)
 	}

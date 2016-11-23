@@ -23,6 +23,10 @@ type Resource interface {
 	Status(meta map[string]string) (string, error)
 	Create() error
 	Delete() error
+}
+
+//ResourceTemplate is an interface for AppController supported resource templates
+type ResourceTemplate interface {
 	NameMatches(client.ResourceDefinition, string) bool
 	New(client.ResourceDefinition, client.Interface) Resource
 	NewExisting(string, client.Interface) Resource
