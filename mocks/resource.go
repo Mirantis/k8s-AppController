@@ -40,6 +40,11 @@ func (c *Resource) Create() error {
 	return nil
 }
 
+//Delete does nothing
+func (c *Resource) Delete() error {
+	return nil
+}
+
 // NameMatches returns true
 func (c *Resource) NameMatches(_ client.ResourceDefinition, _ string) bool {
 	return true

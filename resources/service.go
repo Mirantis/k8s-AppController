@@ -116,6 +116,11 @@ func (s Service) Create() error {
 	return err
 }
 
+// Delete deletes Service from the cluster
+func (s Service) Delete() error {
+	return s.Client.Delete(s.Service.Name)
+}
+
 func (s Service) Status(meta map[string]string) (string, error) {
 	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
 }
