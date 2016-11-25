@@ -43,7 +43,11 @@ func (p *configMapClient) List(opts api.ListOptions) (*api.ConfigMapList, error)
 }
 
 func (p *configMapClient) Get(name string) (*api.ConfigMap, error) {
-	return MakeConfigMap(name), nil
+	if name != "fail" {
+		return MakeConfigMap(name), nil
+	} else {
+		return MakeConfigMap(name), fmt.Errorf("Mock ConfigMap not created")
+	}
 }
 
 func (p *configMapClient) Delete(name string) error {
