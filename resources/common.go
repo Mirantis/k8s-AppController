@@ -31,6 +31,7 @@ var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"replicaset": ReplicaSet{},
 	"service":    Service{},
 	"configmap":  ConfigMap{},
+	"secret":     Secret{},
 }
 
 // Kinds is slice of keys from KindToResourceTemplate

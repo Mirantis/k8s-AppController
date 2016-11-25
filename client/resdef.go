@@ -41,6 +41,7 @@ type ResourceDefinition struct {
 	PetSet     *apps.PetSet           `json:"petset,omitempty"`
 	DaemonSet  *extensions.DaemonSet  `json:"daemonset,omitempty"`
 	ConfigMap  *api.ConfigMap         `json:"configmap,omitempty"`
+	Secret     *api.Secret            `json:"secret,omitempty"`
 }
 
 type ResourceDefinitionList struct {
