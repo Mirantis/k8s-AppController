@@ -40,6 +40,7 @@ type ResourceDefinition struct {
 	ReplicaSet *extensions.ReplicaSet `json:"replicaset,omitempty"`
 	PetSet     *apps.PetSet           `json:"petset,omitempty"`
 	DaemonSet  *extensions.DaemonSet  `json:"daemonset,omitempty"`
+	Secret     *api.Secret            `json:"secret,omitempty"`
 }
 
 type ResourceDefinitionList struct {

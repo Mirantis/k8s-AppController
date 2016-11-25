@@ -26,6 +26,7 @@ import (
 
 // Interface is as an interface for k8s clients. It expands native k8s client interface.
 type Interface interface {
+	Secrets() unversioned.SecretsInterface
 	Pods() unversioned.PodInterface
 	Jobs() unversioned.JobInterface
 	Services() unversioned.ServiceInterface
@@ -53,6 +54,11 @@ func (c client) Dependencies() DependenciesInterface {
 // ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
 func (c client) ResourceDefinitions() ResourceDefinitionsInterface {
 	return c.ResourceDefinitionsInterface
+}
+
+// Secrets returns K8s Secrets client for ac namespace
+func (c client) Secrets() unversioned.SecretsInterface {
+	return c.Client.Secrets(c.namespace)
 }
 
 // Pods returns K8s Pod client for ac namespace

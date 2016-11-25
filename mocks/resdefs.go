@@ -48,6 +48,8 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 			rd.PetSet = MakePetSet(n)
 		} else if typ == "daemonset" {
 			rd.DaemonSet = MakeDaemonSet(n)
+		} else if typ == "secret" {
+			rd.Secret = MakeSecret(n)
 		} else {
 			log.Fatal("Unrecognized resource type for name ", typ)
 		}

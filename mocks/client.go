@@ -27,6 +27,7 @@ type Client struct {
 	unversioned.ReplicaSetInterface
 	unversioned.PetSetInterface
 	unversioned.DaemonSetInterface
+	unversioned.SecretsInterface
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
@@ -64,6 +65,10 @@ func (c *Client) ResourceDefinitions() client.ResourceDefinitionsInterface {
 	return c.ResourceDefinitionsInterface
 }
 
+func (c *Client) Secrets() unversioned.SecretsInterface {
+	return c.SecretsInterface
+}
+
 func NewClient() *Client {
 	return &Client{
 		NewPodClient(),
@@ -72,6 +77,7 @@ func NewClient() *Client {
 		NewReplicaSetClient(),
 		NewPetSetClient(),
 		NewDaemonSetClient(),
+		NewSecretClient(),
 		NewDependencyClient(),
 		NewResourceDefinitionClient(),
 	}

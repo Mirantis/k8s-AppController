@@ -33,5 +33,7 @@ cat petset.yaml | kubectl.sh exec -i k8s-appcontroller kubeac wrap | kubectl.sh 
 
 cat daemonset.yaml | kubectl.sh exec -i k8s-appcontroller kubeac wrap | kubectl.sh create -f -
 
+cat secret.yaml | kubectl.sh exec -i k8s-appcontroller kubeac wrap | kubectl.sh create -f -
+
 kubectl.sh exec k8s-appcontroller ac-run
 kubectl.sh logs -f k8s-appcontroller
