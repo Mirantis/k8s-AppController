@@ -30,6 +30,7 @@ var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"pod":        Pod{},
 	"replicaset": ReplicaSet{},
 	"service":    Service{},
+	"configmap":  ConfigMap{},
 }
 
 // Kinds is slice of keys from KindToResourceTemplate
