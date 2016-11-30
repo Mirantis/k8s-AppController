@@ -17,7 +17,6 @@ package resources
 import (
 	"errors"
 	"log"
-	"strconv"
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -31,27 +30,13 @@ type ReplicaSet struct {
 	Client     unversioned.ReplicaSetInterface
 }
 
-func getSuccessFactor(meta map[string]string) (int32, error) {
-	var successFactor string
-	var ok bool
-	if meta == nil {
-		successFactor = "100"
-	} else if successFactor, ok = meta["success_factor"]; !ok {
-		successFactor = "100"
-	}
-
-	sf, err := strconv.ParseInt(successFactor, 10, 32)
-	// TODO: check 0 < rs <= 100
-	return int32(sf), err
-}
-
 func replicaSetStatus(r unversioned.ReplicaSetInterface, name string, meta map[string]string) (string, error) {
 	rs, err := r.Get(name)
 	if err != nil {
 		return "error", err
 	}
 
-	successFactor, err := getSuccessFactor(meta)
+	successFactor, err := getPercentage("success_factor", meta)
 	if err != nil {
 		return "error", err
 	}

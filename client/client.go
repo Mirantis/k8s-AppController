@@ -36,6 +36,7 @@ type Interface interface {
 	DaemonSets() unversioned.DaemonSetInterface
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
+	Deployments() unversioned.DeploymentInterface
 }
 
 type client struct {
@@ -95,6 +96,11 @@ func (c client) PetSets() unversioned.PetSetInterface {
 //DaemonSets return K8s DaemonSet client for ac namespace
 func (c client) DaemonSets() unversioned.DaemonSetInterface {
 	return c.Client.Extensions().DaemonSets(c.namespace)
+}
+
+//Deployments return K8s Deployment client for ac namespace
+func (c client) Deployments() unversioned.DeploymentInterface {
+	return c.Client.Extensions().Deployments(c.namespace)
 }
 
 func newForConfig(c restclient.Config) (Interface, error) {

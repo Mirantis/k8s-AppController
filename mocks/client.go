@@ -29,6 +29,7 @@ type Client struct {
 	unversioned.DaemonSetInterface
 	unversioned.ConfigMapsInterface
 	unversioned.SecretsInterface
+	unversioned.DeploymentInterface
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
@@ -58,6 +59,11 @@ func (c *Client) DaemonSets() unversioned.DaemonSetInterface {
 	return c.DaemonSetInterface
 }
 
+// Deployments returns mock deployment client
+func (c *Client) Deployments() unversioned.DeploymentInterface {
+	return c.DeploymentInterface
+}
+
 func (c *Client) Dependencies() client.DependenciesInterface {
 	return c.DependenciesInterface
 }
@@ -84,6 +90,7 @@ func NewClient() *Client {
 		NewDaemonSetClient(),
 		NewConfigMapClient(),
 		NewSecretClient(),
+		NewDeploymentClient(),
 		NewDependencyClient(),
 		NewResourceDefinitionClient(),
 	}
