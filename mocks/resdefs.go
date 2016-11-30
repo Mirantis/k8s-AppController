@@ -50,6 +50,8 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 			rd.DaemonSet = MakeDaemonSet(n)
 		} else if typ == "configmap" {
 			rd.ConfigMap = MakeConfigMap(n)
+		} else if typ == "deployment" {
+			rd.Deployment = MakeDeployment(n)
 		} else {
 			log.Fatal("Unrecognized resource type for name ", typ)
 		}

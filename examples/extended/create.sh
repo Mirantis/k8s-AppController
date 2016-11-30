@@ -35,5 +35,7 @@ cat daemonset.yaml | kubectl.sh exec -i k8s-appcontroller kubeac wrap | kubectl.
 
 cat configmap1.yaml | kubectl.sh exec -i k8s-appcontroller kubeac wrap | kubectl.sh create -f -
 
+cat deployment.yaml | kubectl.sh exec -i k8s-appcontroller kubeac wrap | kubectl.sh create -f -
+
 kubectl.sh exec k8s-appcontroller ac-run
 kubectl.sh logs -f k8s-appcontroller

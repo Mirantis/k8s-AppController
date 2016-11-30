@@ -17,6 +17,7 @@ package resources
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/Mirantis/k8s-AppController/interfaces"
 )
@@ -31,6 +32,7 @@ var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"replicaset": ReplicaSet{},
 	"service":    Service{},
 	"configmap":  ConfigMap{},
+	"deployment": Deployment{},
 }
 
 // Kinds is slice of keys from KindToResourceTemplate
@@ -56,4 +58,20 @@ func resourceListReady(resources []interfaces.Resource) (string, error) {
 		}
 	}
 	return "ready", nil
+}
+
+func getFactor(factorName string, meta map[string]string) (int32, error) {
+	var factor string
+	var ok bool
+	if meta == nil {
+		factor = "100"
+	} else if factor, ok = meta[factorName]; !ok {
+		factor = "100"
+	}
+
+	f, err := strconv.ParseInt(factor, 10, 32)
+	if (f < 0 || f > 100) && err == nil {
+		err = fmt.Errorf("%s factor not between 0 and 100", factorName)
+	}
+	return int32(f), err
 }
