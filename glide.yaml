@@ -2,6 +2,7 @@ package: github.com/Mirantis/k8s-AppController
 import:
 - package: gopkg.in/yaml.v2
 - package: k8s.io/kubernetes
+  version: v1.4.6
   subpackages:
   - pkg/api
   - pkg/api/errors
@@ -14,3 +15,5 @@ import:
   - pkg/client/unversioned
   - pkg/labels
   - pkg/watch
+- package: k8s.io/client-go
+  version: v1.4.0
