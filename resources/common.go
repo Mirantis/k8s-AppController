@@ -15,6 +15,7 @@
 package resources
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -75,4 +76,24 @@ func getPercentage(factorName string, meta map[string]string) (int32, error) {
 		err = fmt.Errorf("%s factor not between 0 and 100", factorName)
 	}
 	return int32(f), err
+}
+
+func checkExistence(r interfaces.Resource) error {
+	log.Println("Looking for ", r.Key())
+	status, err := r.Status(nil)
+
+	if err == nil {
+		log.Printf("Found %s, status: %s ", r.Key(), status)
+		return nil
+	}
+
+	return err
+}
+
+func createExistingResource(r interfaces.Resource) error {
+	if err := checkExistence(r); err != nil {
+		log.Fatalf("Resource %s not found", r.Key())
+		return errors.New("Resource not found")
+	}
+	return nil
 }

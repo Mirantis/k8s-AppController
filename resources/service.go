@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"errors"
 	"fmt"
 	"log"
 
@@ -102,18 +101,12 @@ func (s Service) Key() string {
 }
 
 func (s Service) Create() error {
-	log.Println("Looking for service", s.Service.Name)
-	status, err := s.Status(nil)
-
-	if err == nil {
-		log.Printf("Found service %s, status: %s ", s.Service.Name, status)
-		log.Println("Skipping creation of service", s.Service.Name)
-		return nil
+	if err := checkExistence(s); err != nil {
+		log.Println("Creating ", s.Key())
+		s.Service, err = s.Client.Create(s.Service)
+		return err
 	}
-
-	log.Println("Creating service", s.Service.Name)
-	s.Service, err = s.Client.Create(s.Service)
-	return err
+	return nil
 }
 
 // Delete deletes Service from the cluster
@@ -158,17 +151,7 @@ func (s ExistingService) Key() string {
 }
 
 func (s ExistingService) Create() error {
-	log.Println("Looking for service", s.Name)
-	status, err := s.Status(nil)
-
-	if err == nil {
-		log.Printf("Found service %s, status: %s ", s.Name, status)
-		log.Println("Skipping creation of service", s.Name)
-		return nil
-	}
-
-	log.Fatalf("Service %s not found", s.Name)
-	return errors.New("Service not found")
+	return createExistingResource(s)
 }
 
 func (s ExistingService) Status(meta map[string]string) (string, error) {

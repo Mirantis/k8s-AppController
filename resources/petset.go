@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -84,18 +83,12 @@ func (p PetSet) Key() string {
 
 // Create looks for a PetSet in Kubernetes cluster and creates it if it's not there
 func (p PetSet) Create() error {
-	log.Println("Looking for pet set", p.PetSet.Name)
-	status, err := p.Status(nil)
-
-	if err == nil {
-		log.Printf("Found pet set %s, status: %s ", p.PetSet.Name, status)
-		log.Println("Skipping creation of pet set", p.PetSet.Name)
-		return nil
+	if err := checkExistence(p); err != nil {
+		log.Println("Creating ", p.Key())
+		_, err = p.Client.Create(p.PetSet)
+		return err
 	}
-
-	log.Println("Creating pet set", p.PetSet.Name)
-	_, err = p.Client.Create(p.PetSet)
-	return err
+	return nil
 }
 
 // Delete deletes PetSet from the cluster
@@ -144,17 +137,7 @@ func (p ExistingPetSet) Key() string {
 
 // Create looks for existing PetSet and returns an error if there is no such PetSet in a cluster
 func (p ExistingPetSet) Create() error {
-	log.Println("Looking for pet set", p.Name)
-	status, err := p.Status(nil)
-
-	if err == nil {
-		log.Printf("Found pet set %s, status: %s ", p.Name, status)
-		log.Println("Skipping creation of pet set", p.Name)
-		return nil
-	}
-
-	log.Fatalf("Pet set %s not found", p.Name)
-	return errors.New("Pet set not found")
+	return createExistingResource(p)
 }
 
 // Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
