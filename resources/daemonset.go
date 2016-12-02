@@ -32,11 +32,6 @@ func daemonSetStatus(d unversioned.DaemonSetInterface, name string) (string, err
 	return "not ready", nil
 }
 
-//UpdateMeta does nothing for now
-func (d DaemonSet) UpdateMeta(meta map[string]string) error {
-	return nil
-}
-
 //Key return DaemonSet key
 func (d DaemonSet) Key() string {
 	return daemonSetKey(d.DaemonSet.Name)
@@ -92,11 +87,6 @@ type ExistingDaemonSet struct {
 	Name   string
 	Client unversioned.DaemonSetInterface
 	DaemonSet
-}
-
-//UpdateMeta does nothing at the moment
-func (d ExistingDaemonSet) UpdateMeta(meta map[string]string) error {
-	return nil
 }
 
 //Key returns DaemonSet name
