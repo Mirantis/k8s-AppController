@@ -33,6 +33,8 @@ type ResourceDefinition struct {
 	// Standard object metadata
 	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
+	Meta map[string]string `json:"meta,omitempty"`
+
 	//TODO: add other object types
 	Pod        *api.Pod               `json:"pod,omitempty"`
 	Job        *batch.Job             `json:"job,omitempty"`
