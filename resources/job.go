@@ -20,6 +20,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 type Job struct {
@@ -46,27 +49,51 @@ func jobStatus(j unversioned.JobInterface, name string) (string, error) {
 	return "not ready", nil
 }
 
-func (s Job) Key() string {
-	return jobKey(s.Job.Name)
+// Key returns job name
+func (j Job) Key() string {
+	return jobKey(j.Job.Name)
 }
 
-func (s Job) Status(meta map[string]string) (string, error) {
-	return jobStatus(s.Client, s.Job.Name)
+// Status returns job status
+func (j Job) Status(meta map[string]string) (string, error) {
+	return jobStatus(j.Client, j.Job.Name)
 }
 
-func (s Job) Create() error {
-	log.Println("Looking for job", s.Job.Name)
-	status, err := s.Status(nil)
+// Create creates k8s job object
+func (j Job) Create() error {
+	log.Println("Looking for job", j.Job.Name)
+	status, err := j.Status(nil)
 
 	if err == nil {
-		log.Printf("Found job %s, status:%s", s.Job.Name, status)
-		log.Println("Skipping creation of job", s.Job.Name)
+		log.Printf("Found job %s, status:%s", j.Job.Name, status)
+		log.Println("Skipping creation of job", j.Job.Name)
 		return nil
 	}
 
-	log.Println("Creating job", s.Job.Name)
-	s.Job, err = s.Client.Create(s.Job)
+	log.Println("Creating job", j.Job.Name)
+	j.Job, err = j.Client.Create(j.Job)
 	return err
+}
+
+// Delete deletes Job from the cluster
+func (j Job) Delete() error {
+	return j.Client.Delete(j.Job.Name, nil)
+}
+
+// NameMatches gets resource definition and a name and checks if
+// the Job part of resource definition has matching name.
+func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.Job != nil && def.Job.Name == name
+}
+
+// New returns new Job on resource definition
+func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewJob(def.Job, c.Jobs())
+}
+
+// NewExisting returns new ExistingJob based on resource definition
+func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingJob(name, c.Jobs())
 }
 
 func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
@@ -76,6 +103,7 @@ func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
 type ExistingJob struct {
 	Name   string
 	Client unversioned.JobInterface
+	Job
 }
 
 func (s ExistingJob) Key() string {

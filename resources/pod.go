@@ -20,6 +20,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 type Pod struct {
@@ -77,8 +80,29 @@ func (p Pod) Create() error {
 	return err
 }
 
+// Delete deletes pod from the cluster
+func (p Pod) Delete() error {
+	return p.Client.Delete(p.Pod.Name, nil)
+}
+
 func (p Pod) Status(meta map[string]string) (string, error) {
 	return podStatus(p.Client, p.Pod.Name)
+}
+
+// NameMatches gets resource definition and a name and checks if
+// the Pod part of resource definition has matching name.
+func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.Pod != nil && def.Pod.Name == name
+}
+
+// New returns new Pod based on resource definition
+func (p Pod) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewPod(def.Pod, c.Pods())
+}
+
+// NewExisting returns new ExistingPod based on resource definition
+func (p Pod) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingPod(name, c.Pods())
 }
 
 func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
@@ -88,6 +112,7 @@ func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
 type ExistingPod struct {
 	Name   string
 	Client unversioned.PodInterface
+	Pod
 }
 
 func (p ExistingPod) Key() string {

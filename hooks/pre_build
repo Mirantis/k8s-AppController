@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -xe
+
+docker run --privileged \
+       -w /go/src/github.com/Mirantis/k8s-AppController \
+       -v $(pwd):/go/src/github.com/Mirantis/k8s-AppController golang:alpine \
+       sh -xc \
+"echo \"@community http://dl-cdn.alpinelinux.org/alpine/edge/community\" >> /etc/apk/repositories && \
+apk --no-cache add git glide@community && \
+[ -d vendor ] || glide install --strip-vendor && \
+go build -o kubeac"

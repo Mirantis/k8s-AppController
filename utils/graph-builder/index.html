@@ -3,7 +3,7 @@
 <html>
 
 	<head>
-		<title>cytoscape-dagre.js demo</title>
+		<title>AppController graph utils</title>
 
 		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
 
@@ -157,7 +157,7 @@
 					var result = "";
 					var yamls = elements.edges.map(function(edge) {
 						var k8sRepresentation = {
-							apiVersion: "appcontroller.k8s1/v1alpha1",
+							apiVersion: "appcontroller.k8s/v1alpha1",
 							kind: "Dependency",
 							metadata:{
 								name: guid()

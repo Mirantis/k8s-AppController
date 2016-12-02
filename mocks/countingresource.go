@@ -14,7 +14,12 @@
 
 package mocks
 
-import "time"
+import (
+	"time"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
+)
 
 //CountingResource is a fake resource that becomes ready after given timeout.
 //It also increases the counter when started and decreases it when becomes ready
@@ -47,6 +52,26 @@ func (c *CountingResource) Create() error {
 	c.counter.Inc()
 	c.startTime = time.Now()
 	return nil
+}
+
+// Delete does nothing
+func (c *CountingResource) Delete() error {
+	return nil
+}
+
+// NameMatches returns true
+func (c *CountingResource) NameMatches(_ client.ResourceDefinition, _ string) bool {
+	return true
+}
+
+// New returns new fake resource
+func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Resource {
+	return NewResource("fake", "ready")
+}
+
+// NewExisting returns new existing resource
+func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.Resource {
+	return NewResource(name, "ready")
 }
 
 //NewCountingResource creates new instance of CountingResource

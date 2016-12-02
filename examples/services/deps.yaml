@@ -1,39 +1,39 @@
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: 70328b81-fa4b-6b8f-c487-5f4b6c586edd
 parent: pod/eventually-alive-service-pod
 child: pod/eventually-alive-service-pod2
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: 8f8f22b2-8610-31b8-3838-ff453f44c257
 parent: service/my-service
 child: pod/eventually-alive-pod3
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: dec6abd7-2d9d-e27d-ca7f-5d0165e0f210
 parent: service/my-service
 child: pod/eventually-alive-pod4
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: fede7b45-53f1-b045-3079-bf61cc00b90e
 parent: pod/eventually-alive-service-pod
 child: service/my-service
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: eb35355b-8d2d-97b5-28bf-1c6b9e47fa15
 parent: pod/eventually-alive-service-pod2
 child: service/my-service
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: 9da2e824-5ea3-6387-285c-0963c67fc674

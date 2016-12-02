@@ -17,29 +17,17 @@ package resources
 import (
 	"errors"
 	"log"
-	"strconv"
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 type ReplicaSet struct {
 	ReplicaSet *extensions.ReplicaSet
 	Client     unversioned.ReplicaSetInterface
-}
-
-func getSuccessFactor(meta map[string]string) (int32, error) {
-	var successFactor string
-	var ok bool
-	if meta == nil {
-		successFactor = "100"
-	} else if successFactor, ok = meta["success_factor"]; !ok {
-		successFactor = "100"
-	}
-
-	sf, err := strconv.ParseInt(successFactor, 10, 32)
-	// TODO: check 0 < rs <= 100
-	return int32(sf), err
 }
 
 func replicaSetStatus(r unversioned.ReplicaSetInterface, name string, meta map[string]string) (string, error) {
@@ -48,7 +36,7 @@ func replicaSetStatus(r unversioned.ReplicaSetInterface, name string, meta map[s
 		return "error", err
 	}
 
-	successFactor, err := getSuccessFactor(meta)
+	successFactor, err := getPercentage("success_factor", meta)
 	if err != nil {
 		return "error", err
 	}
@@ -83,8 +71,29 @@ func (r ReplicaSet) Create() error {
 	return err
 }
 
+// Delete deletes ReplicaSet from the cluster
+func (r ReplicaSet) Delete() error {
+	return r.Client.Delete(r.ReplicaSet.Name, nil)
+}
+
 func (r ReplicaSet) Status(meta map[string]string) (string, error) {
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
+}
+
+// NameMatches gets resource definition and a name and checks if
+// the ReplicaSet part of resource definition has matching name.
+func (r ReplicaSet) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.ReplicaSet != nil && def.ReplicaSet.Name == name
+}
+
+// New returns new ReplicaSet based on resource definition
+func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets())
+}
+
+// NewExisting returns new ExistingReplicaSet based on resource definition
+func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingReplicaSet(name, c.ReplicaSets())
 }
 
 func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface) ReplicaSet {
@@ -94,6 +103,7 @@ func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.Replica
 type ExistingReplicaSet struct {
 	Name   string
 	Client unversioned.ReplicaSetInterface
+	ReplicaSet
 }
 
 func (r ExistingReplicaSet) Key() string {

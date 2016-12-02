@@ -17,17 +17,37 @@ package resources
 import (
 	"fmt"
 	"log"
+	"strconv"
+
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
-//Resource is an interface for AppController supported resources
-type Resource interface {
-	Key() string
-	// Ensure that Status() supports nil as meta
-	Status(meta map[string]string) (string, error)
-	Create() error
+// KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
+// structs implement interfaces.ResourceTemplate
+var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
+	"daemonset":  DaemonSet{},
+	"job":        Job{},
+	"petset":     PetSet{},
+	"pod":        Pod{},
+	"replicaset": ReplicaSet{},
+	"service":    Service{},
+	"configmap":  ConfigMap{},
+	"secret":     Secret{},
+	"deployment": Deployment{},
 }
 
-func resourceListReady(resources []Resource) (string, error) {
+// Kinds is slice of keys from KindToResourceTemplate
+var Kinds = getKeys(KindToResourceTemplate)
+
+func getKeys(m map[string]interfaces.ResourceTemplate) (keys []string) {
+	for key := range m {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func resourceListReady(resources []interfaces.Resource) (string, error) {
 	for _, r := range resources {
 		log.Printf("Checking status for resource %s", r.Key())
 		status, err := r.Status(nil)
@@ -39,4 +59,20 @@ func resourceListReady(resources []Resource) (string, error) {
 		}
 	}
 	return "ready", nil
+}
+
+func getPercentage(factorName string, meta map[string]string) (int32, error) {
+	var factor string
+	var ok bool
+	if meta == nil {
+		factor = "100"
+	} else if factor, ok = meta[factorName]; !ok {
+		factor = "100"
+	}
+
+	f, err := strconv.ParseInt(factor, 10, 32)
+	if (f < 0 || f > 100) && err == nil {
+		err = fmt.Errorf("%s factor not between 0 and 100", factorName)
+	}
+	return int32(f), err
 }

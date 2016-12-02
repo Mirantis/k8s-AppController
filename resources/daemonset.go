@@ -6,6 +6,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
 //DaemonSet is wrapper for K8s DaemonSet object
@@ -27,11 +30,6 @@ func daemonSetStatus(d unversioned.DaemonSetInterface, name string) (string, err
 		return "ready", nil
 	}
 	return "not ready", nil
-}
-
-//UpdateMeta does nothing for now
-func (d DaemonSet) UpdateMeta(meta map[string]string) error {
-	return nil
 }
 
 //Key return DaemonSet key
@@ -58,6 +56,27 @@ func (d DaemonSet) Create() error {
 	return err
 }
 
+// Delete deletes DaemonSet from the cluster
+func (d DaemonSet) Delete() error {
+	return d.Client.Delete(d.DaemonSet.Name)
+}
+
+// NameMatches gets resource definition and a name and checks if
+// the DaemonSet part of resource definition has matching name.
+func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.DaemonSet != nil && def.DaemonSet.Name == name
+}
+
+// New returns new DaemonSet based on resource definition
+func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewDaemonSet(def.DaemonSet, c.DaemonSets())
+}
+
+// NewExisting returns new ExistingDaemonSet based on resource definition
+func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingDaemonSet(name, c.DaemonSets())
+}
+
 //NewDaemonSet is a constructor
 func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetInterface) DaemonSet {
 	return DaemonSet{DaemonSet: daemonset, Client: client}
@@ -67,11 +86,7 @@ func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetI
 type ExistingDaemonSet struct {
 	Name   string
 	Client unversioned.DaemonSetInterface
-}
-
-//UpdateMeta does nothing at the moment
-func (d ExistingDaemonSet) UpdateMeta(meta map[string]string) error {
-	return nil
+	DaemonSet
 }
 
 //Key returns DaemonSet name

@@ -12,8 +12,8 @@ Kubernetes object. Possible reactions include:
  1. **Retry**: AC tries to delete failed K8s resource and then re-create it. We should be able to set maximum retries and delay before the next retry.
  2. **Rollback**: AC deletes all resourses that were created during current run.
  3. **Abort**: Immediate quit, keep all created resources.
- 4. **Ignore this**: AC proceeds with creating resources as if current one was created successfully.
- 5. **Ignore all**: AC skips creation of all resources depending on the current one and all cascade dependencies, but proceeds with creating the rest of resources.
+ 4. **Ignore current**: AC proceeds with creating resources as if current one was created successfully.
+ 5. **Ignore children**: AC skips creation of all resources depending on the current one and all cascade dependencies, but proceeds with creating the rest of resources.
 
 Also during discussion in the community several additional features related  to the topic were requested:
 

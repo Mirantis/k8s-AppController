@@ -1,18 +1,18 @@
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: 4819ddea-bfe5-f8d0-e40d-8032541b080c
 parent: pod/test-pod
 child: job/test-job
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: ff8258a9-d396-40f6-092d-531ee73dfe30
 parent: job/test-job
 child: service/test-service
 ---
-apiVersion: appcontroller.k8s1/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: c86ddb3d-d8f9-2bcd-d532-1063a775d75c

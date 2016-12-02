@@ -67,7 +67,7 @@ func TestWrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := `apiVersion: appcontroller.k8s2/v1alpha1
+	expected := `apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: job-pi
@@ -122,7 +122,7 @@ func TestMultiDoc(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := `apiVersion: appcontroller.k8s2/v1alpha1
+	expected := `apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: job-pi
@@ -135,7 +135,7 @@ job:
     trolo:
       lolo: lo
 ---
-apiVersion: appcontroller.k8s2/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: job-pi2
@@ -148,7 +148,7 @@ job:
     trolo:
       lolo: lo
 ---
-apiVersion: appcontroller.k8s2/v1alpha1
+apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
   name: job-pi3

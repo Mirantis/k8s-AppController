@@ -6,6 +6,8 @@ imports:
   subpackages:
   - compute/metadata
   - internal
+- name: k8s.io/client-go
+  version: 3a5b96cfd3d3ff1d53d979b4297c4f3b869aab09
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
 - name: github.com/coreos/go-oidc
@@ -208,7 +210,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 - name: k8s.io/kubernetes
-  version: 33103e576e5c1530fb7503a8cb854848b9da2b30
+  version: e569a27d02001e343cb68086bc06d47804f62af6
   subpackages:
   - pkg/api
   - pkg/api/errors

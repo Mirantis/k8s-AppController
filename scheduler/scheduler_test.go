@@ -303,22 +303,29 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		"replicaset/ready-3",
 		"service/ready-4",
 		"petset/ready-5",
-		"daemonset/ready-6")
+		"daemonset/ready-6",
+		"configmap/cfg-1",
+		"secret/secret-1",
+		"deployment/ready-7")
 	c.DependenciesInterface = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "job/ready-2"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "replicaset/ready-3"},
 		mocks.Dependency{Parent: "replicaset/ready-3", Child: "service/ready-4"},
 		mocks.Dependency{Parent: "service/ready-4", Child: "petset/ready-5"},
-		mocks.Dependency{Parent: "petset/ready-5", Child: "daemonset/ready-6"})
+		mocks.Dependency{Parent: "petset/ready-5", Child: "daemonset/ready-6"},
+		mocks.Dependency{Parent: "job/ready-2", Child: "configmap/cfg-1"},
+		mocks.Dependency{Parent: "job/ready-2", Child: "secret/secret-1"},
+		mocks.Dependency{Parent: "petset/ready-5", Child: "deployment/ready-7"})
 
 	depGraph, err := BuildDependencyGraph(c, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(depGraph) != 6 {
+	expectedLenght := 10
+	if len(depGraph) != expectedLenght {
 		t.Errorf("Wrong length of dependency graph, expected %d, actual %d",
-			5, len(depGraph))
+			expectedLenght, len(depGraph))
 	}
 }
 

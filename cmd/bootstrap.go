@@ -17,16 +17,26 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/typed/discovery"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 
 	"github.com/Mirantis/k8s-AppController/client"
 )
+
+// KubernetesRequiredMajorVersion is minimal required major version of Kubernetes cluster
+const KubernetesRequiredMajorVersion = 1
+
+// KubernetesRequiredMinorVersion is minimal required minor version of Kubernetes cluster
+const KubernetesRequiredMinorVersion = 4
 
 func getFileContents(stream *os.File) string {
 	result := ""
@@ -69,6 +79,27 @@ func getDependencyFromPath(path string) extensions.ThirdPartyResource {
 	return tpr
 }
 
+func checkVersion(c unversioned.Client) {
+	v, err := discovery.NewDiscoveryClient(c.RESTClient).ServerVersion()
+	if err != nil {
+		log.Fatal(err)
+	}
+	re := regexp.MustCompile("[0-9]+")
+	major, err := strconv.Atoi(re.FindString(v.Major))
+	if err != nil {
+		log.Fatal(err)
+	}
+	minor, err := strconv.Atoi(re.FindString(v.Minor))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if major < KubernetesRequiredMajorVersion || (major == KubernetesRequiredMajorVersion && minor < KubernetesRequiredMinorVersion) {
+		log.Fatal(fmt.Errorf("AppController is not compatible with Kubernetes version older than %d.%d", KubernetesRequiredMajorVersion, KubernetesRequiredMinorVersion))
+	}
+
+}
+
 func bootstrap(cmd *cobra.Command, args []string) {
 	thirdPartyResourcesPath := os.Args[2]
 
@@ -82,6 +113,8 @@ func bootstrap(cmd *cobra.Command, args []string) {
 	}
 
 	c := *unversioned.NewOrDie(config)
+
+	checkVersion(c)
 
 	createTPRIfNotExists(dependencyTPR, c)
 	createTPRIfNotExists(definitionTPR, c)

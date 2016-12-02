@@ -13,3 +13,7 @@ spec:
     env:
     - name: KUBERNETES_AC_LABEL_SELECTOR
       value: ""
+    - name: KUBERNETES_AC_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
