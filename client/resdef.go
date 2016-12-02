@@ -42,6 +42,7 @@ type ResourceDefinition struct {
 	DaemonSet  *extensions.DaemonSet  `json:"daemonset,omitempty"`
 	ConfigMap  *api.ConfigMap         `json:"configmap,omitempty"`
 	Secret     *api.Secret            `json:"secret,omitempty"`
+	Deployment *extensions.Deployment `json:"deployment, omitempty"`
 }
 
 type ResourceDefinitionList struct {

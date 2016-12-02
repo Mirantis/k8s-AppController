@@ -245,6 +245,8 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			sr = NewScheduledResourceFor(resources.NewConfigMap(r.ConfigMap, c.ConfigMaps()))
 		} else if r.Secret != nil {
 			sr = NewScheduledResourceFor(resources.NewSecret(r.Secret, c.Secrets()))
+		} else if r.Deployment != nil {
+			sr = NewScheduledResourceFor(resources.NewDeployment(r.Deployment, c.Deployments()))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}

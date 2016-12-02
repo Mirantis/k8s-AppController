@@ -38,5 +38,7 @@ cat configmap1.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUB
 
 cat secret.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
 
+cat deployment.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
+
 $KUBECTL_NAME exec k8s-appcontroller ac-run
 $KUBECTL_NAME logs -f k8s-appcontroller
