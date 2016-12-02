@@ -84,35 +84,76 @@ type ScheduledResource struct {
 	sync.RWMutex
 }
 
-// IsBlocked checks whether d can be created. It checks status of resources
+// Create does not creates a scheduled resource immediately, but updates status
+// and puts the scheduled resource to corresponding channel. Returns true if
+// scheduled resource creation was actually requested, false otherwise.
+func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) bool {
+	sr.RLock()
+	// somebody already requested resource creation
+	if sr.Status != Init {
+		sr.RUnlock()
+		return true
+	}
+
+	sr.RUnlock()
+	sr.Lock()
+	defer sr.Unlock()
+
+	if sr.Status == Init && !sr.IsBlocked() {
+		sr.Status = Creating
+		toCreate <- sr
+		return true
+	}
+
+	return false
+}
+
+// IsFinished returns true if a scheduled resource processing is finished, regardless successfull or not,
+// false otherwise. The actual result of processing could be obtained from returned error.
+func (sr *ScheduledResource) IsFinished() (bool, error) {
+	status, err := sr.Resource.Status(nil)
+	if err != nil {
+		return true, err
+	}
+
+	if status == "ready" {
+		sr.Lock()
+		sr.Status = Ready
+		sr.Unlock()
+		return true, nil
+	}
+	return false, nil
+}
+
+// IsBlocked checks whether a scheduled resource can be created. It checks status of resources
 // it depends on, via API
-func (d *ScheduledResource) IsBlocked() bool {
+func (sr *ScheduledResource) IsBlocked() bool {
 	isBlocked := false
 
-	for _, r := range d.Requires {
+	for _, req := range sr.Requires {
 		if isBlocked {
 			break
 		}
 
-		r.RLock()
-		meta := r.Meta[d.Key()]
-		switch r.Resource.(type) {
+		req.RLock()
+		meta := req.Meta[sr.Key()]
+		switch req.Resource.(type) {
 		case resources.Service:
-			status, err := r.Resource.Status(meta)
+			status, err := req.Resource.Status(meta)
 			if err != nil || status != "ready" {
 				isBlocked = true
 			}
 		default:
-			if meta == nil && r.Status != Ready {
+			if meta == nil && req.Status != Ready {
 				isBlocked = true
 			} else {
-				status, err := r.Resource.Status(meta)
+				status, err := req.Resource.Status(meta)
 				if err != nil || status != "ready" {
 					isBlocked = true
 				}
 			}
 		}
-		r.RUnlock()
+		req.RUnlock()
 	}
 
 	return isBlocked
@@ -256,10 +297,10 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 	return depGraph, nil
 }
 
-func createResources(toCreate chan *ScheduledResource, created chan string, ccLimiter chan struct{}) {
+func createResources(toCreate chan *ScheduledResource, finished chan string, ccLimiter chan struct{}) {
 
 	for r := range toCreate {
-		go func(r *ScheduledResource, created chan string, ccLimiter chan struct{}) {
+		go func(r *ScheduledResource, finished chan string, ccLimiter chan struct{}) {
 			//Acquire sepmaphor
 			ccLimiter <- struct{}{}
 			log.Println("Creating resource", r.Key())
@@ -272,51 +313,36 @@ func createResources(toCreate chan *ScheduledResource, created chan string, ccLi
 			// before the resource becomes ready, since dependencies
 			// could have metadata defining their own readiness condition
 			for _, req := range r.RequiredBy {
-				go func(req *ScheduledResource) {
+				go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
 					for {
 						time.Sleep(CheckInterval)
-						req.RLock()
-						if req.Status == Init {
-							req.RUnlock()
-							req.Lock()
-							if req.Status == Init && !req.IsBlocked() {
-								req.Status = Creating
-								toCreate <- req
-								req.Unlock()
-								break
-							} else {
-								req.Unlock()
-							}
-						} else {
-							req.RUnlock()
+						if req.RequestCreation(toCreate) {
 							break
 						}
 					}
-				}(req)
+				}(req, toCreate)
 			}
 
 			log.Printf("Checking status for %s", r.Key())
+
 			for {
 				time.Sleep(CheckInterval)
-				status, err := r.Resource.Status(nil)
-				if err != nil {
-					log.Printf("Error getting status for resource %s: %v", r.Key(), err)
-				}
-				if status == "ready" {
-					log.Printf("%s is ready", r.Key())
+				var isFinished bool
+				isFinished, err = r.IsFinished()
+				if isFinished {
 					break
 				}
 			}
 
-			r.Lock()
-			r.Status = Ready
-			r.Unlock()
-
-			log.Printf("Resource %s created", r.Key())
-			created <- r.Key()
+			if err != nil {
+				log.Printf("Resource %s was not created: %v", r.Key(), err)
+			} else {
+				log.Printf("Resource %s created", r.Key())
+			}
+			finished <- r.Key()
 			//Release semaphor
 			<-ccLimiter
-		}(r, created, ccLimiter)
+		}(r, finished, ccLimiter)
 	}
 }
 
@@ -338,10 +364,7 @@ func Create(depGraph DependencyGraph, concurrency int) {
 
 	for _, r := range depGraph {
 		if len(r.Requires) == 0 {
-			r.Lock()
-			r.Status = Creating
-			toCreate <- r
-			r.Unlock()
+			r.RequestCreation(toCreate)
 		}
 	}
 
