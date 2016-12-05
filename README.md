@@ -12,7 +12,7 @@ AppController interacts with bare Kubernetes objects by creating them (if they a
 
 ### Dependencies
 
-Dependencies are objects that represent vertices in your deployment graph. You can define them and easily create them with kubectl. Dependencies are ThirdPartyResource which is API extension provided by AppController. It's worth mentioning, that Dependencies can represent dependency between pre-existing K8s object (not orchestrated by AppController) and Resource Definitions, so parts of your deployment graph can depend on objects that were created in your cluster before you even started AppController-aided-deployment. Dependency could have metadata which can contain additional informations about how to determine if it's fulfilled. 
+Dependencies are objects that represent vertices in your deployment graph. You can define them and easily create them with kubectl. Dependencies are ThirdPartyResource which is API extension provided by AppController. It's worth mentioning, that Dependencies can represent dependency between pre-existing K8s object (not orchestrated by AppController) and Resource Definitions, so parts of your deployment graph can depend on objects that were created in your cluster before you even started AppController-aided-deployment. Dependency could have metadata which can contain additional informations about how to determine if it's fulfilled.
 
 Dependency on Replica Set accepts `success_factor` key with stringified percentage integer value of how many replicas should be ready to fulfill the status check.
 
@@ -25,6 +25,9 @@ Resource Definitions are objects that represent Kubernetes Objects that are not 
 * Replica Sets
 * Pet Sets
 * DaemonSet
+* Config Maps
+* Secrets
+* Deployments
 
 Resource Definitions are (the same as Dependencies) ThirdPartyResource API extension.
 
