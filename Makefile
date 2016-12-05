@@ -2,7 +2,7 @@
 
 TAG ?= mirantis/k8s-appcontroller
 
-docker: vendor Makefile
+docker: kubeac Makefile
 	docker build -t $(TAG) .
 
 vendor: Makefile
@@ -10,3 +10,10 @@ vendor: Makefile
 
 test: vendor glide.lock Makefile
 	go list ./... | grep -v /vendor/ | xargs go test
+
+kubeac:
+	bash hooks/pre_build
+
+clean:
+	rm -f kubeac
+	docker rmi $(TAG)
