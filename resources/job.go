@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"errors"
 	"log"
 
 	"k8s.io/kubernetes/pkg/apis/batch"
@@ -61,18 +60,12 @@ func (j Job) Status(meta map[string]string) (string, error) {
 
 // Create creates k8s job object
 func (j Job) Create() error {
-	log.Println("Looking for job", j.Job.Name)
-	status, err := j.Status(nil)
-
-	if err == nil {
-		log.Printf("Found job %s, status:%s", j.Job.Name, status)
-		log.Println("Skipping creation of job", j.Job.Name)
-		return nil
+	if err := checkExistence(j); err != nil {
+		log.Println("Creating ", j.Key())
+		j.Job, err = j.Client.Create(j.Job)
+		return err
 	}
-
-	log.Println("Creating job", j.Job.Name)
-	j.Job, err = j.Client.Create(j.Job)
-	return err
+	return nil
 }
 
 // Delete deletes Job from the cluster
@@ -106,25 +99,16 @@ type ExistingJob struct {
 	Job
 }
 
-func (s ExistingJob) Key() string {
-	return jobKey(s.Name)
+func (j ExistingJob) Key() string {
+	return jobKey(j.Name)
 }
 
-func (s ExistingJob) Status(meta map[string]string) (string, error) {
-	return jobStatus(s.Client, s.Name)
+func (j ExistingJob) Status(meta map[string]string) (string, error) {
+	return jobStatus(j.Client, j.Name)
 }
 
-func (s ExistingJob) Create() error {
-	log.Println("Looking for job", s.Name)
-	status, err := s.Status(nil)
-
-	if err == nil {
-		log.Printf("Found job %s, status:%s", s.Name, status)
-		return nil
-	}
-
-	log.Fatalf("Job %s not found", s.Name)
-	return errors.New("Job not found")
+func (j ExistingJob) Create() error {
+	return createExistingResource(j)
 }
 
 func NewExistingJob(name string, client unversioned.JobInterface) ExistingJob {

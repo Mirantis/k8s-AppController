@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"errors"
 	"log"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -66,18 +65,12 @@ func isReady(pod *api.Pod) bool {
 }
 
 func (p Pod) Create() error {
-	log.Println("Looking for pod", p.Pod.Name)
-	status, err := p.Status(nil)
-
-	if err == nil {
-		log.Printf("Found pod %s, status: %s ", p.Pod.Name, status)
-		log.Println("Skipping creation of pod", p.Pod.Name)
-		return nil
+	if err := checkExistence(p); err != nil {
+		log.Println("Creating ", p.Key())
+		p.Pod, err = p.Client.Create(p.Pod)
+		return err
 	}
-
-	log.Println("Creating pod", p.Pod.Name)
-	p.Pod, err = p.Client.Create(p.Pod)
-	return err
+	return nil
 }
 
 // Delete deletes pod from the cluster
@@ -120,17 +113,7 @@ func (p ExistingPod) Key() string {
 }
 
 func (p ExistingPod) Create() error {
-	log.Println("Looking for pod", p.Name)
-	status, err := p.Status(nil)
-
-	if err == nil {
-		log.Printf("Found pod %s, status: %s ", p.Name, status)
-		log.Println("Skipping creation of pod", p.Name)
-		return nil
-	}
-
-	log.Fatalf("Pod %s not found", p.Name)
-	return errors.New("Pod not found")
+	return createExistingResource(p)
 }
 
 func (p ExistingPod) Status(meta map[string]string) (string, error) {

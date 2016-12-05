@@ -57,18 +57,12 @@ func (c ConfigMap) Status(meta map[string]string) (string, error) {
 }
 
 func (c ConfigMap) Create() error {
-	log.Println("Looking for configMap", c.ConfigMap.Name)
-	status, err := c.Status(nil)
-
-	if err == nil {
-		log.Printf("Found configMap %s, status:%s", c.ConfigMap.Name, status)
-		log.Println("Skipping creation of configMap", c.ConfigMap.Name)
-		return nil
+	if err := checkExistence(c); err != nil {
+		log.Println("Creating ", c.Key())
+		c.ConfigMap, err = c.Client.Create(c.ConfigMap)
+		return err
 	}
-
-	log.Println("Creating configMap", c.ConfigMap.Name)
-	c.ConfigMap, err = c.Client.Create(c.ConfigMap)
-	return err
+	return nil
 }
 
 func (c ConfigMap) Delete() error {

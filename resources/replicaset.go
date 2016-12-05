@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"errors"
 	"log"
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -57,18 +56,12 @@ func (r ReplicaSet) Key() string {
 }
 
 func (r ReplicaSet) Create() error {
-	log.Println("Looking for replica set", r.ReplicaSet.Name)
-	status, err := r.Status(nil)
-
-	if err == nil {
-		log.Printf("Found replica set %s, status: %s ", r.ReplicaSet.Name, status)
-		log.Println("Skipping creation of replica set", r.ReplicaSet.Name)
-		return nil
+	if err := checkExistence(r); err != nil {
+		log.Println("Creating ", r.Key())
+		r.ReplicaSet, err = r.Client.Create(r.ReplicaSet)
+		return err
 	}
-
-	log.Println("Creating replica set", r.ReplicaSet.Name)
-	r.ReplicaSet, err = r.Client.Create(r.ReplicaSet)
-	return err
+	return nil
 }
 
 // Delete deletes ReplicaSet from the cluster
@@ -111,17 +104,7 @@ func (r ExistingReplicaSet) Key() string {
 }
 
 func (r ExistingReplicaSet) Create() error {
-	log.Println("Looking for replica set", r.Name)
-	status, err := r.Status(nil)
-
-	if err == nil {
-		log.Printf("Found replica set %s, status: %s ", r.Name, status)
-		log.Println("Skipping creation of replica set", r.Name)
-		return nil
-	}
-
-	log.Fatalf("Replica set %s not found", r.Name)
-	return errors.New("Replica set not found")
+	return createExistingResource(r)
 }
 
 func (r ExistingReplicaSet) Status(meta map[string]string) (string, error) {

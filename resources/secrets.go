@@ -57,18 +57,12 @@ func (c Secret) Status(meta map[string]string) (string, error) {
 }
 
 func (c Secret) Create() error {
-	log.Println("Looking for secret", c.Secret.Name)
-	status, err := c.Status(nil)
-
-	if err == nil {
-		log.Printf("Found secret %s, status:%s", c.Secret.Name, status)
-		log.Println("Skipping creation of secret", c.Secret.Name)
-		return nil
+	if err := checkExistence(c); err != nil {
+		log.Println("Creating ", c.Key())
+		c.Secret, err = c.Client.Create(c.Secret)
+		return err
 	}
-
-	log.Println("Creating secret", c.Secret.Name)
-	c.Secret, err = c.Client.Create(c.Secret)
-	return err
+	return nil
 }
 
 func (c Secret) Delete() error {

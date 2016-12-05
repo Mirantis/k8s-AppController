@@ -1,7 +1,6 @@
 package resources
 
 import (
-	"errors"
 	"log"
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -44,16 +43,12 @@ func (d DaemonSet) Status(meta map[string]string) (string, error) {
 
 //Create looks for DaemonSet in K8s and creates it if not present
 func (d DaemonSet) Create() error {
-	log.Println("Looking for daemonset", d.DaemonSet.Name)
-	status, err := d.Status(nil)
-
-	if err == nil {
-		log.Printf("Found daemonset %s, status: %s", d.DaemonSet.Name, status)
-		log.Println("Skipping creation of daemonset", d.DaemonSet.Name)
+	if err := checkExistence(d); err != nil {
+		log.Println("Creating ", d.Key())
+		d.DaemonSet, err = d.Client.Create(d.DaemonSet)
+		return err
 	}
-	log.Println("Creating daemonset", d.DaemonSet.Name)
-	d.DaemonSet, err = d.Client.Create(d.DaemonSet)
-	return err
+	return nil
 }
 
 // Delete deletes DaemonSet from the cluster
@@ -101,16 +96,7 @@ func (d ExistingDaemonSet) Status(meta map[string]string) (string, error) {
 
 //Create looks for existing DaemonSet and returns error if there is no such DaemonSet
 func (d ExistingDaemonSet) Create() error {
-	log.Println("Looking for daemonset", d.Name)
-	status, err := d.Status(nil)
-
-	if err == nil {
-		log.Printf("Found daemonset %s, status: %s", d.Name, status)
-		return nil
-	}
-
-	log.Fatalf("DaemonSet %s not found", d.Name)
-	return errors.New("DaemonSet not found")
+	return createExistingResource(d)
 }
 
 //NewExistingDaemonSet is a constructor
