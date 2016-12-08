@@ -167,7 +167,7 @@ func newResource(name string, resDefs []client.ResourceDefinition, c client.Inte
 	for _, rd := range resDefs {
 		if resourceTemplate.NameMatches(rd, name) {
 			log.Println("Found resource definition for ", name)
-			return resourceTemplate.New(rd, c)
+			return resourceTemplate.New(rd, c, nil)
 		}
 	}
 
@@ -271,23 +271,23 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		var sr *ScheduledResource
 
 		if r.Pod != nil {
-			sr = NewScheduledResourceFor(resources.NewPod(r.Pod, c.Pods()))
+			sr = NewScheduledResourceFor(resources.NewPod(r.Pod, c.Pods(), nil))
 		} else if r.Job != nil {
-			sr = NewScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
+			sr = NewScheduledResourceFor(resources.NewJob(r.Job, c.Jobs(), nil))
 		} else if r.Service != nil {
-			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services(), c))
+			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services(), c, nil))
 		} else if r.ReplicaSet != nil {
-			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
+			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets(), nil))
 		} else if r.PetSet != nil {
-			sr = NewScheduledResourceFor(resources.NewPetSet(r.PetSet, c.PetSets(), c))
+			sr = NewScheduledResourceFor(resources.NewPetSet(r.PetSet, c.PetSets(), c, nil))
 		} else if r.DaemonSet != nil {
-			sr = NewScheduledResourceFor(resources.NewDaemonSet(r.DaemonSet, c.DaemonSets()))
+			sr = NewScheduledResourceFor(resources.NewDaemonSet(r.DaemonSet, c.DaemonSets(), nil))
 		} else if r.ConfigMap != nil {
-			sr = NewScheduledResourceFor(resources.NewConfigMap(r.ConfigMap, c.ConfigMaps()))
+			sr = NewScheduledResourceFor(resources.NewConfigMap(r.ConfigMap, c.ConfigMaps(), nil))
 		} else if r.Secret != nil {
-			sr = NewScheduledResourceFor(resources.NewSecret(r.Secret, c.Secrets()))
+			sr = NewScheduledResourceFor(resources.NewSecret(r.Secret, c.Secrets(), nil))
 		} else if r.Deployment != nil {
-			sr = NewScheduledResourceFor(resources.NewDeployment(r.Deployment, c.Deployments()))
+			sr = NewScheduledResourceFor(resources.NewDeployment(r.Deployment, c.Deployments(), nil))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}

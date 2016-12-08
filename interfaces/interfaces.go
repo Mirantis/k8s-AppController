@@ -29,6 +29,6 @@ type Resource interface {
 //ResourceTemplate is an interface for AppController supported resource templates
 type ResourceTemplate interface {
 	NameMatches(client.ResourceDefinition, string) bool
-	New(client.ResourceDefinition, client.Interface) Resource
+	New(client.ResourceDefinition, client.Interface, map[string]string) Resource
 	NewExisting(string, client.Interface) Resource
 }

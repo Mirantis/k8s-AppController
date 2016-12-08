@@ -74,7 +74,7 @@ func (c Secret) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Secret != nil && def.Secret.Name == name
 }
 
-func NewSecret(c *api.Secret, client unversioned.SecretsInterface) Secret {
+func NewSecret(c *api.Secret, client unversioned.SecretsInterface, meta map[string]string) Secret {
 	return Secret{Secret: c, Client: client}
 }
 
@@ -82,8 +82,8 @@ func NewExistingSecret(name string, client unversioned.SecretsInterface) Existin
 	return ExistingSecret{Name: name, Client: client}
 }
 
-func (c Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewSecret(def.Secret, ci.Secrets())
+func (c Secret) New(def client.ResourceDefinition, ci client.Interface, meta map[string]string) interfaces.Resource {
+	return NewSecret(def.Secret, ci.Secrets(), meta)
 }
 
 func (c Secret) NewExisting(name string, ci client.Interface) interfaces.Resource {

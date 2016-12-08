@@ -70,8 +70,8 @@ func (d Deployment) NameMatches(def client.ResourceDefinition, name string) bool
 }
 
 // New returns new Deployment based on resource definition
-func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewDeployment(def.Deployment, c.Deployments())
+func (d Deployment) New(def client.ResourceDefinition, c client.Interface, meta map[string]string) interfaces.Resource {
+	return NewDeployment(def.Deployment, c.Deployments(), meta)
 }
 
 // NewExisting returns new ExistingDeployment based on resource definition
@@ -80,7 +80,7 @@ func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Reso
 }
 
 //NewDeployment is a constructor
-func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface) Deployment {
+func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface, meta map[string]string) Deployment {
 	return Deployment{Deployment: deployment, Client: client}
 }
 

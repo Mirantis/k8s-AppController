@@ -74,7 +74,7 @@ func (c ConfigMap) NameMatches(def client.ResourceDefinition, name string) bool 
 	return def.ConfigMap != nil && def.ConfigMap.Name == name
 }
 
-func NewConfigMap(c *api.ConfigMap, client unversioned.ConfigMapsInterface) ConfigMap {
+func NewConfigMap(c *api.ConfigMap, client unversioned.ConfigMapsInterface, meta map[string]string) ConfigMap {
 	return ConfigMap{ConfigMap: c, Client: client}
 }
 
@@ -82,8 +82,8 @@ func NewExistingConfigMap(name string, client unversioned.ConfigMapsInterface) E
 	return ExistingConfigMap{Name: name, Client: client}
 }
 
-func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewConfigMap(def.ConfigMap, ci.ConfigMaps())
+func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface, meta map[string]string) interfaces.Resource {
+	return NewConfigMap(def.ConfigMap, ci.ConfigMaps(), meta)
 }
 
 func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Resource {

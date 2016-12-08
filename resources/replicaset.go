@@ -81,8 +81,8 @@ func (r ReplicaSet) NameMatches(def client.ResourceDefinition, name string) bool
 }
 
 // New returns new ReplicaSet based on resource definition
-func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets())
+func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface, meta map[string]string) interfaces.Resource {
+	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets(), meta)
 }
 
 // NewExisting returns new ExistingReplicaSet based on resource definition
@@ -90,7 +90,7 @@ func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Reso
 	return NewExistingReplicaSet(name, c.ReplicaSets())
 }
 
-func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface) ReplicaSet {
+func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface, meta map[string]string) ReplicaSet {
 	return ReplicaSet{ReplicaSet: replicaSet, Client: client}
 }
 
