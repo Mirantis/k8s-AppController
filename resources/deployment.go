@@ -87,7 +87,6 @@ func NewDeployment(deployment *extensions.Deployment, client unversioned.Deploym
 type ExistingDeployment struct {
 	Name   string
 	Client unversioned.DeploymentInterface
-	Deployment
 }
 
 //UpdateMeta does nothing at the moment
@@ -117,6 +116,11 @@ func (d ExistingDeployment) Create() error {
 
 	log.Fatalf("Deployment %s not found", d.Name)
 	return errors.New("Deployment not found")
+}
+
+// Delete deletes Deployment from the cluster
+func (d ExistingDeployment) Delete() error {
+	return d.Client.Delete(d.Name, nil)
 }
 
 //NewExistingDeployment is a constructor

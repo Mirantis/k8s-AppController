@@ -96,7 +96,6 @@ func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.Replica
 type ExistingReplicaSet struct {
 	Name   string
 	Client unversioned.ReplicaSetInterface
-	ReplicaSet
 }
 
 func (r ExistingReplicaSet) Key() string {
@@ -109,6 +108,11 @@ func (r ExistingReplicaSet) Create() error {
 
 func (r ExistingReplicaSet) Status(meta map[string]string) (string, error) {
 	return replicaSetStatus(r.Client, r.Name, meta)
+}
+
+// Delete deletes ReplicaSet from the cluster
+func (r ExistingReplicaSet) Delete() error {
+	return r.Client.Delete(r.Name, nil)
 }
 
 func NewExistingReplicaSet(name string, client unversioned.ReplicaSetInterface) ExistingReplicaSet {

@@ -32,7 +32,6 @@ type ConfigMap struct {
 type ExistingConfigMap struct {
 	Name   string
 	Client unversioned.ConfigMapsInterface
-	ConfigMap
 }
 
 func configMapKey(name string) string {
@@ -87,4 +86,20 @@ func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) inter
 
 func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Resource {
 	return NewExistingConfigMap(name, ci.ConfigMaps())
+}
+
+func (c ExistingConfigMap) Key() string {
+	return configMapKey(c.Name)
+}
+
+func (c ExistingConfigMap) Status(meta map[string]string) (string, error) {
+	return configMapStatus(c.Client, c.Name)
+}
+
+func (c ExistingConfigMap) Create() error {
+	return createExistingResource(c)
+}
+
+func (c ExistingConfigMap) Delete() error {
+	return c.Client.Delete(c.Name)
 }

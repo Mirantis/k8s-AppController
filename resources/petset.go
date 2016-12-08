@@ -127,7 +127,6 @@ type ExistingPetSet struct {
 	Name      string
 	Client    unversioned.PetSetInterface
 	APIClient client.Interface
-	PetSet
 }
 
 // Key returns PetSet name
@@ -143,6 +142,11 @@ func (p ExistingPetSet) Create() error {
 // Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
 func (p ExistingPetSet) Status(meta map[string]string) (string, error) {
 	return petSetStatus(p.Client, p.Name, p.APIClient)
+}
+
+// Delete deletes PetSet from the cluster
+func (p ExistingPetSet) Delete() error {
+	return p.Client.Delete(p.Name, nil)
 }
 
 // NewExistingPetSet is a constructor
