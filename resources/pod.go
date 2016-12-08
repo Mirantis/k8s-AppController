@@ -25,6 +25,7 @@ import (
 )
 
 type Pod struct {
+	Base
 	Pod    *api.Pod
 	Client unversioned.PodInterface
 }
@@ -103,6 +104,7 @@ func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
 }
 
 type ExistingPod struct {
+	Base
 	Name   string
 	Client unversioned.PodInterface
 }

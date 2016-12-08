@@ -12,6 +12,7 @@ import (
 
 //DaemonSet is wrapper for K8s DaemonSet object
 type DaemonSet struct {
+	Base
 	DaemonSet *extensions.DaemonSet
 	Client    unversioned.DaemonSetInterface
 }
@@ -79,6 +80,7 @@ func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetI
 
 //ExistingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController
 type ExistingDaemonSet struct {
+	Base
 	Name   string
 	Client unversioned.DaemonSetInterface
 }

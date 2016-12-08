@@ -23,6 +23,27 @@ import (
 	"github.com/Mirantis/k8s-AppController/interfaces"
 )
 
+// Base is a base struct that contains data common for all resources
+type Base struct {
+	meta map[string]string
+}
+
+// Meta returns metadata parameter with given name, or empty string,
+// if no metadata were provided or such parameter does not exist.
+func (b Base) Meta(paramName string) string {
+	if b.meta == nil {
+		return ""
+	}
+
+	val, ok := b.meta[paramName]
+
+	if !ok {
+		return ""
+	}
+
+	return val
+}
+
 // KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
 // structs implement interfaces.ResourceTemplate
 var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{

@@ -23,6 +23,7 @@ type Resource interface {
 	Status(meta map[string]string) (string, error)
 	Create() error
 	Delete() error
+	Meta(string) string
 }
 
 //ResourceTemplate is an interface for AppController supported resource templates
