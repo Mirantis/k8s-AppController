@@ -105,7 +105,6 @@ func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
 type ExistingPod struct {
 	Name   string
 	Client unversioned.PodInterface
-	Pod
 }
 
 func (p ExistingPod) Key() string {
@@ -118,6 +117,11 @@ func (p ExistingPod) Create() error {
 
 func (p ExistingPod) Status(meta map[string]string) (string, error) {
 	return podStatus(p.Client, p.Name)
+}
+
+// Delete deletes pod from the cluster
+func (p ExistingPod) Delete() error {
+	return p.Client.Delete(p.Name, nil)
 }
 
 func NewExistingPod(name string, client unversioned.PodInterface) ExistingPod {

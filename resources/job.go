@@ -96,7 +96,6 @@ func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
 type ExistingJob struct {
 	Name   string
 	Client unversioned.JobInterface
-	Job
 }
 
 func (j ExistingJob) Key() string {
@@ -109,6 +108,11 @@ func (j ExistingJob) Status(meta map[string]string) (string, error) {
 
 func (j ExistingJob) Create() error {
 	return createExistingResource(j)
+}
+
+// Delete deletes Job from the cluster
+func (j ExistingJob) Delete() error {
+	return j.Client.Delete(j.Name, nil)
 }
 
 func NewExistingJob(name string, client unversioned.JobInterface) ExistingJob {

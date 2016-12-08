@@ -143,7 +143,6 @@ type ExistingService struct {
 	Name      string
 	Client    unversioned.ServiceInterface
 	APIClient client.Interface
-	Service
 }
 
 func (s ExistingService) Key() string {
@@ -156,6 +155,11 @@ func (s ExistingService) Create() error {
 
 func (s ExistingService) Status(meta map[string]string) (string, error) {
 	return serviceStatus(s.Client, s.Name, s.APIClient)
+}
+
+// Delete deletes Service from the cluster
+func (s ExistingService) Delete() error {
+	return s.Client.Delete(s.Name)
 }
 
 func NewExistingService(name string, client unversioned.ServiceInterface) ExistingService {

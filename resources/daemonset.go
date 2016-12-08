@@ -81,7 +81,6 @@ func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetI
 type ExistingDaemonSet struct {
 	Name   string
 	Client unversioned.DaemonSetInterface
-	DaemonSet
 }
 
 //Key returns DaemonSet name
@@ -97,6 +96,11 @@ func (d ExistingDaemonSet) Status(meta map[string]string) (string, error) {
 //Create looks for existing DaemonSet and returns error if there is no such DaemonSet
 func (d ExistingDaemonSet) Create() error {
 	return createExistingResource(d)
+}
+
+// Delete deletes DaemonSet from the cluster
+func (d ExistingDaemonSet) Delete() error {
+	return d.Client.Delete(d.Name)
 }
 
 //NewExistingDaemonSet is a constructor

@@ -32,7 +32,6 @@ type Secret struct {
 type ExistingSecret struct {
 	Name   string
 	Client unversioned.SecretsInterface
-	Secret
 }
 
 func secretKey(name string) string {
@@ -87,4 +86,20 @@ func (c Secret) New(def client.ResourceDefinition, ci client.Interface) interfac
 
 func (c Secret) NewExisting(name string, ci client.Interface) interfaces.Resource {
 	return NewExistingSecret(name, ci.Secrets())
+}
+
+func (c ExistingSecret) Key() string {
+	return secretKey(c.Name)
+}
+
+func (c ExistingSecret) Status(meta map[string]string) (string, error) {
+	return secretStatus(c.Client, c.Name)
+}
+
+func (c ExistingSecret) Create() error {
+	return createExistingResource(c)
+}
+
+func (c ExistingSecret) Delete() error {
+	return c.Client.Delete(c.Name)
 }
