@@ -45,9 +45,8 @@ func (p *secretClient) List(opts api.ListOptions) (*api.SecretList, error) {
 func (p *secretClient) Get(name string) (*api.Secret, error) {
 	if name != "fail" {
 		return MakeSecret(name), nil
-	} else {
-		return MakeSecret(name), fmt.Errorf("Mock Secret not created")
 	}
+	return MakeSecret(name), fmt.Errorf("Mock Secret not created")
 }
 
 func (p *secretClient) Delete(name string) error {

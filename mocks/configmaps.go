@@ -45,9 +45,8 @@ func (p *configMapClient) List(opts api.ListOptions) (*api.ConfigMapList, error)
 func (p *configMapClient) Get(name string) (*api.ConfigMap, error) {
 	if name != "fail" {
 		return MakeConfigMap(name), nil
-	} else {
-		return MakeConfigMap(name), fmt.Errorf("Mock ConfigMap not created")
 	}
+	return MakeConfigMap(name), fmt.Errorf("Mock ConfigMap not created")
 }
 
 func (p *configMapClient) Delete(name string) error {
