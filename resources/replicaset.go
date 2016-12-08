@@ -27,6 +27,7 @@ import (
 )
 
 type ReplicaSet struct {
+	Base
 	ReplicaSet *extensions.ReplicaSet
 	Client     unversioned.ReplicaSetInterface
 }
@@ -136,6 +137,7 @@ func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.Replica
 }
 
 type ExistingReplicaSet struct {
+	Base
 	Name   string
 	Client unversioned.ReplicaSetInterface
 }

@@ -31,6 +31,7 @@ import (
 
 // PetSet is a wrapper for K8s PetSet object
 type PetSet struct {
+	Base
 	PetSet    *apps.PetSet
 	Client    unversioned.PetSetInterface
 	APIClient client.Interface
@@ -125,6 +126,7 @@ func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClien
 
 // ExistingPetSet is a wrapper for K8s PetSet object which is meant to already be in a cluster bofer AppController execution
 type ExistingPetSet struct {
+	Base
 	Name      string
 	Client    unversioned.PetSetInterface
 	APIClient client.Interface

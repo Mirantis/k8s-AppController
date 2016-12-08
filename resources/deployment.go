@@ -14,6 +14,7 @@ import (
 
 // Deployment is wrapper for K8s Deployment object
 type Deployment struct {
+	Base
 	Deployment *extensions.Deployment
 	Client     unversioned.DeploymentInterface
 }
@@ -86,6 +87,7 @@ func NewDeployment(deployment *extensions.Deployment, client unversioned.Deploym
 
 // ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
 type ExistingDeployment struct {
+	Base
 	Name   string
 	Client unversioned.DeploymentInterface
 }

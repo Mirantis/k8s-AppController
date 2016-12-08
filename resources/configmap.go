@@ -26,11 +26,13 @@ import (
 )
 
 type ConfigMap struct {
+	Base
 	ConfigMap *api.ConfigMap
 	Client    unversioned.ConfigMapsInterface
 }
 
 type ExistingConfigMap struct {
+	Base
 	Name   string
 	Client unversioned.ConfigMapsInterface
 }

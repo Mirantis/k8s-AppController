@@ -60,6 +60,11 @@ func (c *CountingResource) Delete() error {
 	return nil
 }
 
+//Meta returns empty string
+func (c *CountingResource) Meta(string) string {
+	return ""
+}
+
 // NameMatches returns true
 func (c *CountingResource) NameMatches(_ client.ResourceDefinition, _ string) bool {
 	return true

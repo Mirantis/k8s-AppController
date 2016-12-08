@@ -26,6 +26,7 @@ import (
 )
 
 type Job struct {
+	Base
 	Job    *batch.Job
 	Client unversioned.JobInterface
 }
@@ -95,6 +96,7 @@ func NewJob(job *batch.Job, client unversioned.JobInterface) interfaces.Resource
 }
 
 type ExistingJob struct {
+	Base
 	Name   string
 	Client unversioned.JobInterface
 }

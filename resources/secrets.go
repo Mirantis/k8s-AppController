@@ -26,11 +26,13 @@ import (
 )
 
 type Secret struct {
+	Base
 	Secret *api.Secret
 	Client unversioned.SecretsInterface
 }
 
 type ExistingSecret struct {
+	Base
 	Name   string
 	Client unversioned.SecretsInterface
 }

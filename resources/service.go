@@ -28,6 +28,7 @@ import (
 )
 
 type Service struct {
+	Base
 	Service   *api.Service
 	Client    unversioned.ServiceInterface
 	APIClient client.Interface
@@ -141,6 +142,7 @@ func NewService(service *api.Service, client unversioned.ServiceInterface, apiCl
 }
 
 type ExistingService struct {
+	Base
 	Name      string
 	Client    unversioned.ServiceInterface
 	APIClient client.Interface
