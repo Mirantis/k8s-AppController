@@ -271,23 +271,23 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		var resource interfaces.Resource
 
 		if r.Pod != nil {
-			resource = resources.NewPod(r.Pod, c.Pods())
+			resource = resources.NewPod(r.Pod, c.Pods(), r.Meta)
 		} else if r.Job != nil {
-			resource = resources.NewJob(r.Job, c.Jobs())
+			resource = resources.NewJob(r.Job, c.Jobs(), r.Meta)
 		} else if r.Service != nil {
-			resource = resources.NewService(r.Service, c.Services(), c)
+			resource = resources.NewService(r.Service, c.Services(), c, r.Meta)
 		} else if r.ReplicaSet != nil {
-			resource = resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets())
+			resource = resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets(), r.Meta)
 		} else if r.PetSet != nil {
-			resource = resources.NewPetSet(r.PetSet, c.PetSets(), c)
+			resource = resources.NewPetSet(r.PetSet, c.PetSets(), c, r.Meta)
 		} else if r.DaemonSet != nil {
-			resource = resources.NewDaemonSet(r.DaemonSet, c.DaemonSets())
+			resource = resources.NewDaemonSet(r.DaemonSet, c.DaemonSets(), r.Meta)
 		} else if r.ConfigMap != nil {
-			resource = resources.NewConfigMap(r.ConfigMap, c.ConfigMaps())
+			resource = resources.NewConfigMap(r.ConfigMap, c.ConfigMaps(), r.Meta)
 		} else if r.Secret != nil {
-			resource = resources.NewSecret(r.Secret, c.Secrets())
+			resource = resources.NewSecret(r.Secret, c.Secrets(), r.Meta)
 		} else if r.Deployment != nil {
-			resource = resources.NewDeployment(r.Deployment, c.Deployments())
+			resource = resources.NewDeployment(r.Deployment, c.Deployments(), r.Meta)
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}

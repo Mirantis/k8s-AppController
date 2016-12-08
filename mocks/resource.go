@@ -46,7 +46,7 @@ func (c *Resource) Delete() error {
 	return nil
 }
 
-//Meta returns empty string
+// Meta returns empty string
 func (c *Resource) Meta(string) string {
 	return ""
 }

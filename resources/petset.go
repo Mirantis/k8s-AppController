@@ -63,7 +63,7 @@ func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.I
 	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		p := pod
-		resources = append(resources, NewPod(&p, apiClient.Pods()))
+		resources = append(resources, NewPod(&p, apiClient.Pods(), nil))
 	}
 
 	status, err := resourceListReady(resources)
@@ -111,7 +111,7 @@ func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new PetSet based on resource definition
 func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewPetSet(def.PetSet, c.PetSets(), c)
+	return NewPetSet(def.PetSet, c.PetSets(), c, def.Meta)
 }
 
 // NewExisting returns new ExistingPetSet based on resource definition
@@ -120,8 +120,8 @@ func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource
 }
 
 // NewPetSet is a constructor
-func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: PetSet{PetSet: petSet, Client: client, APIClient: apiClient}}
+func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: PetSet{Base: Base{meta}, PetSet: petSet, Client: client, APIClient: apiClient}}
 }
 
 // ExistingPetSet is a wrapper for K8s PetSet object which is meant to already be in a cluster bofer AppController execution

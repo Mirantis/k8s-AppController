@@ -71,19 +71,19 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 		resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 		for _, pod := range pods.Items {
 			p := pod
-			resources = append(resources, NewPod(&p, apiClient.Pods()))
+			resources = append(resources, NewPod(&p, apiClient.Pods(), nil))
 		}
 		for _, job := range jobs.Items {
 			j := job
-			resources = append(resources, NewJob(&j, apiClient.Jobs()))
+			resources = append(resources, NewJob(&j, apiClient.Jobs(), nil))
 		}
 		for _, rs := range replicasets.Items {
 			r := rs
-			resources = append(resources, NewReplicaSet(&r, apiClient.ReplicaSets()))
+			resources = append(resources, NewReplicaSet(&r, apiClient.ReplicaSets(), nil))
 		}
 		for _, ps := range petsets.Items {
 			p := ps
-			resources = append(resources, NewPetSet(&p, apiClient.PetSets(), apiClient))
+			resources = append(resources, NewPetSet(&p, apiClient.PetSets(), apiClient, nil))
 		}
 		status, err := resourceListReady(resources)
 		if status != "ready" || err != nil {
@@ -128,7 +128,7 @@ func (s Service) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new Service based on resource definition
 func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewService(def.Service, c.Services(), c)
+	return NewService(def.Service, c.Services(), c, def.Meta)
 }
 
 // NewExisting returns new ExistingService based on resource definition
@@ -137,8 +137,8 @@ func (s Service) NewExisting(name string, c client.Interface) interfaces.Resourc
 }
 
 // NewService is Service constructor. Needs apiClient for service status checks
-func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Service{Service: service, Client: client, APIClient: apiClient}}
+func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Service{Base: Base{meta}, Service: service, Client: client, APIClient: apiClient}}
 }
 
 type ExistingService struct {

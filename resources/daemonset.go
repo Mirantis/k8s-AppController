@@ -65,7 +65,7 @@ func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool 
 
 // New returns new DaemonSet based on resource definition
 func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewDaemonSet(def.DaemonSet, c.DaemonSets())
+	return NewDaemonSet(def.DaemonSet, c.DaemonSets(), def.Meta)
 }
 
 // NewExisting returns new ExistingDaemonSet based on resource definition
@@ -74,8 +74,8 @@ func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resou
 }
 
 // NewDaemonSet is a constructor
-func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: DaemonSet{DaemonSet: daemonset, Client: client}}
+func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetInterface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: DaemonSet{Base: Base{meta}, DaemonSet: daemonset, Client: client}}
 }
 
 // ExistingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController
