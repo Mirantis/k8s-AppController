@@ -39,14 +39,9 @@ Resource Definitions are (the same as Dependencies) ThirdPartyResource API exten
 
 # Usage
 
-Clone repo:
-
-`git clone https://github.com/Mirantis/k8s-AppController.git`
-`cd k8s-AppController`
-
 Run AppController pod:
 
-`kubectl create -f manifests/appcontroller.yaml`
+`kubectl create -f https://raw.githubusercontent.com/Mirantis/k8s-AppController/master/manifests/appcontroller.yaml`
 
 Suppose you have some yaml files with single k8s object definitions (pod and jobs are supported right now). Create AppController ResourceDefintions for them:
 
