@@ -25,6 +25,14 @@ cat replicaset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller wrap frontend | $K
 
 cat daemonset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller wrap daemonset | $KUBECTL_NAME delete -f -
 
-cat secret.yaml | $KUBECTL_NAME exec -i k8s-appcontroller wrap daemonset | $KUBECTL_NAME delete -f -
+cat secret.yaml | $KUBECTL_NAME exec -i k8s-appcontroller wrap secret | $KUBECTL_NAME delete -f -
+
+cat service.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
+
+cat petset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
+
+cat configmap1.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
+
+cat deployment.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
 
 $KUBECTL_NAME delete -f ../../manifests/appcontroller.yaml
