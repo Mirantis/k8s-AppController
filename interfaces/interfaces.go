@@ -14,7 +14,9 @@
 
 package interfaces
 
-import "github.com/Mirantis/k8s-AppController/client"
+import (
+	"github.com/Mirantis/k8s-AppController/client"
+)
 
 //Resource is an interface for AppController supported resources
 type Resource interface {
@@ -25,9 +27,24 @@ type Resource interface {
 	Delete() error
 }
 
+// DependencyReport is a report of a single dependency of a node in graph
+type DependencyReport struct {
+	Dependency string
+	Blocks     bool
+	Percentage int
+	Needed     int
+	Message    string
+}
+
+// Reporter is an interface that implements getting dependency reports
+type Reporter interface {
+	Resource
+	GetDependencyReport(map[string]string) DependencyReport
+}
+
 //ResourceTemplate is an interface for AppController supported resource templates
 type ResourceTemplate interface {
 	NameMatches(client.ResourceDefinition, string) bool
-	New(client.ResourceDefinition, client.Interface) Resource
-	NewExisting(string, client.Interface) Resource
+	New(client.ResourceDefinition, client.Interface) Reporter
+	NewExisting(string, client.Interface) Reporter
 }
