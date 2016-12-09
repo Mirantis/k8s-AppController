@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -20,7 +21,7 @@ func getStatus(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	shouldReport, err := cmd.Flags().GetBool("report")
+	getJSON, err := cmd.Flags().GetBool("json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,10 +46,15 @@ func getStatus(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	status, report, _ := graph.GetStatus()
-	fmt.Printf("STATUS: %s\n", status)
-	if shouldReport {
-		fmt.Printf("REPORT:\n%s", report)
+	status, report := graph.GetStatus()
+	if getJSON {
+		data, err := json.Marshal(report)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf(string(data))
+	} else {
+		fmt.Printf("STATUS: %s\n", status)
 	}
 }
 
@@ -64,7 +70,7 @@ func InitGetStatusCommand() (*cobra.Command, error) {
 	var labelSelector string
 	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
 
-	var shouldReport bool
-	run.Flags().BoolVarP(&shouldReport, "report", "r", false, "Print report")
+	var getJSON bool
+	run.Flags().BoolVarP(&getJSON, "json", "j", false, "Output JSON")
 	return run, err
 }
