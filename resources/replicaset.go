@@ -15,6 +15,7 @@
 package resources
 
 import (
+	"fmt"
 	"log"
 
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type ReplicaSet struct {
@@ -45,6 +47,41 @@ func replicaSetStatus(r unversioned.ReplicaSetInterface, name string, meta map[s
 	}
 
 	return "ready", nil
+}
+
+func replicatSetReport(r unversioned.ReplicaSetInterface, name string, meta map[string]string) interfaces.DependencyReport {
+	rs, err := r.Get(name)
+	if err != nil {
+		return report.ErrorReport(name, err)
+	}
+	successFactor, err := getPercentage("success_factor", meta)
+	if err != nil {
+		return report.ErrorReport(name, err)
+	}
+	percentage := (rs.Spec.Replicas * 100 / rs.Status.Replicas)
+	message := fmt.Sprintf(
+		"%d of %d replicas up (%d %%, needed %d%%)",
+		rs.Status.Replicas,
+		rs.Spec.Replicas,
+		percentage,
+		successFactor,
+	)
+	if percentage >= successFactor {
+		return interfaces.DependencyReport{
+			Dependency: name,
+			Blocks:     false,
+			Percentage: int(percentage),
+			Needed:     int(successFactor),
+			Message:    message,
+		}
+	}
+	return interfaces.DependencyReport{
+		Dependency: name,
+		Blocks:     false,
+		Percentage: int(percentage),
+		Needed:     int(successFactor),
+		Message:    message,
+	}
 }
 
 func replicaSetKey(name string) string {
@@ -80,13 +117,18 @@ func (r ReplicaSet) NameMatches(def client.ResourceDefinition, name string) bool
 }
 
 // New returns new ReplicaSet based on resource definition
-func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
 	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets())
 }
 
 // NewExisting returns new ExistingReplicaSet based on resource definition
-func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Reporter {
 	return NewExistingReplicaSet(name, c.ReplicaSets())
+}
+
+// GetDependencyReport returns a DependencyReport for this replicaset
+func (r ReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
+	return replicatSetReport(r.Client, r.ReplicaSet.Name, meta)
 }
 
 func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface) ReplicaSet {
@@ -117,4 +159,9 @@ func (r ExistingReplicaSet) Delete() error {
 
 func NewExistingReplicaSet(name string, client unversioned.ReplicaSetInterface) ExistingReplicaSet {
 	return ExistingReplicaSet{Name: name, Client: client}
+}
+
+// GetDependencyReport returns a DependencyReport for this replicaset
+func (r ExistingReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
+	return replicatSetReport(r.Client, r.Name, meta)
 }

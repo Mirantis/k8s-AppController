@@ -9,6 +9,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 //Deployment is wrapper for K8s Deployment object
@@ -69,13 +70,13 @@ func (d Deployment) NameMatches(def client.ResourceDefinition, name string) bool
 }
 
 // New returns new Deployment based on resource definition
-func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewDeployment(def.Deployment, c.Deployments())
+func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewDeployment(def.Deployment, c.Deployments())}
 }
 
 // NewExisting returns new ExistingDeployment based on resource definition
-func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingDeployment(name, c.Deployments())
+func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{NewExistingDeployment(name, c.Deployments())}
 }
 
 //NewDeployment is a constructor

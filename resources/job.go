@@ -17,11 +17,12 @@ package resources
 import (
 	"log"
 
+	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/interfaces"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 
-	"github.com/Mirantis/k8s-AppController/client"
-	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type Job struct {
@@ -80,13 +81,13 @@ func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 // New returns new Job on resource definition
-func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewJob(def.Job, c.Jobs())
+func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewJob(def.Job, c.Jobs())}
 }
 
 // NewExisting returns new ExistingJob based on resource definition
-func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingJob(name, c.Jobs())
+func (j Job) NewExisting(name string, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewExistingJob(name, c.Jobs())}
 }
 
 func NewJob(job *batch.Job, client unversioned.JobInterface) Job {

@@ -22,6 +22,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type Secret struct {
@@ -38,12 +39,16 @@ func secretKey(name string) string {
 	return "secret/" + name
 }
 
-func (c Secret) Key() string {
-	return secretKey(c.Secret.Name)
+func (s Secret) Key() string {
+	return secretKey(s.Secret.Name)
 }
 
-func secretStatus(c unversioned.SecretsInterface, name string) (string, error) {
-	_, err := c.Get(name)
+func (s ExistingSecret) Key() string {
+	return secretKey(s.Name)
+}
+
+func secretStatus(s unversioned.SecretsInterface, name string) (string, error) {
+	_, err := s.Get(name)
 	if err != nil {
 		return "error", err
 	}
@@ -51,55 +56,51 @@ func secretStatus(c unversioned.SecretsInterface, name string) (string, error) {
 	return "ready", nil
 }
 
-func (c Secret) Status(meta map[string]string) (string, error) {
-	return secretStatus(c.Client, c.Secret.Name)
+func (s Secret) Status(meta map[string]string) (string, error) {
+	return secretStatus(s.Client, s.Secret.Name)
 }
 
-func (c Secret) Create() error {
-	if err := checkExistence(c); err != nil {
-		log.Println("Creating ", c.Key())
-		c.Secret, err = c.Client.Create(c.Secret)
+func (s Secret) Create() error {
+	if err := checkExistence(s); err != nil {
+		log.Println("Creating ", s.Key())
+		s.Secret, err = s.Client.Create(s.Secret)
 		return err
 	}
 	return nil
 }
 
-func (c Secret) Delete() error {
-	return c.Client.Delete(c.Secret.Name)
+func (s Secret) Delete() error {
+	return s.Client.Delete(s.Secret.Name)
 }
 
-func (c Secret) NameMatches(def client.ResourceDefinition, name string) bool {
+func (s Secret) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Secret != nil && def.Secret.Name == name
 }
 
-func NewSecret(c *api.Secret, client unversioned.SecretsInterface) Secret {
-	return Secret{Secret: c, Client: client}
+func NewSecret(s *api.Secret, client unversioned.SecretsInterface) Secret {
+	return Secret{Secret: s, Client: client}
 }
 
 func NewExistingSecret(name string, client unversioned.SecretsInterface) ExistingSecret {
 	return ExistingSecret{Name: name, Client: client}
 }
 
-func (c Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewSecret(def.Secret, ci.Secrets())
+func (s Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewSecret(def.Secret, ci.Secrets())}
 }
 
-func (c Secret) NewExisting(name string, ci client.Interface) interfaces.Resource {
-	return NewExistingSecret(name, ci.Secrets())
+func (s Secret) NewExisting(name string, ci client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewExistingSecret(name, ci.Secrets())}
 }
 
-func (c ExistingSecret) Key() string {
-	return secretKey(c.Name)
+func (s ExistingSecret) Status(meta map[string]string) (string, error) {
+	return secretStatus(s.Client, s.Name)
 }
 
-func (c ExistingSecret) Status(meta map[string]string) (string, error) {
-	return secretStatus(c.Client, c.Name)
+func (s ExistingSecret) Create() error {
+	return createExistingResource(s)
 }
 
-func (c ExistingSecret) Create() error {
-	return createExistingResource(c)
-}
-
-func (c ExistingSecret) Delete() error {
-	return c.Client.Delete(c.Name)
+func (s ExistingSecret) Delete() error {
+	return s.Client.Delete(s.Name)
 }
