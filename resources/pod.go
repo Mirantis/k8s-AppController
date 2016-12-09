@@ -22,6 +22,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 type Pod struct {
@@ -89,13 +90,13 @@ func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 // New returns new Pod based on resource definition
-func (p Pod) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewPod(def.Pod, c.Pods())
+func (p Pod) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewPod(def.Pod, c.Pods())}
 }
 
 // NewExisting returns new ExistingPod based on resource definition
-func (p Pod) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingPod(name, c.Pods())
+func (p Pod) NewExisting(name string, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewExistingPod(name, c.Pods())}
 }
 
 func NewPod(pod *api.Pod, client unversioned.PodInterface) Pod {
