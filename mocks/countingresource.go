@@ -22,8 +22,8 @@ import (
 	"github.com/Mirantis/k8s-AppController/report"
 )
 
-//CountingResource is a fake resource that becomes ready after given timeout.
-//It also increases the counter when started and decreases it when becomes ready
+// CountingResource is a fake resource that becomes ready after given timeout.
+// It also increases the counter when started and decreases it when becomes ready
 type CountingResource struct {
 	key       string
 	status    string
@@ -32,13 +32,13 @@ type CountingResource struct {
 	startTime time.Time
 }
 
-//Key returns a key of the CountingResource
+// Key returns a key of the CountingResource
 func (c CountingResource) Key() string {
 	return c.key
 }
 
-//Status returns a status of the CountingResource. It also updates the status
-//after provided timeout and decrements counter
+// Status returns a status of the CountingResource. It also updates the status
+// after provided timeout and decrements counter
 func (c *CountingResource) Status(meta map[string]string) (string, error) {
 	if time.Since(c.startTime) >= c.timeout && c.status != "ready" {
 		c.counter.Dec()
@@ -48,7 +48,7 @@ func (c *CountingResource) Status(meta map[string]string) (string, error) {
 	return c.status, nil
 }
 
-//Create increments counter and sets creation time
+// Create increments counter and sets creation time
 func (c *CountingResource) Create() error {
 	c.counter.Inc()
 	c.startTime = time.Now()
@@ -75,7 +75,7 @@ func (c *CountingResource) NewExisting(name string, _ client.Interface) interfac
 	return report.SimpleReporter{BaseResource: NewResource(name, "ready")}
 }
 
-//NewCountingResource creates new instance of CountingResource
+// NewCountingResource creates new instance of CountingResource
 func NewCountingResource(key string, counter *CounterWithMemo, timeout time.Duration) *CountingResource {
 	return &CountingResource{
 		key:     key,

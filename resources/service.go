@@ -135,7 +135,7 @@ func (s Service) NewExisting(name string, c client.Interface) interfaces.Resourc
 	return NewExistingService(name, c.Services())
 }
 
-//NewService is Service constructor. Needs apiClient for service status checks
+// NewService is Service constructor. Needs apiClient for service status checks
 func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Service{Service: service, Client: client, APIClient: apiClient}}
 }

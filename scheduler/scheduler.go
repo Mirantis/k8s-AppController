@@ -191,7 +191,7 @@ func NewScheduledResource(kind string, name string,
 	return NewScheduledResourceFor(r), nil
 }
 
-//NewScheduledResourceFor returns new scheduled resource for given resource in init state
+// NewScheduledResourceFor returns new scheduled resource for given resource in init state
 func NewScheduledResourceFor(r interfaces.Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
@@ -305,7 +305,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 
 	for r := range toCreate {
 		go func(r *ScheduledResource, finished chan string, ccLimiter chan struct{}) {
-			//Acquire sepmaphor
+			// Acquire sepmaphor
 			ccLimiter <- struct{}{}
 			log.Println("Creating resource", r.Key())
 			err := r.Create()
@@ -344,7 +344,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 				log.Printf("Resource %s created", r.Key())
 			}
 			finished <- r.Key()
-			//Release semaphor
+			// Release semaphor
 			<-ccLimiter
 		}(r, finished, ccLimiter)
 	}
@@ -379,21 +379,21 @@ func Create(depGraph DependencyGraph, concurrency int) {
 	close(toCreate)
 	close(created)
 
-	//TODO Make sure every KO gets created eventually
+	// TODO Make sure every KO gets created eventually
 }
 
-//DetectCycles implements Kosaraju's algorithm https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
-//for detecting cycles in graph.
-//We are depending on the fact that any strongly connected component of a graph is a cycle
-//if it consists of more than one vertex
+// DetectCycles implements Kosaraju's algorithm https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
+// for detecting cycles in graph.
+// We are depending on the fact that any strongly connected component of a graph is a cycle
+// if it consists of more than one vertex
 func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {
-	//is vertex visited in first phase of the algorithm
+	// is vertex visited in first phase of the algorithm
 	visited := make(map[string]bool)
-	//is vertex assigned to strongly connected component
+	// is vertex assigned to strongly connected component
 	assigned := make(map[string]bool)
 
-	//each key is root of strongly connected component
-	//the slice consists of all vertices belonging to strongly connected component to which root belongs
+	// each key is root of strongly connected component
+	// the slice consists of all vertices belonging to strongly connected component to which root belongs
 	components := make(map[string][]*ScheduledResource)
 
 	orderedVertices := list.New()
@@ -412,7 +412,7 @@ func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {
 		assignVertex(vertex, vertex, assigned, components)
 	}
 
-	//if any strongly connected component consist of more than one vertex - it's a cycle
+	// if any strongly connected component consist of more than one vertex - it's a cycle
 	var cycles [][]*ScheduledResource
 	for _, component := range components {
 		if len(component) > 1 {
@@ -420,7 +420,7 @@ func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {
 		}
 	}
 
-	//detect self cycles - not part of Kosaraju's algorithm
+	// detect self cycles - not part of Kosaraju's algorithm
 	for key, vertex := range depGraph {
 		for _, child := range vertex.RequiredBy {
 			if key == child.Key() {
@@ -444,7 +444,7 @@ func visitVertex(vertex *ScheduledResource, visited map[string]bool, orderedVert
 func assignVertex(vertex, root *ScheduledResource, assigned map[string]bool, components map[string][]*ScheduledResource) {
 	if assigned[vertex.Key()] == false {
 		var component []*ScheduledResource
-		//if component is not yet initiated, make the slice
+		// if component is not yet initiated, make the slice
 		component, ok := components[root.Key()]
 		if !ok {
 			component = make([]*ScheduledResource, 0, 1)

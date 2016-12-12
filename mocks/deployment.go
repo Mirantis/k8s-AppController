@@ -53,7 +53,7 @@ func (r *deploymentClient) List(opts api.ListOptions) (*extensions.DeploymentLis
 		deployments = append(deployments, *MakeDeployment(fmt.Sprintf("ready-trolo%d", i)))
 	}
 
-	//use ListOptions.LabelSelector to check if there should be any failed deployments
+	// use ListOptions.LabelSelector to check if there should be any failed deployments
 	if strings.Index(opts.LabelSelector.String(), "faileddeployment=yes") >= 0 {
 		deployments = append(deployments, *MakeDeployment("fail"))
 	}

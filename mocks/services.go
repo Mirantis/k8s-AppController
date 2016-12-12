@@ -27,7 +27,7 @@ import (
 type serviceClient struct {
 }
 
-//MakeService creates a service based on its name
+// MakeService creates a service based on its name
 func MakeService(name string) *api.Service {
 	var service *api.Service
 

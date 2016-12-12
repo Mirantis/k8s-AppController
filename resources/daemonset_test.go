@@ -6,7 +6,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/mocks"
 )
 
-//TestDaemonSetSuccessCheck check status for ready DaemonSet
+// TestDaemonSetSuccessCheck check status for ready DaemonSet
 func TestDaemonSetSuccessCheck(t *testing.T) {
 	c := mocks.NewClient()
 	status, err := daemonSetStatus(c.DaemonSets(), "not-fail")
@@ -19,7 +19,7 @@ func TestDaemonSetSuccessCheck(t *testing.T) {
 	}
 }
 
-//TestDaemonSetFailCheck status of not ready daemonset
+// TestDaemonSetFailCheck status of not ready daemonset
 func TestDaemonSetFailCheck(t *testing.T) {
 	c := mocks.NewClient()
 	status, err := daemonSetStatus(c.DaemonSets(), "fail")

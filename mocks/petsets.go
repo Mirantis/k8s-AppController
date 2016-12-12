@@ -50,7 +50,7 @@ func (r *petSetClient) List(opts api.ListOptions) (*apps.PetSetList, error) {
 		petSets = append(petSets, *MakePetSet(fmt.Sprintf("ready-trolo%d", i)))
 	}
 
-	//use ListOptions.LabelSelector to check if there should be any failed petSets
+	// use ListOptions.LabelSelector to check if there should be any failed petSets
 	if strings.Index(opts.LabelSelector.String(), "failedpetSet=yes") >= 0 {
 		petSets = append(petSets, *MakePetSet("fail"))
 	}

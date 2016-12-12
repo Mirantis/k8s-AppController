@@ -20,7 +20,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/mocks"
 )
 
-//TestCheckServiceStatusReady checks if the service status check is fine for healthy service
+// TestCheckServiceStatusReady checks if the service status check is fine for healthy service
 func TestCheckServiceStatusReady(t *testing.T) {
 	c := mocks.NewClient()
 	status, err := serviceStatus(c.Services(), "success", c)
@@ -34,7 +34,7 @@ func TestCheckServiceStatusReady(t *testing.T) {
 	}
 }
 
-//TestCheckServiceStatusPodNotReady tests if service which selects failed pods is not ready
+// TestCheckServiceStatusPodNotReady tests if service which selects failed pods is not ready
 func TestCheckServiceStatusPodNotReady(t *testing.T) {
 	c := mocks.NewClient()
 	status, err := serviceStatus(c.Services(), "failedpod", c)
@@ -53,7 +53,7 @@ func TestCheckServiceStatusPodNotReady(t *testing.T) {
 	}
 }
 
-//TestCheckServiceStatusJobNotReady tests if service which selects failed pods is not ready
+// TestCheckServiceStatusJobNotReady tests if service which selects failed pods is not ready
 func TestCheckServiceStatusJobNotReady(t *testing.T) {
 	c := mocks.NewClient()
 	status, err := serviceStatus(c.Services(), "failedjob", c)
@@ -72,7 +72,7 @@ func TestCheckServiceStatusJobNotReady(t *testing.T) {
 	}
 }
 
-//TestCheckServiceStatusReplicaSetNotReady tests if service which selects failed replicasets is not ready
+// TestCheckServiceStatusReplicaSetNotReady tests if service which selects failed replicasets is not ready
 func TestCheckServiceStatusReplicaSetNotReady(t *testing.T) {
 	c := mocks.NewClient()
 	status, err := serviceStatus(c.Services(), "failedreplicaSet", c)

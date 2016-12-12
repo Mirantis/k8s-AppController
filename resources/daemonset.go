@@ -10,7 +10,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-//DaemonSet is wrapper for K8s DaemonSet object
+// DaemonSet is wrapper for K8s DaemonSet object
 type DaemonSet struct {
 	DaemonSet *extensions.DaemonSet
 	Client    unversioned.DaemonSetInterface
@@ -31,7 +31,7 @@ func daemonSetStatus(d unversioned.DaemonSetInterface, name string) (string, err
 	return "not ready", nil
 }
 
-//Key return DaemonSet key
+// Key return DaemonSet key
 func (d DaemonSet) Key() string {
 	return daemonSetKey(d.DaemonSet.Name)
 }
@@ -41,7 +41,7 @@ func (d DaemonSet) Status(meta map[string]string) (string, error) {
 	return daemonSetStatus(d.Client, d.DaemonSet.Name)
 }
 
-//Create looks for DaemonSet in K8s and creates it if not present
+// Create looks for DaemonSet in K8s and creates it if not present
 func (d DaemonSet) Create() error {
 	if err := checkExistence(d); err != nil {
 		log.Println("Creating ", d.Key())
@@ -72,18 +72,18 @@ func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resou
 	return NewExistingDaemonSet(name, c.DaemonSets())
 }
 
-//NewDaemonSet is a constructor
+// NewDaemonSet is a constructor
 func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: DaemonSet{DaemonSet: daemonset, Client: client}}
 }
 
-//ExistingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController
+// ExistingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController
 type ExistingDaemonSet struct {
 	Name   string
 	Client unversioned.DaemonSetInterface
 }
 
-//Key returns DaemonSet name
+// Key returns DaemonSet name
 func (d ExistingDaemonSet) Key() string {
 	return daemonSetKey(d.Name)
 }
@@ -93,7 +93,7 @@ func (d ExistingDaemonSet) Status(meta map[string]string) (string, error) {
 	return daemonSetStatus(d.Client, d.Name)
 }
 
-//Create looks for existing DaemonSet and returns error if there is no such DaemonSet
+// Create looks for existing DaemonSet and returns error if there is no such DaemonSet
 func (d ExistingDaemonSet) Create() error {
 	return createExistingResource(d)
 }
@@ -103,7 +103,7 @@ func (d ExistingDaemonSet) Delete() error {
 	return d.Client.Delete(d.Name)
 }
 
-//NewExistingDaemonSet is a constructor
+// NewExistingDaemonSet is a constructor
 func NewExistingDaemonSet(name string, client unversioned.DaemonSetInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingDaemonSet{Name: name, Client: client}}
 }
