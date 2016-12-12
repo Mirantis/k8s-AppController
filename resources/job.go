@@ -82,16 +82,16 @@ func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new Job on resource definition
 func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewJob(def.Job, c.Jobs())}
+	return NewJob(def.Job, c.Jobs())
 }
 
 // NewExisting returns new ExistingJob based on resource definition
 func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewExistingJob(name, c.Jobs())}
+	return NewExistingJob(name, c.Jobs())
 }
 
-func NewJob(job *batch.Job, client unversioned.JobInterface) Job {
-	return Job{Job: job, Client: client}
+func NewJob(job *batch.Job, client unversioned.JobInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Job{Job: job, Client: client}}
 }
 
 type ExistingJob struct {
@@ -116,6 +116,6 @@ func (j ExistingJob) Delete() error {
 	return j.Client.Delete(j.Name, nil)
 }
 
-func NewExistingJob(name string, client unversioned.JobInterface) ExistingJob {
-	return ExistingJob{Name: name, Client: client}
+func NewExistingJob(name string, client unversioned.JobInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingJob{Name: name, Client: client}}
 }

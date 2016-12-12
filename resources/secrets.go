@@ -77,20 +77,20 @@ func (s Secret) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Secret != nil && def.Secret.Name == name
 }
 
-func NewSecret(s *api.Secret, client unversioned.SecretsInterface) Secret {
-	return Secret{Secret: s, Client: client}
+func NewSecret(s *api.Secret, client unversioned.SecretsInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Secret{Secret: s, Client: client}}
 }
 
-func NewExistingSecret(name string, client unversioned.SecretsInterface) ExistingSecret {
-	return ExistingSecret{Name: name, Client: client}
+func NewExistingSecret(name string, client unversioned.SecretsInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingSecret{Name: name, Client: client}}
 }
 
 func (s Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewSecret(def.Secret, ci.Secrets())}
+	return NewSecret(def.Secret, ci.Secrets())
 }
 
 func (s Secret) NewExisting(name string, ci client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewExistingSecret(name, ci.Secrets())}
+	return NewExistingSecret(name, ci.Secrets())
 }
 
 func (s ExistingSecret) Status(meta map[string]string) (string, error) {

@@ -71,17 +71,17 @@ func (d Deployment) NameMatches(def client.ResourceDefinition, name string) bool
 
 // New returns new Deployment based on resource definition
 func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewDeployment(def.Deployment, c.Deployments())}
+	return NewDeployment(def.Deployment, c.Deployments())
 }
 
 // NewExisting returns new ExistingDeployment based on resource definition
 func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{NewExistingDeployment(name, c.Deployments())}
+	return NewExistingDeployment(name, c.Deployments())
 }
 
 //NewDeployment is a constructor
-func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface) Deployment {
-	return Deployment{Deployment: deployment, Client: client}
+func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Deployment{Deployment: deployment, Client: client}}
 }
 
 //ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
@@ -125,6 +125,6 @@ func (d ExistingDeployment) Delete() error {
 }
 
 //NewExistingDeployment is a constructor
-func NewExistingDeployment(name string, client unversioned.DeploymentInterface) ExistingDeployment {
-	return ExistingDeployment{Name: name, Client: client}
+func NewExistingDeployment(name string, client unversioned.DeploymentInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingDeployment{Name: name, Client: client}}
 }

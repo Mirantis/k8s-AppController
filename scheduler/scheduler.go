@@ -271,23 +271,23 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		var sr *ScheduledResource
 
 		if r.Pod != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewPod(r.Pod, c.Pods())})
+			sr = NewScheduledResourceFor(resources.NewPod(r.Pod, c.Pods()))
 		} else if r.Job != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewJob(r.Job, c.Jobs())})
+			sr = NewScheduledResourceFor(resources.NewJob(r.Job, c.Jobs()))
 		} else if r.Service != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewService(r.Service, c.Services(), c)})
+			sr = NewScheduledResourceFor(resources.NewService(r.Service, c.Services(), c))
 		} else if r.ReplicaSet != nil {
 			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
 		} else if r.PetSet != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewPetSet(r.PetSet, c.PetSets(), c)})
+			sr = NewScheduledResourceFor(resources.NewPetSet(r.PetSet, c.PetSets(), c))
 		} else if r.DaemonSet != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewDaemonSet(r.DaemonSet, c.DaemonSets())})
+			sr = NewScheduledResourceFor(resources.NewDaemonSet(r.DaemonSet, c.DaemonSets()))
 		} else if r.ConfigMap != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{resources.NewConfigMap(r.ConfigMap, c.ConfigMaps())})
+			sr = NewScheduledResourceFor(resources.NewConfigMap(r.ConfigMap, c.ConfigMaps()))
 		} else if r.Secret != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{resources.NewSecret(r.Secret, c.Secrets())})
+			sr = NewScheduledResourceFor(resources.NewSecret(r.Secret, c.Secrets()))
 		} else if r.Deployment != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{resources.NewDeployment(r.Deployment, c.Deployments())})
+			sr = NewScheduledResourceFor(resources.NewDeployment(r.Deployment, c.Deployments()))
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
