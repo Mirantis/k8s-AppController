@@ -82,12 +82,12 @@ func NewExistingConfigMap(name string, client unversioned.ConfigMapsInterface) E
 }
 
 // New returns a new object wrapped as Reporter
-func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewConfigMap(def.ConfigMap, ci.ConfigMaps())}
+func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewConfigMap(def.ConfigMap, ci.ConfigMaps())}
 }
 
 // NewExisting returns a new object based on existing one wrapped as Reporter
-func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Reporter {
+func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Resource {
 	return report.SimpleReporter{NewExistingConfigMap(name, ci.ConfigMaps())}
 }
 
