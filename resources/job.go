@@ -81,13 +81,13 @@ func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 // New returns new Job on resource definition
-func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewJob(def.Job, c.Jobs())}
+func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewJob(def.Job, c.Jobs())}
 }
 
 // NewExisting returns new ExistingJob based on resource definition
-func (j Job) NewExisting(name string, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewExistingJob(name, c.Jobs())}
+func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewExistingJob(name, c.Jobs())}
 }
 
 func NewJob(job *batch.Job, client unversioned.JobInterface) Job {

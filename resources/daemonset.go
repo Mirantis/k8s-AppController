@@ -63,13 +63,13 @@ func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool 
 }
 
 // New returns new DaemonSet based on resource definition
-func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewDaemonSet(def.DaemonSet, c.DaemonSets())}
+func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewDaemonSet(def.DaemonSet, c.DaemonSets())}
 }
 
 // NewExisting returns new ExistingDaemonSet based on resource definition
-func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewExistingDaemonSet(name, c.DaemonSets())}
+func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewExistingDaemonSet(name, c.DaemonSets())}
 }
 
 //NewDaemonSet is a constructor

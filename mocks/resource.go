@@ -52,12 +52,12 @@ func (c *Resource) NameMatches(_ client.ResourceDefinition, _ string) bool {
 }
 
 // New returns new fake resource
-func (c *Resource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewResource("fake", "ready")}
+func (c *Resource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewResource("fake", "ready")}
 }
 
 // NewExisting returns new existing resource
-func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.Resource {
+func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.BaseResource {
 	return NewResource(name, "ready")
 }
 

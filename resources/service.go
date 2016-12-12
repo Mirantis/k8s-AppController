@@ -67,7 +67,7 @@ func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client
 		if err != nil {
 			return "error", err
 		}
-		resources := make([]interfaces.Resource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
+		resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 		for _, pod := range pods.Items {
 			p := pod
 			resources = append(resources, NewPod(&p, apiClient.Pods()))
@@ -126,13 +126,13 @@ func (s Service) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 // New returns new Service based on resource definition
-func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewService(def.Service, c.Services(), c)}
+func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewService(def.Service, c.Services(), c)}
 }
 
 // NewExisting returns new ExistingService based on resource definition
-func (s Service) NewExisting(name string, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewExistingService(name, c.Services())}
+func (s Service) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewExistingService(name, c.Services())}
 }
 
 //NewService is Service constructor. Needs apiClient for service status checks

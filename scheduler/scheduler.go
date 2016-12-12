@@ -79,7 +79,7 @@ type ScheduledResource struct {
 	Requires   []*ScheduledResource
 	RequiredBy []*ScheduledResource
 	Status     ScheduledResourceStatus
-	interfaces.Reporter
+	interfaces.Resource
 	// parentKey -> dependencyMetadata
 	Meta map[string]map[string]string
 	sync.RWMutex
@@ -112,7 +112,7 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 // IsFinished returns true if a scheduled resource processing is finished, regardless successfull or not,
 // false otherwise. The actual result of processing could be obtained from returned error.
 func (sr *ScheduledResource) IsFinished() (bool, error) {
-	status, err := sr.Reporter.Status(nil)
+	status, err := sr.Resource.Status(nil)
 	if err != nil {
 		return true, err
 	}
@@ -138,8 +138,8 @@ func (sr *ScheduledResource) IsBlocked() bool {
 
 		req.RLock()
 		meta := req.Meta[sr.Key()]
-		if strings.HasPrefix(req.Reporter.Key(), "service") {
-			status, err := req.Reporter.Status(meta)
+		if strings.HasPrefix(req.Resource.Key(), "service") {
+			status, err := req.Resource.Status(meta)
 			if err != nil || status != "ready" {
 				isBlocked = true
 			}
@@ -147,7 +147,7 @@ func (sr *ScheduledResource) IsBlocked() bool {
 			if meta == nil && req.Status != Ready {
 				isBlocked = true
 			} else {
-				status, err := req.Reporter.Status(meta)
+				status, err := req.Resource.Status(meta)
 				if err != nil || status != "ready" {
 					isBlocked = true
 				}
@@ -163,7 +163,7 @@ func (sr *ScheduledResource) IsBlocked() bool {
 // ScheduledResource pointers
 type DependencyGraph map[string]*ScheduledResource
 
-func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.ResourceTemplate) interfaces.Reporter {
+func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.ResourceTemplate) interfaces.Resource {
 	for _, rd := range resDefs {
 		if resourceTemplate.NameMatches(rd, name) {
 			log.Println("Found resource definition for ", name)
@@ -180,7 +180,7 @@ func newResource(name string, resDefs []client.ResourceDefinition, c client.Inte
 func NewScheduledResource(kind string, name string,
 	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
 
-	var r interfaces.Reporter
+	var r interfaces.Resource
 
 	resourceTemplate, ok := resources.KindToResourceTemplate[kind]
 	if !ok {
@@ -192,10 +192,10 @@ func NewScheduledResource(kind string, name string,
 }
 
 //NewScheduledResourceFor returns new scheduled resource for given resource in init state
-func NewScheduledResourceFor(r interfaces.Reporter) *ScheduledResource {
+func NewScheduledResourceFor(r interfaces.Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Status:   Init,
-		Reporter: r,
+		Resource: r,
 		Meta:     map[string]map[string]string{},
 	}
 }
@@ -271,17 +271,17 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 		var sr *ScheduledResource
 
 		if r.Pod != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewPod(r.Pod, c.Pods())})
+			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewPod(r.Pod, c.Pods())})
 		} else if r.Job != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewJob(r.Job, c.Jobs())})
+			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewJob(r.Job, c.Jobs())})
 		} else if r.Service != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewService(r.Service, c.Services(), c)})
+			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewService(r.Service, c.Services(), c)})
 		} else if r.ReplicaSet != nil {
 			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
 		} else if r.PetSet != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewPetSet(r.PetSet, c.PetSets(), c)})
+			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewPetSet(r.PetSet, c.PetSets(), c)})
 		} else if r.DaemonSet != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{Resource: resources.NewDaemonSet(r.DaemonSet, c.DaemonSets())})
+			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewDaemonSet(r.DaemonSet, c.DaemonSets())})
 		} else if r.ConfigMap != nil {
 			sr = NewScheduledResourceFor(report.SimpleReporter{resources.NewConfigMap(r.ConfigMap, c.ConfigMaps())})
 		} else if r.Secret != nil {
@@ -466,7 +466,7 @@ func (sr *ScheduledResource) GetNodeReport(name string) report.NodeReport {
 	var ready bool
 	isBlocked := false
 	dependencies := make([]interfaces.DependencyReport, 0, len(sr.Requires))
-	status, err := sr.Reporter.Status(nil)
+	status, err := sr.Resource.Status(nil)
 	if err != nil {
 		ready = false
 	} else {
