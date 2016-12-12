@@ -26,6 +26,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
+	"github.com/Mirantis/k8s-AppController/report"
 )
 
 // PetSet is a wrapper for K8s PetSet object
@@ -108,13 +109,13 @@ func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 // New returns new PetSet based on resource definition
-func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewPetSet(def.PetSet, c.PetSets(), c)
+func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewPetSet(def.PetSet, c.PetSets(), c)}
 }
 
 // NewExisting returns new ExistingPetSet based on resource definition
-func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingPetSet(name, c.PetSets(), c)
+func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Reporter {
+	return report.SimpleReporter{Resource: NewExistingPetSet(name, c.PetSets(), c)}
 }
 
 // NewPetSet is a constructor
