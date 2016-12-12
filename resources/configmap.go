@@ -73,22 +73,22 @@ func (c ConfigMap) NameMatches(def client.ResourceDefinition, name string) bool 
 	return def.ConfigMap != nil && def.ConfigMap.Name == name
 }
 
-func NewConfigMap(c *api.ConfigMap, client unversioned.ConfigMapsInterface) ConfigMap {
-	return ConfigMap{ConfigMap: c, Client: client}
+func NewConfigMap(c *api.ConfigMap, client unversioned.ConfigMapsInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ConfigMap{ConfigMap: c, Client: client}}
 }
 
-func NewExistingConfigMap(name string, client unversioned.ConfigMapsInterface) ExistingConfigMap {
-	return ExistingConfigMap{Name: name, Client: client}
+func NewExistingConfigMap(name string, client unversioned.ConfigMapsInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingConfigMap{Name: name, Client: client}}
 }
 
-// New returns a new object wrapped as Reporter
+// New returns a new object wrapped as Resource
 func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewConfigMap(def.ConfigMap, ci.ConfigMaps())}
+	return NewConfigMap(def.ConfigMap, ci.ConfigMaps())
 }
 
-// NewExisting returns a new object based on existing one wrapped as Reporter
+// NewExisting returns a new object based on existing one wrapped as Resource
 func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Resource {
-	return report.SimpleReporter{NewExistingConfigMap(name, ci.ConfigMaps())}
+	return NewExistingConfigMap(name, ci.ConfigMaps())
 }
 
 func (c ExistingConfigMap) Key() string {
