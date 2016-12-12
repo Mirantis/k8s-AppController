@@ -49,7 +49,7 @@ func (j *jobClient) List(opts api.ListOptions) (*batch.JobList, error) {
 		jobs = append(jobs, *MakeJob(fmt.Sprintf("ready-trolo%d", i)))
 	}
 
-	//use ListOptions.LabelSelector to check if there should be any pending jobs
+	// use ListOptions.LabelSelector to check if there should be any pending jobs
 	if strings.Index(opts.LabelSelector.String(), "failedjob=yes") >= 0 {
 		for i := 0; i < 2; i++ {
 			jobs = append(jobs, *MakeJob(fmt.Sprintf("pending-lolo%d", i)))

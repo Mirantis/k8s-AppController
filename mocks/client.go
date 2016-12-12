@@ -54,7 +54,7 @@ func (c *Client) PetSets() unversioned.PetSetInterface {
 	return c.PetSetInterface
 }
 
-//DaemonSets return a DaemonSetInterface of k8s
+// DaemonSets return a DaemonSetInterface of k8s
 func (c *Client) DaemonSets() unversioned.DaemonSetInterface {
 	return c.DaemonSetInterface
 }

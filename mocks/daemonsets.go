@@ -28,7 +28,7 @@ import (
 type daemonSetClient struct {
 }
 
-//MakeDaemonSet creates a daemonset base in its name
+// MakeDaemonSet creates a daemonset base in its name
 func MakeDaemonSet(name string) *extensions.DaemonSet {
 	daemonSet := &extensions.DaemonSet{}
 	daemonSet.Name = name
@@ -48,7 +48,7 @@ func (r *daemonSetClient) List(opts api.ListOptions) (*extensions.DaemonSetList,
 		daemonSets = append(daemonSets, *MakeDaemonSet(fmt.Sprintf("ready-trolo%d", i)))
 	}
 
-	//use ListOptions.LabelSelector to check if there should be any failed daemonSets
+	// use ListOptions.LabelSelector to check if there should be any failed daemonSets
 	if strings.Index(opts.LabelSelector.String(), "faileddaemonSet=yes") >= 0 {
 		daemonSets = append(daemonSets, *MakeDaemonSet("fail"))
 	}
@@ -89,7 +89,7 @@ func (r *daemonSetClient) ProxyGet(scheme string, name string, port string, path
 	panic("not implemented")
 }
 
-//NewDaemonSetClient is a daemonset client constructor
+// NewDaemonSetClient is a daemonset client constructor
 func NewDaemonSetClient() unversioned.DaemonSetInterface {
 	return &daemonSetClient{}
 }

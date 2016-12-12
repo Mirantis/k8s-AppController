@@ -47,7 +47,7 @@ func (r *replicaSetClient) List(opts api.ListOptions) (*extensions.ReplicaSetLis
 		replicaSets = append(replicaSets, *MakeReplicaSet(fmt.Sprintf("ready-trolo%d", i)))
 	}
 
-	//use ListOptions.LabelSelector to check if there should be any failed replicaSets
+	// use ListOptions.LabelSelector to check if there should be any failed replicaSets
 	if strings.Index(opts.LabelSelector.String(), "failedreplicaSet=yes") >= 0 {
 		replicaSets = append(replicaSets, *MakeReplicaSet("fail"))
 	}

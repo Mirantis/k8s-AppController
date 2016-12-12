@@ -93,12 +93,12 @@ func (c client) PetSets() unversioned.PetSetInterface {
 	return c.Client.Apps().PetSets(c.namespace)
 }
 
-//DaemonSets return K8s DaemonSet client for ac namespace
+// DaemonSets return K8s DaemonSet client for ac namespace
 func (c client) DaemonSets() unversioned.DaemonSetInterface {
 	return c.Client.Extensions().DaemonSets(c.namespace)
 }
 
-//Deployments return K8s Deployment client for ac namespace
+// Deployments return K8s Deployment client for ac namespace
 func (c client) Deployments() unversioned.DeploymentInterface {
 	return c.Client.Extensions().Deployments(c.namespace)
 }

@@ -20,28 +20,28 @@ import (
 	"github.com/Mirantis/k8s-AppController/report"
 )
 
-//Resource is a fake resource
+// Resource is a fake resource
 type Resource struct {
 	key    string
 	status string
 }
 
-//Key returns a key of the Resource
+// Key returns a key of the Resource
 func (c Resource) Key() string {
 	return c.key
 }
 
-//Status returns a status of the Resource
+// Status returns a status of the Resource
 func (c *Resource) Status(meta map[string]string) (string, error) {
 	return c.status, nil
 }
 
-//Create does nothing
+// Create does nothing
 func (c *Resource) Create() error {
 	return nil
 }
 
-//Delete does nothing
+// Delete does nothing
 func (c *Resource) Delete() error {
 	return nil
 }
@@ -61,7 +61,7 @@ func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.BaseR
 	return NewResource(name, "ready")
 }
 
-//NewResource creates new instance of Resource
+// NewResource creates new instance of Resource
 func NewResource(key string, status string) *Resource {
 	return &Resource{
 		key:    key,

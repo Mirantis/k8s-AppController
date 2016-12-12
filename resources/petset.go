@@ -37,7 +37,7 @@ type PetSet struct {
 }
 
 func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.Interface) (string, error) {
-	//Use label from petset spec to get needed pods
+	// Use label from petset spec to get needed pods
 
 	ps, err := p.Get(name)
 	if err != nil {

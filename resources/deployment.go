@@ -12,7 +12,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/report"
 )
 
-//Deployment is wrapper for K8s Deployment object
+// Deployment is wrapper for K8s Deployment object
 type Deployment struct {
 	Deployment *extensions.Deployment
 	Client     unversioned.DeploymentInterface
@@ -34,7 +34,7 @@ func deploymentStatus(d unversioned.DeploymentInterface, name string) (string, e
 	return "not ready", nil
 }
 
-//Key return Deployment key
+// Key return Deployment key
 func (d Deployment) Key() string {
 	return deploymentKey(d.Deployment.Name)
 }
@@ -44,7 +44,7 @@ func (d Deployment) Status(meta map[string]string) (string, error) {
 	return deploymentStatus(d.Client, d.Deployment.Name)
 }
 
-//Create looks for Deployment in K8s and creates it if not present
+// Create looks for Deployment in K8s and creates it if not present
 func (d Deployment) Create() error {
 	log.Println("Looking for deployment", d.Deployment.Name)
 	status, err := d.Status(nil)
@@ -79,23 +79,23 @@ func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Reso
 	return NewExistingDeployment(name, c.Deployments())
 }
 
-//NewDeployment is a constructor
+// NewDeployment is a constructor
 func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Deployment{Deployment: deployment, Client: client}}
 }
 
-//ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
+// ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
 type ExistingDeployment struct {
 	Name   string
 	Client unversioned.DeploymentInterface
 }
 
-//UpdateMeta does nothing at the moment
+// UpdateMeta does nothing at the moment
 func (d ExistingDeployment) UpdateMeta(meta map[string]string) error {
 	return nil
 }
 
-//Key returns Deployment name
+// Key returns Deployment name
 func (d ExistingDeployment) Key() string {
 	return deploymentKey(d.Name)
 }
@@ -105,7 +105,7 @@ func (d ExistingDeployment) Status(meta map[string]string) (string, error) {
 	return deploymentStatus(d.Client, d.Name)
 }
 
-//Create looks for existing Deployment and returns error if there is no such Deployment
+// Create looks for existing Deployment and returns error if there is no such Deployment
 func (d ExistingDeployment) Create() error {
 	log.Println("Looking for deployment", d.Name)
 	status, err := d.Status(nil)
@@ -124,7 +124,7 @@ func (d ExistingDeployment) Delete() error {
 	return d.Client.Delete(d.Name, nil)
 }
 
-//NewExistingDeployment is a constructor
+// NewExistingDeployment is a constructor
 func NewExistingDeployment(name string, client unversioned.DeploymentInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingDeployment{Name: name, Client: client}}
 }
