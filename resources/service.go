@@ -127,17 +127,17 @@ func (s Service) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new Service based on resource definition
 func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewService(def.Service, c.Services(), c)}
+	return NewService(def.Service, c.Services(), c)
 }
 
 // NewExisting returns new ExistingService based on resource definition
 func (s Service) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewExistingService(name, c.Services())}
+	return NewExistingService(name, c.Services())
 }
 
 //NewService is Service constructor. Needs apiClient for service status checks
-func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface) Service {
-	return Service{Service: service, Client: client, APIClient: apiClient}
+func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Service{Service: service, Client: client, APIClient: apiClient}}
 }
 
 type ExistingService struct {
@@ -163,6 +163,6 @@ func (s ExistingService) Delete() error {
 	return s.Client.Delete(s.Name)
 }
 
-func NewExistingService(name string, client unversioned.ServiceInterface) ExistingService {
-	return ExistingService{Name: name, Client: client}
+func NewExistingService(name string, client unversioned.ServiceInterface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingService{Name: name, Client: client}}
 }

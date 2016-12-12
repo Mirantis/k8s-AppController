@@ -268,33 +268,33 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 
 	log.Println("Looking for resource definitions not in dependency list")
 	for _, r := range resDefList.Items {
-		var sr *ScheduledResource
+		var resource interfaces.Resource
 
 		if r.Pod != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewPod(r.Pod, c.Pods())})
+			resource = resources.NewPod(r.Pod, c.Pods())
 		} else if r.Job != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewJob(r.Job, c.Jobs())})
+			resource = resources.NewJob(r.Job, c.Jobs())
 		} else if r.Service != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewService(r.Service, c.Services(), c)})
+			resource = resources.NewService(r.Service, c.Services(), c)
 		} else if r.ReplicaSet != nil {
-			sr = NewScheduledResourceFor(resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets()))
+			resource = resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets())
 		} else if r.PetSet != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewPetSet(r.PetSet, c.PetSets(), c)})
+			resource = resources.NewPetSet(r.PetSet, c.PetSets(), c)
 		} else if r.DaemonSet != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{BaseResource: resources.NewDaemonSet(r.DaemonSet, c.DaemonSets())})
+			resource = resources.NewDaemonSet(r.DaemonSet, c.DaemonSets())
 		} else if r.ConfigMap != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{resources.NewConfigMap(r.ConfigMap, c.ConfigMaps())})
+			resource = resources.NewConfigMap(r.ConfigMap, c.ConfigMaps())
 		} else if r.Secret != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{resources.NewSecret(r.Secret, c.Secrets())})
+			resource = resources.NewSecret(r.Secret, c.Secrets())
 		} else if r.Deployment != nil {
-			sr = NewScheduledResourceFor(report.SimpleReporter{resources.NewDeployment(r.Deployment, c.Deployments())})
+			resource = resources.NewDeployment(r.Deployment, c.Deployments())
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}
 
-		if _, ok := depGraph[sr.Key()]; !ok {
-			log.Printf("Resource %s not found in dependecy graph yet, adding.", sr.Key())
-			depGraph[sr.Key()] = sr
+		if _, ok := depGraph[resource.Key()]; !ok {
+			log.Printf("Resource %s not found in dependecy graph yet, adding.", resource.Key())
+			depGraph[resource.Key()] = NewScheduledResourceFor(resource)
 		}
 	}
 

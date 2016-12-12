@@ -110,17 +110,17 @@ func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new PetSet based on resource definition
 func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewPetSet(def.PetSet, c.PetSets(), c)}
+	return NewPetSet(def.PetSet, c.PetSets(), c)
 }
 
 // NewExisting returns new ExistingPetSet based on resource definition
 func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewExistingPetSet(name, c.PetSets(), c)}
+	return NewExistingPetSet(name, c.PetSets(), c)
 }
 
 // NewPetSet is a constructor
-func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface) PetSet {
-	return PetSet{PetSet: petSet, Client: client, APIClient: apiClient}
+func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: PetSet{PetSet: petSet, Client: client, APIClient: apiClient}}
 }
 
 // ExistingPetSet is a wrapper for K8s PetSet object which is meant to already be in a cluster bofer AppController execution
@@ -151,6 +151,6 @@ func (p ExistingPetSet) Delete() error {
 }
 
 // NewExistingPetSet is a constructor
-func NewExistingPetSet(name string, client unversioned.PetSetInterface, apiClient client.Interface) ExistingPetSet {
-	return ExistingPetSet{Name: name, Client: client, APIClient: apiClient}
+func NewExistingPetSet(name string, client unversioned.PetSetInterface, apiClient client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingPetSet{Name: name, Client: client, APIClient: apiClient}}
 }
