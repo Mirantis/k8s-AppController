@@ -94,7 +94,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 func TestIsBlocked(t *testing.T) {
 	one := &ScheduledResource{
-		Reporter: report.SimpleReporter{Resource: mocks.NewResource("fake1", "not ready")},
+		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 		Status:   Init,
 		Meta:     map[string]map[string]string{},
 	}
@@ -104,7 +104,7 @@ func TestIsBlocked(t *testing.T) {
 	}
 
 	two := &ScheduledResource{
-		Reporter: report.SimpleReporter{Resource: mocks.NewResource("fake2", "ready")},
+		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
 		Status:   Ready,
 		Meta:     map[string]map[string]string{},
 	}
@@ -116,7 +116,7 @@ func TestIsBlocked(t *testing.T) {
 	}
 
 	three := &ScheduledResource{
-		Reporter: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
+		Resource: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
 		Status:   Ready,
 		Meta:     map[string]map[string]string{},
 	}
@@ -278,7 +278,7 @@ func TestLimitConcurrency(t *testing.T) {
 
 		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
-			r := report.SimpleReporter{Resource: mocks.NewCountingResource(key, counter, time.Second*2)}
+			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second*2)}
 			sr := NewScheduledResourceFor(r)
 			depGraph[sr.Key()] = sr
 		}

@@ -59,7 +59,7 @@ func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.I
 	if err != nil {
 		return "error", err
 	}
-	resources := make([]interfaces.Resource, 0, len(pods.Items))
+	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		p := pod
 		resources = append(resources, NewPod(&p, apiClient.Pods()))
@@ -109,13 +109,13 @@ func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 // New returns new PetSet based on resource definition
-func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewPetSet(def.PetSet, c.PetSets(), c)}
+func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewPetSet(def.PetSet, c.PetSets(), c)}
 }
 
 // NewExisting returns new ExistingPetSet based on resource definition
-func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewExistingPetSet(name, c.PetSets(), c)}
+func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewExistingPetSet(name, c.PetSets(), c)}
 }
 
 // NewPetSet is a constructor

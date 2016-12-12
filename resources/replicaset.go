@@ -117,12 +117,12 @@ func (r ReplicaSet) NameMatches(def client.ResourceDefinition, name string) bool
 }
 
 // New returns new ReplicaSet based on resource definition
-func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
+func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
 	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets())
 }
 
 // NewExisting returns new ExistingReplicaSet based on resource definition
-func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Reporter {
+func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingReplicaSet(name, c.ReplicaSets())
 }
 

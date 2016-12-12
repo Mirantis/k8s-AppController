@@ -19,7 +19,7 @@ import (
 )
 
 //Resource is an interface for AppController supported resources
-type Resource interface {
+type BaseResource interface {
 	Key() string
 	// Ensure that Status() supports nil as meta
 	Status(meta map[string]string) (string, error)
@@ -37,14 +37,14 @@ type DependencyReport struct {
 }
 
 // Reporter is an interface that implements getting dependency reports
-type Reporter interface {
-	Resource
+type Resource interface {
+	BaseResource
 	GetDependencyReport(map[string]string) DependencyReport
 }
 
 //ResourceTemplate is an interface for AppController supported resource templates
 type ResourceTemplate interface {
 	NameMatches(client.ResourceDefinition, string) bool
-	New(client.ResourceDefinition, client.Interface) Reporter
-	NewExisting(string, client.Interface) Reporter
+	New(client.ResourceDefinition, client.Interface) Resource
+	NewExisting(string, client.Interface) Resource
 }

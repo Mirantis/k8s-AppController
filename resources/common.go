@@ -48,7 +48,7 @@ func getKeys(m map[string]interfaces.ResourceTemplate) (keys []string) {
 	return keys
 }
 
-func resourceListReady(resources []interfaces.Resource) (string, error) {
+func resourceListReady(resources []interfaces.BaseResource) (string, error) {
 	for _, r := range resources {
 		log.Printf("Checking status for resource %s", r.Key())
 		status, err := r.Status(nil)
@@ -78,7 +78,7 @@ func getPercentage(factorName string, meta map[string]string) (int32, error) {
 	return int32(f), err
 }
 
-func checkExistence(r interfaces.Resource) error {
+func checkExistence(r interfaces.BaseResource) error {
 	log.Println("Looking for ", r.Key())
 	status, err := r.Status(nil)
 
@@ -90,7 +90,7 @@ func checkExistence(r interfaces.Resource) error {
 	return err
 }
 
-func createExistingResource(r interfaces.Resource) error {
+func createExistingResource(r interfaces.BaseResource) error {
 	if err := checkExistence(r); err != nil {
 		log.Fatalf("Resource %s not found", r.Key())
 		return errors.New("Resource not found")

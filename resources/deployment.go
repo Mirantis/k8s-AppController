@@ -70,12 +70,12 @@ func (d Deployment) NameMatches(def client.ResourceDefinition, name string) bool
 }
 
 // New returns new Deployment based on resource definition
-func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewDeployment(def.Deployment, c.Deployments())}
+func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewDeployment(def.Deployment, c.Deployments())}
 }
 
 // NewExisting returns new ExistingDeployment based on resource definition
-func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Reporter {
+func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return report.SimpleReporter{NewExistingDeployment(name, c.Deployments())}
 }
 

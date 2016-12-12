@@ -17,7 +17,7 @@ type DeploymentReport []NodeReport
 
 // SimpleReporter creates report for simple binary cases
 type SimpleReporter struct {
-	interfaces.Resource
+	interfaces.BaseResource
 }
 
 // GetDependencyReport returns a dependency report for this reporter
@@ -45,8 +45,8 @@ func (r SimpleReporter) GetDependencyReport(meta map[string]string) interfaces.D
 }
 
 // GetResource returns the underlying resource
-func (r SimpleReporter) GetResource() interfaces.Resource {
-	return r.Resource
+func (r SimpleReporter) GetResource() interfaces.BaseResource {
+	return r.BaseResource
 }
 
 // ErrorReport creates a report for error cases

@@ -66,13 +66,13 @@ func (c *CountingResource) NameMatches(_ client.ResourceDefinition, _ string) bo
 }
 
 // New returns new fake resource
-func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Resource {
-	return report.SimpleReporter{Resource: NewResource("fake", "ready")}
+func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.BaseResource {
+	return report.SimpleReporter{BaseResource: NewResource("fake", "ready")}
 }
 
 // NewExisting returns new existing resource
-func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.Resource {
-	return report.SimpleReporter{Resource: NewResource(name, "ready")}
+func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.BaseResource {
+	return report.SimpleReporter{BaseResource: NewResource(name, "ready")}
 }
 
 //NewCountingResource creates new instance of CountingResource

@@ -85,12 +85,12 @@ func NewExistingSecret(name string, client unversioned.SecretsInterface) Existin
 	return ExistingSecret{Name: name, Client: client}
 }
 
-func (s Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewSecret(def.Secret, ci.Secrets())}
+func (s Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewSecret(def.Secret, ci.Secrets())}
 }
 
-func (s Secret) NewExisting(name string, ci client.Interface) interfaces.Reporter {
-	return report.SimpleReporter{Resource: NewExistingSecret(name, ci.Secrets())}
+func (s Secret) NewExisting(name string, ci client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: NewExistingSecret(name, ci.Secrets())}
 }
 
 func (s ExistingSecret) Status(meta map[string]string) (string, error) {
