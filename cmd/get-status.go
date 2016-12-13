@@ -25,6 +25,14 @@ func getStatus(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	getReport, err := cmd.Flags().GetBool("report")
+	if err != nil {
+		log.Fatal(err)
+	}
+	color, err := cmd.Flags().GetBool("color")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var url string
 	if len(args) > 0 {
@@ -55,6 +63,12 @@ func getStatus(cmd *cobra.Command, args []string) {
 		fmt.Printf(string(data))
 	} else {
 		fmt.Printf("STATUS: %s\n", status)
+		if getReport {
+			data := report.AsHuman(0, color)
+			for _, line := range data {
+				fmt.Println(line)
+			}
+		}
 	}
 }
 
@@ -70,7 +84,9 @@ func InitGetStatusCommand() (*cobra.Command, error) {
 	var labelSelector string
 	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
 
-	var getJSON bool
+	var getJSON, report, color bool
 	run.Flags().BoolVarP(&getJSON, "json", "j", false, "Output JSON")
+	run.Flags().BoolVarP(&report, "report", "r", false, "Get human-readable full report")
+	run.Flags().BoolVarP(&color, "color", "c", false, "Colorize report")
 	return run, err
 }
