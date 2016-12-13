@@ -14,6 +14,7 @@ import (
 
 // Deployment is wrapper for K8s Deployment object
 type Deployment struct {
+	Base
 	Deployment *extensions.Deployment
 	Client     unversioned.DeploymentInterface
 }
@@ -71,7 +72,7 @@ func (d Deployment) NameMatches(def client.ResourceDefinition, name string) bool
 
 // New returns new Deployment based on resource definition
 func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewDeployment(def.Deployment, c.Deployments())
+	return NewDeployment(def.Deployment, c.Deployments(), def.Meta)
 }
 
 // NewExisting returns new ExistingDeployment based on resource definition
@@ -80,12 +81,13 @@ func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Reso
 }
 
 // NewDeployment is a constructor
-func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Deployment{Deployment: deployment, Client: client}}
+func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Deployment{Base: Base{meta}, Deployment: deployment, Client: client}}
 }
 
 // ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
 type ExistingDeployment struct {
+	Base
 	Name   string
 	Client unversioned.DeploymentInterface
 }

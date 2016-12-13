@@ -26,6 +26,7 @@ import (
 )
 
 type Pod struct {
+	Base
 	Pod    *api.Pod
 	Client unversioned.PodInterface
 }
@@ -91,7 +92,7 @@ func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new Pod based on resource definition
 func (p Pod) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewPod(def.Pod, c.Pods())
+	return NewPod(def.Pod, c.Pods(), def.Meta)
 }
 
 // NewExisting returns new ExistingPod based on resource definition
@@ -99,11 +100,12 @@ func (p Pod) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingPod(name, c.Pods())
 }
 
-func NewPod(pod *api.Pod, client unversioned.PodInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Pod{Pod: pod, Client: client}}
+func NewPod(pod *api.Pod, client unversioned.PodInterface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Pod{Base: Base{meta}, Pod: pod, Client: client}}
 }
 
 type ExistingPod struct {
+	Base
 	Name   string
 	Client unversioned.PodInterface
 }

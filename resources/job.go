@@ -26,6 +26,7 @@ import (
 )
 
 type Job struct {
+	Base
 	Job    *batch.Job
 	Client unversioned.JobInterface
 }
@@ -82,7 +83,7 @@ func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new Job on resource definition
 func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewJob(def.Job, c.Jobs())
+	return NewJob(def.Job, c.Jobs(), def.Meta)
 }
 
 // NewExisting returns new ExistingJob based on resource definition
@@ -90,11 +91,12 @@ func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingJob(name, c.Jobs())
 }
 
-func NewJob(job *batch.Job, client unversioned.JobInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Job{Job: job, Client: client}}
+func NewJob(job *batch.Job, client unversioned.JobInterface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Job{Base: Base{meta}, Job: job, Client: client}}
 }
 
 type ExistingJob struct {
+	Base
 	Name   string
 	Client unversioned.JobInterface
 }

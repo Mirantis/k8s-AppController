@@ -26,11 +26,13 @@ import (
 )
 
 type Secret struct {
+	Base
 	Secret *api.Secret
 	Client unversioned.SecretsInterface
 }
 
 type ExistingSecret struct {
+	Base
 	Name   string
 	Client unversioned.SecretsInterface
 }
@@ -77,8 +79,8 @@ func (s Secret) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Secret != nil && def.Secret.Name == name
 }
 
-func NewSecret(s *api.Secret, client unversioned.SecretsInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Secret{Secret: s, Client: client}}
+func NewSecret(s *api.Secret, client unversioned.SecretsInterface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: Secret{Base: Base{meta}, Secret: s, Client: client}}
 }
 
 func NewExistingSecret(name string, client unversioned.SecretsInterface) interfaces.Resource {
@@ -86,7 +88,7 @@ func NewExistingSecret(name string, client unversioned.SecretsInterface) interfa
 }
 
 func (s Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewSecret(def.Secret, ci.Secrets())
+	return NewSecret(def.Secret, ci.Secrets(), def.Meta)
 }
 
 func (s Secret) NewExisting(name string, ci client.Interface) interfaces.Resource {

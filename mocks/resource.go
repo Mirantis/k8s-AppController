@@ -46,6 +46,11 @@ func (c *Resource) Delete() error {
 	return nil
 }
 
+// Meta returns empty string
+func (c *Resource) Meta(string) string {
+	return ""
+}
+
 // NameMatches returns true
 func (c *Resource) NameMatches(_ client.ResourceDefinition, _ string) bool {
 	return true
