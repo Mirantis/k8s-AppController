@@ -15,7 +15,10 @@
 package interfaces
 
 import (
+	"fmt"
+
 	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/human"
 )
 
 // BaseResource is an interface for AppController supported resources
@@ -35,6 +38,29 @@ type DependencyReport struct {
 	Percentage int
 	Needed     int
 	Message    string
+}
+
+// AsHuman returns a human-readable representation of the report as a slice
+func (d DependencyReport) AsHuman(indent int) []string {
+	var blocksStr, percStr string
+	if d.Blocks {
+		blocksStr = "BLOCKS"
+	} else {
+		blocksStr = "DOESN'T BLOCK"
+	}
+	if d.Percentage == 100 {
+		percStr = ""
+	} else {
+		percStr = fmt.Sprintf("%d%%/%d%%", d.Percentage, d.Needed)
+	}
+	ret := []string{
+		fmt.Sprintf("Dependency: %s", d.Dependency),
+		blocksStr,
+	}
+	if percStr != "" {
+		ret = append(ret, percStr)
+	}
+	return human.Indent(indent, ret)
 }
 
 // Resource is an interface for a base resource that implements getting dependency reports
