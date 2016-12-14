@@ -41,25 +41,18 @@ type DependencyReport struct {
 }
 
 // AsHuman returns a human-readable representation of the report as a slice
-func (d DependencyReport) AsHuman(indent int, color bool) []string {
+func (d DependencyReport) AsHuman(indent int) []string {
 	var blocksStr, percStr string
 	if d.Blocks {
-		blocksStr = human.Red("BLOCKS", color)
+		blocksStr = "BLOCKS"
 	} else {
-		blocksStr = human.Green("DOESN'T BLOCK", color)
+		blocksStr = "DOESN'T BLOCK"
 	}
-	percStr = fmt.Sprintf("%d%%/%d%%", d.Percentage, d.Needed)
-
 	if d.Percentage == 100 {
 		percStr = ""
-	} else if d.Percentage > d.Needed {
-		percStr = human.Green(percStr, color)
-	} else if d.Percentage > 0 {
-		percStr = human.Yellow(percStr, color)
 	} else {
-		percStr = human.Red(percStr, color)
+		percStr = fmt.Sprintf("%d%%/%d%%", d.Percentage, d.Needed)
 	}
-
 	ret := []string{
 		fmt.Sprintf("Dependency: %s", d.Dependency),
 		blocksStr,

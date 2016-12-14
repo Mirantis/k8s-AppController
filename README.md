@@ -91,6 +91,15 @@ You can stop appcontroller process by:
 
 `kubectl exec k8s-appcontroller ac-stop`
 
+## Reporting
+
+Use the following command:
+
+`kubectl exec k8s-appcontroller kubeac -- get-status`
+
+to get current status of deployment. You might use `-r` to get detailed report
+or `-j` to get a JSON representation of status.
+
 ## Building
 
 In order to build, issue::

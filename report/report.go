@@ -16,18 +16,18 @@ type NodeReport struct {
 }
 
 // AsHuman returns a human-readable representation of the report as a slice
-func (n NodeReport) AsHuman(indent int, color bool) []string {
+func (n NodeReport) AsHuman(indent int) []string {
 	var blockedStr, readyStr string
 	if n.Blocked {
-		blockedStr = human.Red("BLOCKED", color)
+		blockedStr = "BLOCKED"
 	} else {
-		blockedStr = human.Green("NOT BLOCKED", color)
+		blockedStr = "NOT BLOCKED"
 	}
 
 	if n.Ready {
-		readyStr = human.Green("READY", color)
+		readyStr = "READY"
 	} else {
-		readyStr = human.Red("NOT READY", color)
+		readyStr = "NOT READY"
 	}
 
 	ret := []string{
@@ -36,7 +36,7 @@ func (n NodeReport) AsHuman(indent int, color bool) []string {
 		readyStr,
 	}
 	for _, dependency := range n.Dependencies {
-		ret = append(ret, dependency.AsHuman(4, color)...)
+		ret = append(ret, dependency.AsHuman(4)...)
 	}
 	return human.Indent(indent, ret)
 }
@@ -45,10 +45,10 @@ func (n NodeReport) AsHuman(indent int, color bool) []string {
 type DeploymentReport []NodeReport
 
 // AsHuman returns a human-readable representation of the report as a slice
-func (d DeploymentReport) AsHuman(indent int, color bool) []string {
+func (d DeploymentReport) AsHuman(indent int) []string {
 	ret := make([]string, 0, len(d)*4)
 	for _, n := range d {
-		ret = append(ret, n.AsHuman(4, color)...)
+		ret = append(ret, n.AsHuman(4)...)
 	}
 	return human.Indent(indent, ret)
 }
