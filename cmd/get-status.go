@@ -60,7 +60,7 @@ func getStatus(cmd *cobra.Command, args []string) {
 	} else {
 		fmt.Printf("STATUS: %s\n", status)
 		if getReport {
-			data := report.AsHuman(0)
+			data := report.AsText(0)
 			for _, line := range data {
 				fmt.Println(line)
 			}

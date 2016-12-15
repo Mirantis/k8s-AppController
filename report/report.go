@@ -2,10 +2,12 @@ package report
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/Mirantis/k8s-AppController/human"
 	"github.com/Mirantis/k8s-AppController/interfaces"
 )
+
+const ReportIndentSize = 4
 
 // NodeReport is a report of a node in graph
 type NodeReport struct {
@@ -15,8 +17,8 @@ type NodeReport struct {
 	Dependencies []interfaces.DependencyReport
 }
 
-// AsHuman returns a human-readable representation of the report as a slice
-func (n NodeReport) AsHuman(indent int) []string {
+// AsText returns a human-readable representation of the report as a slice
+func (n NodeReport) AsText(indent int) []string {
 	var blockedStr, readyStr string
 	if n.Blocked {
 		blockedStr = "BLOCKED"
@@ -36,21 +38,21 @@ func (n NodeReport) AsHuman(indent int) []string {
 		readyStr,
 	}
 	for _, dependency := range n.Dependencies {
-		ret = append(ret, dependency.AsHuman(4)...)
+		ret = append(ret, dependencyReportAsText(dependency, ReportIndentSize)...)
 	}
-	return human.Indent(indent, ret)
+	return Indent(indent, ret)
 }
 
 // DeploymentReport is a full report of the status of deployment
 type DeploymentReport []NodeReport
 
-// AsHuman returns a human-readable representation of the report as a slice
-func (d DeploymentReport) AsHuman(indent int) []string {
+// AsText returns a human-readable representation of the report as a slice
+func (d DeploymentReport) AsText(indent int) []string {
 	ret := make([]string, 0, len(d)*4)
 	for _, n := range d {
-		ret = append(ret, n.AsHuman(4)...)
+		ret = append(ret, n.AsText(ReportIndentSize)...)
 	}
-	return human.Indent(indent, ret)
+	return Indent(indent, ret)
 }
 
 // SimpleReporter creates report for simple binary cases
@@ -96,4 +98,36 @@ func ErrorReport(name string, err error) interfaces.DependencyReport {
 		Needed:     100,
 		Message:    err.Error(),
 	}
+}
+
+// Indent indents every line
+func Indent(indent int, data []string) []string {
+	ret := make([]string, 0, cap(data))
+	for _, line := range data {
+		ret = append(ret, strings.Repeat(" ", indent)+line)
+	}
+	return ret
+}
+
+// dependencyReportAsText returns a human-readable representation of the report as a slice
+func dependencyReportAsText(d interfaces.DependencyReport, indent int) []string {
+	var blocksStr, percStr string
+	if d.Blocks {
+		blocksStr = "BLOCKS"
+	} else {
+		blocksStr = "DOESN'T BLOCK"
+	}
+	if d.Percentage == 100 {
+		percStr = ""
+	} else {
+		percStr = fmt.Sprintf("%d%%/%d%%", d.Percentage, d.Needed)
+	}
+	ret := []string{
+		fmt.Sprintf("Dependency: %s", d.Dependency),
+		blocksStr,
+	}
+	if percStr != "" {
+		ret = append(ret, percStr)
+	}
+	return Indent(indent, ret)
 }
