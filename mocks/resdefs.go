@@ -54,6 +54,8 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 			rd.Secret = MakeSecret(n)
 		} else if typ == "deployment" {
 			rd.Deployment = MakeDeployment(n)
+		} else if typ == "persistentvolumeclaim" {
+			rd.PersistentVolumeClaim = MakePersistentVolumeClaim(n)
 		} else {
 			log.Fatal("Unrecognized resource type for name ", typ)
 		}

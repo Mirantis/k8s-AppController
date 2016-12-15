@@ -30,6 +30,7 @@ type Client struct {
 	unversioned.ConfigMapsInterface
 	unversioned.SecretsInterface
 	unversioned.DeploymentInterface
+	unversioned.PersistentVolumeClaimInterface
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
@@ -80,6 +81,10 @@ func (c *Client) Secrets() unversioned.SecretsInterface {
 	return c.SecretsInterface
 }
 
+func (c *Client) PersistentVolumeClaims() unversioned.PersistentVolumeClaimInterface {
+	return c.PersistentVolumeClaimInterface
+}
+
 func NewClient() *Client {
 	return &Client{
 		NewPodClient(),
@@ -91,6 +96,7 @@ func NewClient() *Client {
 		NewConfigMapClient(),
 		NewSecretClient(),
 		NewDeploymentClient(),
+		NewPersistentVolumeClaimClient(),
 		NewDependencyClient(),
 		NewResourceDefinitionClient(),
 	}
