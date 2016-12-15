@@ -47,15 +47,16 @@ func (b Base) Meta(paramName string) string {
 // KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
 // structs implement interfaces.ResourceTemplate
 var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
-	"daemonset":  DaemonSet{},
-	"job":        Job{},
-	"petset":     PetSet{},
-	"pod":        Pod{},
-	"replicaset": ReplicaSet{},
-	"service":    Service{},
-	"configmap":  ConfigMap{},
-	"secret":     Secret{},
-	"deployment": Deployment{},
+	"daemonset":             DaemonSet{},
+	"job":                   Job{},
+	"petset":                PetSet{},
+	"pod":                   Pod{},
+	"replicaset":            ReplicaSet{},
+	"service":               Service{},
+	"configmap":             ConfigMap{},
+	"secret":                Secret{},
+	"deployment":            Deployment{},
+	"persistentvolumeclaim": PersistentVolumeClaim{},
 }
 
 // Kinds is slice of keys from KindToResourceTemplate

@@ -16,6 +16,7 @@ package scheduler
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -307,7 +308,9 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		"daemonset/ready-6",
 		"configmap/cfg-1",
 		"secret/secret-1",
-		"deployment/ready-7")
+		"deployment/ready-7",
+		"persistentvolumeclaim/pvc-1")
+
 	c.DependenciesInterface = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "job/ready-2"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "replicaset/ready-3"},
@@ -316,7 +319,8 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		mocks.Dependency{Parent: "petset/ready-5", Child: "daemonset/ready-6"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "configmap/cfg-1"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "secret/secret-1"},
-		mocks.Dependency{Parent: "petset/ready-5", Child: "deployment/ready-7"})
+		mocks.Dependency{Parent: "petset/ready-5", Child: "deployment/ready-7"},
+		mocks.Dependency{Parent: "deployment/ready-7", Child: "persistentvolumeclaim/pvc-1"})
 
 	depGraph, err := BuildDependencyGraph(c, nil)
 	if err != nil {
@@ -325,8 +329,13 @@ func TestGraphAllResourceTypes(t *testing.T) {
 
 	expectedLenght := 10
 	if len(depGraph) != expectedLenght {
-		t.Errorf("Wrong length of dependency graph, expected %d, actual %d",
-			expectedLenght, len(depGraph))
+		ks := make([]string, 0, len(depGraph))
+		for key := range depGraph {
+			ks = append(ks, key)
+		}
+		keys := strings.Join(ks, ", ")
+		t.Errorf("Wrong length of dependency graph, expected %d, actual %d. Keys are: %s",
+			expectedLenght, len(depGraph), keys)
 	}
 }
 

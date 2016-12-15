@@ -37,6 +37,7 @@ type Interface interface {
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
 	Deployments() unversioned.DeploymentInterface
+	PersistentVolumeClaims() unversioned.PersistentVolumeClaimInterface
 }
 
 type client struct {
@@ -101,6 +102,11 @@ func (c client) DaemonSets() unversioned.DaemonSetInterface {
 // Deployments return K8s Deployment client for ac namespace
 func (c client) Deployments() unversioned.DeploymentInterface {
 	return c.Client.Extensions().Deployments(c.namespace)
+}
+
+// PersistentVolumeClaims return K8s PVC client for ac namespace
+func (c client) PersistentVolumeClaims() unversioned.PersistentVolumeClaimInterface {
+	return c.Client.PersistentVolumeClaims(c.namespace)
 }
 
 func newForConfig(c restclient.Config) (Interface, error) {
