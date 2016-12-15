@@ -36,15 +36,16 @@ type ResourceDefinition struct {
 	Meta map[string]string `json:"meta,omitempty"`
 
 	//TODO: add other object types
-	Pod        *api.Pod               `json:"pod,omitempty"`
-	Job        *batch.Job             `json:"job,omitempty"`
-	Service    *api.Service           `json:"service,omitempty"`
-	ReplicaSet *extensions.ReplicaSet `json:"replicaset,omitempty"`
-	PetSet     *apps.PetSet           `json:"petset,omitempty"`
-	DaemonSet  *extensions.DaemonSet  `json:"daemonset,omitempty"`
-	ConfigMap  *api.ConfigMap         `json:"configmap,omitempty"`
-	Secret     *api.Secret            `json:"secret,omitempty"`
-	Deployment *extensions.Deployment `json:"deployment, omitempty"`
+	Pod                   *api.Pod                   `json:"pod,omitempty"`
+	Job                   *batch.Job                 `json:"job,omitempty"`
+	Service               *api.Service               `json:"service,omitempty"`
+	ReplicaSet            *extensions.ReplicaSet     `json:"replicaset,omitempty"`
+	PetSet                *apps.PetSet               `json:"petset,omitempty"`
+	DaemonSet             *extensions.DaemonSet      `json:"daemonset,omitempty"`
+	ConfigMap             *api.ConfigMap             `json:"configmap,omitempty"`
+	Secret                *api.Secret                `json:"secret,omitempty"`
+	Deployment            *extensions.Deployment     `json:"deployment, omitempty"`
+	PersistentVolumeClaim *api.PersistentVolumeClaim `json:"persistentvolumeclaim, omitempty"`
 }
 
 type ResourceDefinitionList struct {
