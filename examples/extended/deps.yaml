@@ -193,3 +193,10 @@ metadata:
   name: 35185dfb-ca82-015b-81e5-297ba2c1235
 parent: deployment/nginx-deployment
 child: pod/eventually-alive-pod3
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: 35235dfb-ca82-015b-81e5-297ba2c1235
+parent: deployment/nginx-deployment
+child: persistentvolumeclaim/myclaim

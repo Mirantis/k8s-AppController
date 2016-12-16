@@ -38,7 +38,7 @@ type ExistingConfigMap struct {
 }
 
 func configMapKey(name string) string {
-	return "configMap/" + name
+	return "configmap/" + name
 }
 
 func (c ConfigMap) Key() string {
