@@ -18,26 +18,28 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	corev1 "k8s.io/client-go/1.5/kubernetes/typed/core/v1"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	policy "k8s.io/client-go/1.5/pkg/apis/policy/v1alpha1"
+	"k8s.io/client-go/1.5/pkg/watch"
+	"k8s.io/client-go/1.5/rest"
 )
 
 type podClient struct {
 }
 
-func MakePod(name string) *api.Pod {
+func MakePod(name string) *v1.Pod {
 	status := strings.Split(name, "-")[0]
 
-	pod := &api.Pod{}
+	pod := &v1.Pod{}
 	pod.Name = name
 
 	if status == "ready" {
 		pod.Status.Phase = "Running"
 		pod.Status.Conditions = append(
 			pod.Status.Conditions,
-			api.PodCondition{Type: "Ready", Status: "True"},
+			v1.PodCondition{Type: "Ready", Status: "True"},
 		)
 	} else {
 		pod.Status.Phase = "Pending"
@@ -46,8 +48,8 @@ func MakePod(name string) *api.Pod {
 	return pod
 }
 
-func (p *podClient) List(opts api.ListOptions) (*api.PodList, error) {
-	var pods []api.Pod
+func (p *podClient) List(opts api.ListOptions) (*v1.PodList, error) {
+	var pods []v1.Pod
 	for i := 0; i < 3; i++ {
 		pods = append(pods, *MakePod(fmt.Sprintf("ready-trolo%d", i)))
 	}
@@ -59,10 +61,10 @@ func (p *podClient) List(opts api.ListOptions) (*api.PodList, error) {
 		}
 	}
 
-	return &api.PodList{Items: pods}, nil
+	return &v1.PodList{Items: pods}, nil
 }
 
-func (p *podClient) Get(name string) (*api.Pod, error) {
+func (p *podClient) Get(name string) (*v1.Pod, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock pod %s returned error", name)
@@ -75,11 +77,11 @@ func (p *podClient) Delete(name string, options *api.DeleteOptions) error {
 	panic("not implemented")
 }
 
-func (p *podClient) Create(pod *api.Pod) (*api.Pod, error) {
+func (p *podClient) Create(pod *v1.Pod) (*v1.Pod, error) {
 	return MakePod(pod.Name), nil
 }
 
-func (p *podClient) Update(pod *api.Pod) (*api.Pod, error) {
+func (p *podClient) Update(pod *v1.Pod) (*v1.Pod, error) {
 	panic("not implemented")
 }
 
@@ -87,18 +89,30 @@ func (p *podClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 	panic("not implemented")
 }
 
-func (p *podClient) Bind(binding *api.Binding) error {
+func (p *podClient) Bind(binding *v1.Binding) error {
 	panic("not implemented")
 }
 
-func (p *podClient) UpdateStatus(pod *api.Pod) (*api.Pod, error) {
+func (p *podClient) UpdateStatus(pod *v1.Pod) (*v1.Pod, error) {
 	panic("not implemented")
 }
 
-func (p *podClient) GetLogs(name string, opts *api.PodLogOptions) *restclient.Request {
+func (p *podClient) GetLogs(name string, opts *v1.PodLogOptions) *rest.Request {
 	panic("not implemented")
 }
 
-func NewPodClient() unversioned.PodInterface {
+func (p *podClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (p *podClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *v1.Pod, err error) {
+	panic("not implemented")
+}
+
+func (p *podClient) Evict(eviction *policy.Eviction) error {
+	panic("not implemented")
+}
+
+func NewPodClient() corev1.PodInterface {
 	return &podClient{}
 }

@@ -18,31 +18,32 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	corev1 "k8s.io/client-go/1.5/kubernetes/typed/core/v1"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	"k8s.io/client-go/1.5/pkg/watch"
+	"k8s.io/client-go/1.5/rest"
 )
 
 type serviceClient struct {
 }
 
 // MakeService creates a service based on its name
-func MakeService(name string) *api.Service {
-	var service *api.Service
+func MakeService(name string) *v1.Service {
+	var service *v1.Service
 
-	service = &api.Service{Spec: api.ServiceSpec{Selector: map[string]string{name: "yes"}}}
+	service = &v1.Service{Spec: v1.ServiceSpec{Selector: map[string]string{name: "yes"}}}
 
 	service.Name = name
 
 	return service
 }
 
-func (s *serviceClient) List(opts api.ListOptions) (*api.ServiceList, error) {
+func (s *serviceClient) List(opts api.ListOptions) (*v1.ServiceList, error) {
 	panic("not implemented")
 }
 
-func (s *serviceClient) Get(name string) (*api.Service, error) {
+func (s *serviceClient) Get(name string) (*v1.Service, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock service %s returned error", name)
@@ -51,19 +52,19 @@ func (s *serviceClient) Get(name string) (*api.Service, error) {
 	return MakeService(name), nil
 }
 
-func (s *serviceClient) Create(srv *api.Service) (*api.Service, error) {
+func (s *serviceClient) Create(srv *v1.Service) (*v1.Service, error) {
 	return MakeService(srv.Name), nil
 }
 
-func (s *serviceClient) Update(srv *api.Service) (*api.Service, error) {
+func (s *serviceClient) Update(srv *v1.Service) (*v1.Service, error) {
 	panic("not implemented")
 }
 
-func (s *serviceClient) UpdateStatus(srv *api.Service) (*api.Service, error) {
+func (s *serviceClient) UpdateStatus(srv *v1.Service) (*v1.Service, error) {
 	panic("not implemented")
 }
 
-func (s *serviceClient) Delete(name string) error {
+func (s *serviceClient) Delete(name string, opts *api.DeleteOptions) error {
 	panic("not implemented")
 }
 
@@ -71,10 +72,18 @@ func (s *serviceClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 	panic("not implemented")
 }
 
-func (s *serviceClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) restclient.ResponseWrapper {
+func (s *serviceClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
 	panic("not implemented")
 }
 
-func NewServiceClient() unversioned.ServiceInterface {
+func (s *serviceClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (s *serviceClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *v1.Service, err error) {
+	panic("not implemented")
+}
+
+func NewServiceClient() corev1.ServiceInterface {
 	return &serviceClient{}
 }

@@ -17,8 +17,9 @@ package resources
 import (
 	"log"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	corev1 "k8s.io/client-go/1.5/kubernetes/typed/core/v1"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -27,8 +28,8 @@ import (
 
 type PersistentVolumeClaim struct {
 	Base
-	PersistentVolumeClaim *api.PersistentVolumeClaim
-	Client                unversioned.PersistentVolumeClaimInterface
+	PersistentVolumeClaim *v1.PersistentVolumeClaim
+	Client                corev1.PersistentVolumeClaimInterface
 }
 
 func persistentVolumeClaimKey(name string) string {
@@ -39,13 +40,13 @@ func (p PersistentVolumeClaim) Key() string {
 	return persistentVolumeClaimKey(p.PersistentVolumeClaim.Name)
 }
 
-func persistentVolumeClaimStatus(p unversioned.PersistentVolumeClaimInterface, name string) (string, error) {
+func persistentVolumeClaimStatus(p corev1.PersistentVolumeClaimInterface, name string) (string, error) {
 	persistentVolumeClaim, err := p.Get(name)
 	if err != nil {
 		return "error", err
 	}
 
-	if persistentVolumeClaim.Status.Phase == api.ClaimBound {
+	if persistentVolumeClaim.Status.Phase == v1.ClaimBound {
 		return "ready", nil
 	}
 
@@ -63,7 +64,7 @@ func (p PersistentVolumeClaim) Create() error {
 
 // Delete deletes persistentVolumeClaim from the cluster
 func (p PersistentVolumeClaim) Delete() error {
-	return p.Client.Delete(p.PersistentVolumeClaim.Name)
+	return p.Client.Delete(p.PersistentVolumeClaim.Name, &api.DeleteOptions{})
 }
 
 func (p PersistentVolumeClaim) Status(meta map[string]string) (string, error) {
@@ -86,14 +87,14 @@ func (p PersistentVolumeClaim) NewExisting(name string, c client.Interface) inte
 	return NewExistingPersistentVolumeClaim(name, c.PersistentVolumeClaims())
 }
 
-func NewPersistentVolumeClaim(persistentVolumeClaim *api.PersistentVolumeClaim, client unversioned.PersistentVolumeClaimInterface, meta map[string]string) interfaces.Resource {
+func NewPersistentVolumeClaim(persistentVolumeClaim *v1.PersistentVolumeClaim, client corev1.PersistentVolumeClaimInterface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: PersistentVolumeClaim{Base: Base{meta}, PersistentVolumeClaim: persistentVolumeClaim, Client: client}}
 }
 
 type ExistingPersistentVolumeClaim struct {
 	Base
 	Name   string
-	Client unversioned.PersistentVolumeClaimInterface
+	Client corev1.PersistentVolumeClaimInterface
 }
 
 func (p ExistingPersistentVolumeClaim) Key() string {
@@ -110,9 +111,9 @@ func (p ExistingPersistentVolumeClaim) Status(meta map[string]string) (string, e
 
 // Delete deletes persistentVolumeClaim from the cluster
 func (p ExistingPersistentVolumeClaim) Delete() error {
-	return p.Client.Delete(p.Name)
+	return p.Client.Delete(p.Name, nil)
 }
 
-func NewExistingPersistentVolumeClaim(name string, client unversioned.PersistentVolumeClaimInterface) interfaces.Resource {
+func NewExistingPersistentVolumeClaim(name string, client corev1.PersistentVolumeClaimInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingPersistentVolumeClaim{Name: name, Client: client}}
 }

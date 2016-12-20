@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"log"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
+	corev1 "k8s.io/client-go/1.5/kubernetes/typed/core/v1"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	"k8s.io/client-go/1.5/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -29,12 +30,12 @@ import (
 
 type Service struct {
 	Base
-	Service   *api.Service
-	Client    unversioned.ServiceInterface
+	Service   *v1.Service
+	Client    corev1.ServiceInterface
 	APIClient client.Interface
 }
 
-func serviceStatus(s unversioned.ServiceInterface, name string, apiClient client.Interface) (string, error) {
+func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Interface) (string, error) {
 	service, err := s.Get(name)
 
 	if err != nil {
@@ -113,7 +114,7 @@ func (s Service) Create() error {
 
 // Delete deletes Service from the cluster
 func (s Service) Delete() error {
-	return s.Client.Delete(s.Service.Name)
+	return s.Client.Delete(s.Service.Name, nil)
 }
 
 func (s Service) Status(meta map[string]string) (string, error) {
@@ -137,14 +138,14 @@ func (s Service) NewExisting(name string, c client.Interface) interfaces.Resourc
 }
 
 // NewService is Service constructor. Needs apiClient for service status checks
-func NewService(service *api.Service, client unversioned.ServiceInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+func NewService(service *v1.Service, client corev1.ServiceInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Service{Base: Base{meta}, Service: service, Client: client, APIClient: apiClient}}
 }
 
 type ExistingService struct {
 	Base
 	Name      string
-	Client    unversioned.ServiceInterface
+	Client    corev1.ServiceInterface
 	APIClient client.Interface
 }
 
@@ -162,9 +163,9 @@ func (s ExistingService) Status(meta map[string]string) (string, error) {
 
 // Delete deletes Service from the cluster
 func (s ExistingService) Delete() error {
-	return s.Client.Delete(s.Name)
+	return s.Client.Delete(s.Name, nil)
 }
 
-func NewExistingService(name string, client unversioned.ServiceInterface) interfaces.Resource {
+func NewExistingService(name string, client corev1.ServiceInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingService{Name: name, Client: client}}
 }

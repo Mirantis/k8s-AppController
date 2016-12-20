@@ -17,8 +17,8 @@ package resources
 import (
 	"log"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	corev1 "k8s.io/client-go/1.5/kubernetes/typed/core/v1"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -27,14 +27,14 @@ import (
 
 type Secret struct {
 	Base
-	Secret *api.Secret
-	Client unversioned.SecretsInterface
+	Secret *v1.Secret
+	Client corev1.SecretInterface
 }
 
 type ExistingSecret struct {
 	Base
 	Name   string
-	Client unversioned.SecretsInterface
+	Client corev1.SecretInterface
 }
 
 func secretKey(name string) string {
@@ -49,7 +49,7 @@ func (s ExistingSecret) Key() string {
 	return secretKey(s.Name)
 }
 
-func secretStatus(s unversioned.SecretsInterface, name string) (string, error) {
+func secretStatus(s corev1.SecretInterface, name string) (string, error) {
 	_, err := s.Get(name)
 	if err != nil {
 		return "error", err
@@ -72,18 +72,18 @@ func (s Secret) Create() error {
 }
 
 func (s Secret) Delete() error {
-	return s.Client.Delete(s.Secret.Name)
+	return s.Client.Delete(s.Secret.Name, nil)
 }
 
 func (s Secret) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Secret != nil && def.Secret.Name == name
 }
 
-func NewSecret(s *api.Secret, client unversioned.SecretsInterface, meta map[string]string) interfaces.Resource {
+func NewSecret(s *v1.Secret, client corev1.SecretInterface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Secret{Base: Base{meta}, Secret: s, Client: client}}
 }
 
-func NewExistingSecret(name string, client unversioned.SecretsInterface) interfaces.Resource {
+func NewExistingSecret(name string, client corev1.SecretInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingSecret{Name: name, Client: client}}
 }
 
@@ -104,5 +104,5 @@ func (s ExistingSecret) Create() error {
 }
 
 func (s ExistingSecret) Delete() error {
-	return s.Client.Delete(s.Name)
+	return s.Client.Delete(s.Name, nil)
 }

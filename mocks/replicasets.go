@@ -18,31 +18,29 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/client-go/1.5/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/api"
+	extbeta1 "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/watch"
+	"k8s.io/client-go/1.5/rest"
 )
 
 type replicaSetClient struct {
 }
 
-func MakeReplicaSet(name string) *extensions.ReplicaSet {
-	replicaSet := &extensions.ReplicaSet{}
+func MakeReplicaSet(name string) *extbeta1.ReplicaSet {
+	replicaSet := &extbeta1.ReplicaSet{}
 	replicaSet.Name = name
-	replicaSet.Spec.Replicas = 3
-	if name == "fail" {
-		replicaSet.Status.Replicas = 2
-	} else {
-		replicaSet.Status.Replicas = 3
+	replicaSet.Spec.Replicas = pointer(int32(2))
+	if name != "fail" {
+		replicaSet.Status.Replicas = int32(3)
 	}
 
 	return replicaSet
 }
 
-func (r *replicaSetClient) List(opts api.ListOptions) (*extensions.ReplicaSetList, error) {
-	var replicaSets []extensions.ReplicaSet
+func (r *replicaSetClient) List(opts api.ListOptions) (*extbeta1.ReplicaSetList, error) {
+	var replicaSets []extbeta1.ReplicaSet
 	for i := 0; i < 3; i++ {
 		replicaSets = append(replicaSets, *MakeReplicaSet(fmt.Sprintf("ready-trolo%d", i)))
 	}
@@ -52,10 +50,10 @@ func (r *replicaSetClient) List(opts api.ListOptions) (*extensions.ReplicaSetLis
 		replicaSets = append(replicaSets, *MakeReplicaSet("fail"))
 	}
 
-	return &extensions.ReplicaSetList{Items: replicaSets}, nil
+	return &extbeta1.ReplicaSetList{Items: replicaSets}, nil
 }
 
-func (r *replicaSetClient) Get(name string) (*extensions.ReplicaSet, error) {
+func (r *replicaSetClient) Get(name string) (*extbeta1.ReplicaSet, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock service %s returned error", name)
@@ -64,15 +62,15 @@ func (r *replicaSetClient) Get(name string) (*extensions.ReplicaSet, error) {
 	return MakeReplicaSet(name), nil
 }
 
-func (r *replicaSetClient) Create(rs *extensions.ReplicaSet) (*extensions.ReplicaSet, error) {
+func (r *replicaSetClient) Create(rs *extbeta1.ReplicaSet) (*extbeta1.ReplicaSet, error) {
 	return MakeReplicaSet(rs.Name), nil
 }
 
-func (r *replicaSetClient) Update(rs *extensions.ReplicaSet) (*extensions.ReplicaSet, error) {
+func (r *replicaSetClient) Update(rs *extbeta1.ReplicaSet) (*extbeta1.ReplicaSet, error) {
 	panic("not implemented")
 }
 
-func (r *replicaSetClient) UpdateStatus(rs *extensions.ReplicaSet) (*extensions.ReplicaSet, error) {
+func (r *replicaSetClient) UpdateStatus(rs *extbeta1.ReplicaSet) (*extbeta1.ReplicaSet, error) {
 	panic("not implemented")
 }
 
@@ -84,10 +82,18 @@ func (r *replicaSetClient) Watch(opts api.ListOptions) (watch.Interface, error) 
 	panic("not implemented")
 }
 
-func (r *replicaSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) restclient.ResponseWrapper {
+func (r *replicaSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
 	panic("not implemented")
 }
 
-func NewReplicaSetClient() unversioned.ReplicaSetInterface {
+func (r *replicaSetClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (r *replicaSetClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *extbeta1.ReplicaSet, err error) {
+	panic("not implemented")
+}
+
+func NewReplicaSetClient() v1beta1.ReplicaSetInterface {
 	return &replicaSetClient{}
 }

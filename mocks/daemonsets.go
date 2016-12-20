@@ -18,19 +18,19 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/client-go/1.5/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/api"
+	extbeta1 "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/watch"
+	"k8s.io/client-go/1.5/rest"
 )
 
 type daemonSetClient struct {
 }
 
 // MakeDaemonSet creates a daemonset base in its name
-func MakeDaemonSet(name string) *extensions.DaemonSet {
-	daemonSet := &extensions.DaemonSet{}
+func MakeDaemonSet(name string) *extbeta1.DaemonSet {
+	daemonSet := &extbeta1.DaemonSet{}
 	daemonSet.Name = name
 	daemonSet.Status.DesiredNumberScheduled = 3
 	if name == "fail" {
@@ -42,8 +42,8 @@ func MakeDaemonSet(name string) *extensions.DaemonSet {
 	return daemonSet
 }
 
-func (r *daemonSetClient) List(opts api.ListOptions) (*extensions.DaemonSetList, error) {
-	var daemonSets []extensions.DaemonSet
+func (r *daemonSetClient) List(opts api.ListOptions) (*extbeta1.DaemonSetList, error) {
+	var daemonSets []extbeta1.DaemonSet
 	for i := 0; i < 3; i++ {
 		daemonSets = append(daemonSets, *MakeDaemonSet(fmt.Sprintf("ready-trolo%d", i)))
 	}
@@ -53,10 +53,10 @@ func (r *daemonSetClient) List(opts api.ListOptions) (*extensions.DaemonSetList,
 		daemonSets = append(daemonSets, *MakeDaemonSet("fail"))
 	}
 
-	return &extensions.DaemonSetList{Items: daemonSets}, nil
+	return &extbeta1.DaemonSetList{Items: daemonSets}, nil
 }
 
-func (r *daemonSetClient) Get(name string) (*extensions.DaemonSet, error) {
+func (r *daemonSetClient) Get(name string) (*extbeta1.DaemonSet, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock daemonset %s returned error", name)
@@ -65,19 +65,19 @@ func (r *daemonSetClient) Get(name string) (*extensions.DaemonSet, error) {
 	return MakeDaemonSet(name), nil
 }
 
-func (r *daemonSetClient) Create(rs *extensions.DaemonSet) (*extensions.DaemonSet, error) {
+func (r *daemonSetClient) Create(rs *extbeta1.DaemonSet) (*extbeta1.DaemonSet, error) {
 	return MakeDaemonSet(rs.Name), nil
 }
 
-func (r *daemonSetClient) Update(rs *extensions.DaemonSet) (*extensions.DaemonSet, error) {
+func (r *daemonSetClient) Update(rs *extbeta1.DaemonSet) (*extbeta1.DaemonSet, error) {
 	panic("not implemented")
 }
 
-func (r *daemonSetClient) UpdateStatus(rs *extensions.DaemonSet) (*extensions.DaemonSet, error) {
+func (r *daemonSetClient) UpdateStatus(rs *extbeta1.DaemonSet) (*extbeta1.DaemonSet, error) {
 	panic("not implemented")
 }
 
-func (r *daemonSetClient) Delete(name string) error {
+func (r *daemonSetClient) Delete(name string, opts *api.DeleteOptions) error {
 	panic("not implemented")
 }
 
@@ -85,11 +85,19 @@ func (r *daemonSetClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 	panic("not implemented")
 }
 
-func (r *daemonSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) restclient.ResponseWrapper {
+func (r *daemonSetClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (r *daemonSetClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *extbeta1.DaemonSet, err error) {
+	panic("not implemented")
+}
+
+func (r *daemonSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
 	panic("not implemented")
 }
 
 // NewDaemonSetClient is a daemonset client constructor
-func NewDaemonSetClient() unversioned.DaemonSetInterface {
+func NewDaemonSetClient() v1beta1.DaemonSetInterface {
 	return &daemonSetClient{}
 }

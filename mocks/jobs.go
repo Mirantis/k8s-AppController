@@ -18,33 +18,33 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	batchv1 "k8s.io/client-go/1.5/kubernetes/typed/batch/v1"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/apis/batch/v1"
+	"k8s.io/client-go/1.5/pkg/watch"
 )
 
 type jobClient struct {
 }
 
-func MakeJob(name string) *batch.Job {
+func MakeJob(name string) *v1.Job {
 	status := strings.Split(name, "-")[0]
 
-	job := &batch.Job{}
+	job := &v1.Job{}
 	job.Name = name
 
 	if status == "ready" {
 		job.Status.Conditions = append(
 			job.Status.Conditions,
-			batch.JobCondition{Type: "Complete", Status: "True"},
+			v1.JobCondition{Type: "Complete", Status: "True"},
 		)
 	}
 
 	return job
 }
 
-func (j *jobClient) List(opts api.ListOptions) (*batch.JobList, error) {
-	var jobs []batch.Job
+func (j *jobClient) List(opts api.ListOptions) (*v1.JobList, error) {
+	var jobs []v1.Job
 	for i := 0; i < 3; i++ {
 		jobs = append(jobs, *MakeJob(fmt.Sprintf("ready-trolo%d", i)))
 	}
@@ -56,10 +56,10 @@ func (j *jobClient) List(opts api.ListOptions) (*batch.JobList, error) {
 		}
 	}
 
-	return &batch.JobList{Items: jobs}, nil
+	return &v1.JobList{Items: jobs}, nil
 }
 
-func (j *jobClient) Get(name string) (*batch.Job, error) {
+func (j *jobClient) Get(name string) (*v1.Job, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock job %s returned error", name)
@@ -68,11 +68,11 @@ func (j *jobClient) Get(name string) (*batch.Job, error) {
 	return MakeJob(name), nil
 }
 
-func (j *jobClient) Create(job *batch.Job) (*batch.Job, error) {
+func (j *jobClient) Create(job *v1.Job) (*v1.Job, error) {
 	return MakeJob(job.Name), nil
 }
 
-func (j *jobClient) Update(job *batch.Job) (*batch.Job, error) {
+func (j *jobClient) Update(job *v1.Job) (*v1.Job, error) {
 	panic("not implemented")
 }
 
@@ -84,10 +84,18 @@ func (j *jobClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 	panic("not implemented")
 }
 
-func (j *jobClient) UpdateStatus(job *batch.Job) (*batch.Job, error) {
+func (j *jobClient) UpdateStatus(job *v1.Job) (*v1.Job, error) {
 	panic("not implemented")
 }
 
-func NewJobClient() unversioned.JobInterface {
+func (j *jobClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (j *jobClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *v1.Job, err error) {
+	panic("not implemented")
+}
+
+func NewJobClient() batchv1.JobInterface {
 	return &jobClient{}
 }

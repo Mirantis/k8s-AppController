@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/Mirantis/k8s-AppController/client"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api"
 )
 
 type resDefClient struct {

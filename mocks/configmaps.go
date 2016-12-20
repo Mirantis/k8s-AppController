@@ -17,47 +17,52 @@ package mocks
 import (
 	"fmt"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	corev1 "k8s.io/client-go/1.5/kubernetes/typed/core/v1"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	"k8s.io/client-go/1.5/pkg/watch"
 )
 
 type configMapClient struct {
 }
 
-func MakeConfigMap(name string) *api.ConfigMap {
+func MakeConfigMap(name string) *v1.ConfigMap {
 
-	configMap := &api.ConfigMap{}
+	configMap := &v1.ConfigMap{}
 	configMap.Name = name
 
 	return configMap
 }
 
-func (p *configMapClient) List(opts api.ListOptions) (*api.ConfigMapList, error) {
-	var configMaps []api.ConfigMap
+func (p *configMapClient) List(opts api.ListOptions) (*v1.ConfigMapList, error) {
+	var configMaps []v1.ConfigMap
 	for i := 0; i < 3; i++ {
 		configMaps = append(configMaps, *MakeConfigMap(fmt.Sprintf("cfgmap-%d", i)))
 	}
 
-	return &api.ConfigMapList{Items: configMaps}, nil
+	return &v1.ConfigMapList{Items: configMaps}, nil
 }
 
-func (p *configMapClient) Get(name string) (*api.ConfigMap, error) {
+func (p *configMapClient) Get(name string) (*v1.ConfigMap, error) {
 	if name != "fail" {
 		return MakeConfigMap(name), nil
 	}
 	return MakeConfigMap(name), fmt.Errorf("Mock ConfigMap not created")
 }
 
-func (p *configMapClient) Delete(name string) error {
+func (p *configMapClient) Delete(name string, opts *api.DeleteOptions) error {
 	panic("not implemented")
 }
 
-func (p *configMapClient) Create(configMap *api.ConfigMap) (*api.ConfigMap, error) {
+func (p *configMapClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (p *configMapClient) Create(configMap *v1.ConfigMap) (*v1.ConfigMap, error) {
 	return MakeConfigMap(configMap.Name), nil
 }
 
-func (p *configMapClient) Update(configMap *api.ConfigMap) (*api.ConfigMap, error) {
+func (p *configMapClient) Update(configMap *v1.ConfigMap) (*v1.ConfigMap, error) {
 	panic("not implemented")
 }
 
@@ -69,6 +74,10 @@ func (p *configMapClient) Bind(binding *api.Binding) error {
 	panic("not implemented")
 }
 
-func NewConfigMapClient() unversioned.ConfigMapsInterface {
+func (p *configMapClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *v1.ConfigMap, err error) {
+	panic("not implemented")
+}
+
+func NewConfigMapClient() corev1.ConfigMapInterface {
 	return &configMapClient{}
 }

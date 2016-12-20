@@ -19,10 +19,10 @@ import (
 	"log"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/client-go/1.5/kubernetes/typed/apps/v1alpha1"
+	"k8s.io/client-go/1.5/pkg/api"
+	appsalpha1 "k8s.io/client-go/1.5/pkg/apis/apps/v1alpha1"
+	"k8s.io/client-go/1.5/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -32,12 +32,12 @@ import (
 // PetSet is a wrapper for K8s PetSet object
 type PetSet struct {
 	Base
-	PetSet    *apps.PetSet
-	Client    unversioned.PetSetInterface
+	PetSet    *appsalpha1.PetSet
+	Client    v1alpha1.PetSetInterface
 	APIClient client.Interface
 }
 
-func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.Interface) (string, error) {
+func petSetStatus(p v1alpha1.PetSetInterface, name string, apiClient client.Interface) (string, error) {
 	// Use label from petset spec to get needed pods
 
 	ps, err := p.Get(name)
@@ -120,7 +120,7 @@ func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource
 }
 
 // NewPetSet is a constructor
-func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+func NewPetSet(petSet *appsalpha1.PetSet, client v1alpha1.PetSetInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: PetSet{Base: Base{meta}, PetSet: petSet, Client: client, APIClient: apiClient}}
 }
 
@@ -128,7 +128,7 @@ func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClien
 type ExistingPetSet struct {
 	Base
 	Name      string
-	Client    unversioned.PetSetInterface
+	Client    v1alpha1.PetSetInterface
 	APIClient client.Interface
 }
 
@@ -153,6 +153,6 @@ func (p ExistingPetSet) Delete() error {
 }
 
 // NewExistingPetSet is a constructor
-func NewExistingPetSet(name string, client unversioned.PetSetInterface, apiClient client.Interface) interfaces.Resource {
+func NewExistingPetSet(name string, client v1alpha1.PetSetInterface, apiClient client.Interface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingPetSet{Name: name, Client: client, APIClient: apiClient}}
 }

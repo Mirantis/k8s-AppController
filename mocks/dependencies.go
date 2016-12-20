@@ -16,7 +16,7 @@ package mocks
 
 import (
 	"github.com/Mirantis/k8s-AppController/client"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api"
 )
 
 type Dependency struct {

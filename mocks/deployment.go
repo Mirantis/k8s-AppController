@@ -18,37 +18,37 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/client-go/1.5/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/api"
+	extbeta1 "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/watch"
+	"k8s.io/client-go/1.5/rest"
 )
 
 type deploymentClient struct {
 }
 
 // MakeDeployment creates mock Deployment
-func MakeDeployment(name string) *extensions.Deployment {
-	deployment := &extensions.Deployment{}
+func MakeDeployment(name string) *extbeta1.Deployment {
+	deployment := &extbeta1.Deployment{}
 	deployment.Name = name
-	deployment.Spec.Replicas = 3
+	deployment.Spec.Replicas = pointer(int32(3))
 	if name == "fail" {
-		deployment.Status.UpdatedReplicas = 2
-		deployment.Status.AvailableReplicas = 3
+		deployment.Status.UpdatedReplicas = int32(2)
+		deployment.Status.AvailableReplicas = int32(3)
 	} else if name == "failav" {
-		deployment.Status.UpdatedReplicas = 3
-		deployment.Status.AvailableReplicas = 2
+		deployment.Status.UpdatedReplicas = int32(3)
+		deployment.Status.AvailableReplicas = int32(2)
 	} else {
-		deployment.Status.UpdatedReplicas = 3
-		deployment.Status.AvailableReplicas = 3
+		deployment.Status.UpdatedReplicas = int32(3)
+		deployment.Status.AvailableReplicas = int32(3)
 	}
 
 	return deployment
 }
 
-func (r *deploymentClient) List(opts api.ListOptions) (*extensions.DeploymentList, error) {
-	var deployments []extensions.Deployment
+func (r *deploymentClient) List(opts api.ListOptions) (*extbeta1.DeploymentList, error) {
+	var deployments []extbeta1.Deployment
 	for i := 0; i < 3; i++ {
 		deployments = append(deployments, *MakeDeployment(fmt.Sprintf("ready-trolo%d", i)))
 	}
@@ -58,10 +58,10 @@ func (r *deploymentClient) List(opts api.ListOptions) (*extensions.DeploymentLis
 		deployments = append(deployments, *MakeDeployment("fail"))
 	}
 
-	return &extensions.DeploymentList{Items: deployments}, nil
+	return &extbeta1.DeploymentList{Items: deployments}, nil
 }
 
-func (r *deploymentClient) Get(name string) (*extensions.Deployment, error) {
+func (r *deploymentClient) Get(name string) (*extbeta1.Deployment, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock service %s returned error", name)
@@ -70,15 +70,15 @@ func (r *deploymentClient) Get(name string) (*extensions.Deployment, error) {
 	return MakeDeployment(name), nil
 }
 
-func (r *deploymentClient) Create(rs *extensions.Deployment) (*extensions.Deployment, error) {
+func (r *deploymentClient) Create(rs *extbeta1.Deployment) (*extbeta1.Deployment, error) {
 	return MakeDeployment(rs.Name), nil
 }
 
-func (r *deploymentClient) Update(rs *extensions.Deployment) (*extensions.Deployment, error) {
+func (r *deploymentClient) Update(rs *extbeta1.Deployment) (*extbeta1.Deployment, error) {
 	panic("not implemented")
 }
 
-func (r *deploymentClient) UpdateStatus(rs *extensions.Deployment) (*extensions.Deployment, error) {
+func (r *deploymentClient) UpdateStatus(rs *extbeta1.Deployment) (*extbeta1.Deployment, error) {
 	panic("not implemented")
 }
 
@@ -90,15 +90,23 @@ func (r *deploymentClient) Watch(opts api.ListOptions) (watch.Interface, error) 
 	panic("not implemented")
 }
 
-func (r *deploymentClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) restclient.ResponseWrapper {
+func (r *deploymentClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
 	panic("not implemented")
 }
 
-func (r *deploymentClient) Rollback(*extensions.DeploymentRollback) error {
+func (r *deploymentClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (r *deploymentClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *extbeta1.Deployment, err error) {
+	panic("not implemented")
+}
+
+func (r *deploymentClient) Rollback(*extbeta1.DeploymentRollback) error {
 	panic("not implemented")
 }
 
 // NewDeploymentClient returns mock deployment client
-func NewDeploymentClient() unversioned.DeploymentInterface {
+func NewDeploymentClient() v1beta1.DeploymentInterface {
 	return &deploymentClient{}
 }

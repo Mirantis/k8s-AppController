@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"log"
 
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/1.5/kubernetes/typed/extensions/v1beta1"
+	extbeta1 "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -28,11 +28,11 @@ import (
 
 type ReplicaSet struct {
 	Base
-	ReplicaSet *extensions.ReplicaSet
-	Client     unversioned.ReplicaSetInterface
+	ReplicaSet *extbeta1.ReplicaSet
+	Client     v1beta1.ReplicaSetInterface
 }
 
-func replicaSetStatus(r unversioned.ReplicaSetInterface, name string, meta map[string]string) (string, error) {
+func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) (string, error) {
 	rs, err := r.Get(name)
 	if err != nil {
 		return "error", err
@@ -43,14 +43,14 @@ func replicaSetStatus(r unversioned.ReplicaSetInterface, name string, meta map[s
 		return "error", err
 	}
 
-	if rs.Status.Replicas*100 < rs.Spec.Replicas*successFactor {
+	if rs.Status.Replicas*100 < *rs.Spec.Replicas*successFactor {
 		return "not ready", nil
 	}
 
 	return "ready", nil
 }
 
-func replicaSetReport(r unversioned.ReplicaSetInterface, name string, meta map[string]string) interfaces.DependencyReport {
+func replicaSetReport(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) interfaces.DependencyReport {
 	rs, err := r.Get(name)
 	if err != nil {
 		return report.ErrorReport(name, err)
@@ -59,7 +59,7 @@ func replicaSetReport(r unversioned.ReplicaSetInterface, name string, meta map[s
 	if err != nil {
 		return report.ErrorReport(name, err)
 	}
-	percentage := (rs.Spec.Replicas * 100 / rs.Status.Replicas)
+	percentage := (*rs.Spec.Replicas * 100 / rs.Status.Replicas)
 	message := fmt.Sprintf(
 		"%d of %d replicas up (%d %%, needed %d%%)",
 		rs.Status.Replicas,
@@ -132,14 +132,14 @@ func (r ReplicaSet) GetDependencyReport(meta map[string]string) interfaces.Depen
 	return replicaSetReport(r.Client, r.ReplicaSet.Name, meta)
 }
 
-func NewReplicaSet(replicaSet *extensions.ReplicaSet, client unversioned.ReplicaSetInterface, meta map[string]string) ReplicaSet {
+func NewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]string) ReplicaSet {
 	return ReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
 }
 
 type ExistingReplicaSet struct {
 	Base
 	Name   string
-	Client unversioned.ReplicaSetInterface
+	Client v1beta1.ReplicaSetInterface
 }
 
 func (r ExistingReplicaSet) Key() string {
@@ -159,7 +159,7 @@ func (r ExistingReplicaSet) Delete() error {
 	return r.Client.Delete(r.Name, nil)
 }
 
-func NewExistingReplicaSet(name string, client unversioned.ReplicaSetInterface) ExistingReplicaSet {
+func NewExistingReplicaSet(name string, client v1beta1.ReplicaSetInterface) ExistingReplicaSet {
 	return ExistingReplicaSet{Name: name, Client: client}
 }
 

@@ -6,22 +6,24 @@ import (
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
 	"github.com/Mirantis/k8s-AppController/report"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"k8s.io/client-go/1.5/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/api"
+	extbeta1 "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
 )
 
 // DaemonSet is wrapper for K8s DaemonSet object
 type DaemonSet struct {
 	Base
-	DaemonSet *extensions.DaemonSet
-	Client    unversioned.DaemonSetInterface
+	DaemonSet *extbeta1.DaemonSet
+	Client    v1beta1.DaemonSetInterface
 }
 
 func daemonSetKey(name string) string {
 	return "daemonset/" + name
 }
 
-func daemonSetStatus(d unversioned.DaemonSetInterface, name string) (string, error) {
+func daemonSetStatus(d v1beta1.DaemonSetInterface, name string) (string, error) {
 	daemonSet, err := d.Get(name)
 	if err != nil {
 		return "error", err
@@ -54,7 +56,7 @@ func (d DaemonSet) Create() error {
 
 // Delete deletes DaemonSet from the cluster
 func (d DaemonSet) Delete() error {
-	return d.Client.Delete(d.DaemonSet.Name)
+	return d.Client.Delete(d.DaemonSet.Name, &api.DeleteOptions{})
 }
 
 // NameMatches gets resource definition and a name and checks if
@@ -74,7 +76,7 @@ func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resou
 }
 
 // NewDaemonSet is a constructor
-func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetInterface, meta map[string]string) interfaces.Resource {
+func NewDaemonSet(daemonset *extbeta1.DaemonSet, client v1beta1.DaemonSetInterface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: DaemonSet{Base: Base{meta}, DaemonSet: daemonset, Client: client}}
 }
 
@@ -82,7 +84,7 @@ func NewDaemonSet(daemonset *extensions.DaemonSet, client unversioned.DaemonSetI
 type ExistingDaemonSet struct {
 	Base
 	Name   string
-	Client unversioned.DaemonSetInterface
+	Client v1beta1.DaemonSetInterface
 }
 
 // Key returns DaemonSet name
@@ -102,10 +104,10 @@ func (d ExistingDaemonSet) Create() error {
 
 // Delete deletes DaemonSet from the cluster
 func (d ExistingDaemonSet) Delete() error {
-	return d.Client.Delete(d.Name)
+	return d.Client.Delete(d.Name, nil)
 }
 
 // NewExistingDaemonSet is a constructor
-func NewExistingDaemonSet(name string, client unversioned.DaemonSetInterface) interfaces.Resource {
+func NewExistingDaemonSet(name string, client v1beta1.DaemonSetInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingDaemonSet{Name: name, Client: client}}
 }

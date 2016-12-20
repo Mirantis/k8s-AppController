@@ -18,34 +18,38 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/client-go/1.5/kubernetes/typed/apps/v1alpha1"
+	"k8s.io/client-go/1.5/pkg/api"
+	appsalpha1 "k8s.io/client-go/1.5/pkg/apis/apps/v1alpha1"
+	"k8s.io/client-go/1.5/pkg/watch"
+	"k8s.io/client-go/1.5/rest"
 )
 
 type petSetClient struct {
 }
 
+func pointer(i int32) *int32 {
+	return &i
+}
+
 // MakePetSet returns a new K8s PetSet object for the client to return. If it's name is "fail" it will have labels that will cause it's underlying mock Pods to fail.
-func MakePetSet(name string) *apps.PetSet {
-	petSet := &apps.PetSet{}
+func MakePetSet(name string) *appsalpha1.PetSet {
+	petSet := &appsalpha1.PetSet{}
 	petSet.Name = name
-	petSet.Spec.Replicas = 3
+	petSet.Spec.Replicas = pointer(int32(3))
 	petSet.Spec.Template.ObjectMeta.Labels = make(map[string]string)
 	if name == "fail" {
 		petSet.Spec.Template.ObjectMeta.Labels["failedpod"] = "yes"
-		petSet.Status.Replicas = 2
+		petSet.Status.Replicas = int32(2)
 	} else {
-		petSet.Status.Replicas = 3
+		petSet.Status.Replicas = int32(3)
 	}
 
 	return petSet
 }
 
-func (r *petSetClient) List(opts api.ListOptions) (*apps.PetSetList, error) {
-	var petSets []apps.PetSet
+func (r *petSetClient) List(opts api.ListOptions) (*appsalpha1.PetSetList, error) {
+	var petSets []appsalpha1.PetSet
 	for i := 0; i < 3; i++ {
 		petSets = append(petSets, *MakePetSet(fmt.Sprintf("ready-trolo%d", i)))
 	}
@@ -55,10 +59,10 @@ func (r *petSetClient) List(opts api.ListOptions) (*apps.PetSetList, error) {
 		petSets = append(petSets, *MakePetSet("fail"))
 	}
 
-	return &apps.PetSetList{Items: petSets}, nil
+	return &appsalpha1.PetSetList{Items: petSets}, nil
 }
 
-func (r *petSetClient) Get(name string) (*apps.PetSet, error) {
+func (r *petSetClient) Get(name string) (*appsalpha1.PetSet, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock service %s returned error", name)
@@ -67,15 +71,15 @@ func (r *petSetClient) Get(name string) (*apps.PetSet, error) {
 	return MakePetSet(name), nil
 }
 
-func (r *petSetClient) Create(rs *apps.PetSet) (*apps.PetSet, error) {
+func (r *petSetClient) Create(rs *appsalpha1.PetSet) (*appsalpha1.PetSet, error) {
 	return MakePetSet(rs.Name), nil
 }
 
-func (r *petSetClient) Update(rs *apps.PetSet) (*apps.PetSet, error) {
+func (r *petSetClient) Update(rs *appsalpha1.PetSet) (*appsalpha1.PetSet, error) {
 	panic("not implemented")
 }
 
-func (r *petSetClient) UpdateStatus(rs *apps.PetSet) (*apps.PetSet, error) {
+func (r *petSetClient) UpdateStatus(rs *appsalpha1.PetSet) (*appsalpha1.PetSet, error) {
 	panic("not implemented")
 }
 
@@ -87,11 +91,19 @@ func (r *petSetClient) Watch(opts api.ListOptions) (watch.Interface, error) {
 	panic("not implemented")
 }
 
-func (r *petSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) restclient.ResponseWrapper {
+func (r *petSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
+	panic("not implemented")
+}
+
+func (r *petSetClient) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
+	panic("not implemented")
+}
+
+func (r *petSetClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *appsalpha1.PetSet, err error) {
 	panic("not implemented")
 }
 
 // NewPetSetClient is a client constructor
-func NewPetSetClient() unversioned.PetSetInterface {
+func NewPetSetClient() v1alpha1.PetSetInterface {
 	return &petSetClient{}
 }

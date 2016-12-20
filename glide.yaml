@@ -1,21 +1,7 @@
 package: github.com/Mirantis/k8s-AppController
 import:
 - package: gopkg.in/yaml.v2
-- package: k8s.io/kubernetes
-  version: v1.4.6
-  subpackages:
-  - pkg/api
-  - pkg/api/errors
-  - pkg/api/unversioned
-  - pkg/api/v1
-  - pkg/apis/apps
-  - pkg/apis/batch
-  - pkg/apis/extensions
-  - pkg/client/restclient
-  - pkg/client/unversioned
-  - pkg/labels
-  - pkg/watch
 - package: k8s.io/client-go
-  version: v1.4.0
+  version: v1.5.0
 - package: github.com/fatih/color
   version: ^1.1.0

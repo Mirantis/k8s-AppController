@@ -24,10 +24,9 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/typed/discovery"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api/errors"
+	"k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 )
@@ -47,7 +46,7 @@ func getFileContents(stream *os.File) string {
 	return result
 }
 
-func createTPRIfNotExists(tpr extensions.ThirdPartyResource, client unversioned.Client) {
+func createTPRIfNotExists(tpr v1beta1.ThirdPartyResource, client kubernetes.Interface) {
 	_, err := client.Extensions().ThirdPartyResources().Create(&tpr)
 	switch err.(type) {
 	case (*errors.StatusError):
@@ -65,13 +64,13 @@ func createTPRIfNotExists(tpr extensions.ThirdPartyResource, client unversioned.
 	return
 }
 
-func getDependencyFromPath(path string) extensions.ThirdPartyResource {
+func getDependencyFromPath(path string) v1beta1.ThirdPartyResource {
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var tpr extensions.ThirdPartyResource
+	var tpr v1beta1.ThirdPartyResource
 	err = json.Unmarshal([]byte(getFileContents(file)), &tpr)
 	if err != nil {
 		log.Fatal(err)
@@ -79,8 +78,8 @@ func getDependencyFromPath(path string) extensions.ThirdPartyResource {
 	return tpr
 }
 
-func checkVersion(c unversioned.Client) {
-	v, err := discovery.NewDiscoveryClient(c.RESTClient).ServerVersion()
+func checkVersion(c kubernetes.Interface) {
+	v, err := c.Discovery().ServerVersion()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -112,7 +111,10 @@ func bootstrap(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	c := *unversioned.NewOrDie(config)
+	c, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	checkVersion(c)
 
