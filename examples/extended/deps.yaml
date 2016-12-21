@@ -156,7 +156,7 @@ apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency
 metadata:
   name: 18b4c4b2-43d3-83b3-d5cd-3406ecc24841
-parent: petset/test-petset
+parent: statefulset/test-petset
 child: pod/eventually-alive-pod4
 ---
 apiVersion: appcontroller.k8s/v1alpha1

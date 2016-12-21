@@ -18,17 +18,16 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/rest"
 )
 
 type Dependency struct {
 	unversioned.TypeMeta `json:",inline"`
 
 	// Standard object metadata
-	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Parent string            `json:"parent"`
 	Child  string            `json:"child"`
@@ -49,10 +48,10 @@ type DependenciesInterface interface {
 }
 
 type dependencies struct {
-	rc *restclient.RESTClient
+	rc *rest.RESTClient
 }
 
-func newDependencies(c restclient.Config) (*dependencies, error) {
+func newDependencies(c rest.Config) (*dependencies, error) {
 	rc, err := thirdPartyResourceRESTClient(&c)
 	if err != nil {
 		return nil, err

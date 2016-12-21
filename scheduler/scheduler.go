@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -278,8 +278,8 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			resource = resources.NewService(r.Service, c.Services(), c, r.Meta)
 		} else if r.ReplicaSet != nil {
 			resource = resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets(), r.Meta)
-		} else if r.PetSet != nil {
-			resource = resources.NewPetSet(r.PetSet, c.PetSets(), c, r.Meta)
+		} else if r.StatefulSet != nil {
+			resource = resources.NewStatefulSet(r.StatefulSet, c.StatefulSets(), c, r.Meta)
 		} else if r.DaemonSet != nil {
 			resource = resources.NewDaemonSet(r.DaemonSet, c.DaemonSets(), r.Meta)
 		} else if r.ConfigMap != nil {

@@ -17,8 +17,8 @@ package resources
 import (
 	"log"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api/v1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -27,14 +27,14 @@ import (
 
 type ConfigMap struct {
 	Base
-	ConfigMap *api.ConfigMap
-	Client    unversioned.ConfigMapsInterface
+	ConfigMap *v1.ConfigMap
+	Client    corev1.ConfigMapInterface
 }
 
 type ExistingConfigMap struct {
 	Base
 	Name   string
-	Client unversioned.ConfigMapsInterface
+	Client corev1.ConfigMapInterface
 }
 
 func configMapKey(name string) string {
@@ -45,7 +45,7 @@ func (c ConfigMap) Key() string {
 	return configMapKey(c.ConfigMap.Name)
 }
 
-func configMapStatus(c unversioned.ConfigMapsInterface, name string) (string, error) {
+func configMapStatus(c corev1.ConfigMapInterface, name string) (string, error) {
 	_, err := c.Get(name)
 	if err != nil {
 		return "error", err
@@ -68,18 +68,18 @@ func (c ConfigMap) Create() error {
 }
 
 func (c ConfigMap) Delete() error {
-	return c.Client.Delete(c.ConfigMap.Name)
+	return c.Client.Delete(c.ConfigMap.Name, &v1.DeleteOptions{})
 }
 
 func (c ConfigMap) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.ConfigMap != nil && def.ConfigMap.Name == name
 }
 
-func NewConfigMap(c *api.ConfigMap, client unversioned.ConfigMapsInterface, meta map[string]string) interfaces.Resource {
+func NewConfigMap(c *v1.ConfigMap, client corev1.ConfigMapInterface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ConfigMap{Base: Base{meta}, ConfigMap: c, Client: client}}
 }
 
-func NewExistingConfigMap(name string, client unversioned.ConfigMapsInterface) interfaces.Resource {
+func NewExistingConfigMap(name string, client corev1.ConfigMapInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingConfigMap{Name: name, Client: client}}
 }
 
@@ -106,5 +106,5 @@ func (c ExistingConfigMap) Create() error {
 }
 
 func (c ExistingConfigMap) Delete() error {
-	return c.Client.Delete(c.Name)
+	return c.Client.Delete(c.Name, nil)
 }
