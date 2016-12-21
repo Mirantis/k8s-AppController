@@ -20,10 +20,10 @@ import (
 	"github.com/Mirantis/k8s-AppController/mocks"
 )
 
-// TestPetSetSuccessCheck checks status of ready PetSet
-func TestPetSetSuccessCheck(t *testing.T) {
+// TestStatefulSetSuccessCheck checks status of ready StatefulSet
+func TestStatefulSetSuccessCheck(t *testing.T) {
 	c := mocks.NewClient()
-	status, err := petSetStatus(c.PetSets(), "notfail", c)
+	status, err := statefulsetStatus(c.StatefulSets(), "notfail", c)
 
 	if err != nil {
 		t.Error(err)
@@ -34,10 +34,10 @@ func TestPetSetSuccessCheck(t *testing.T) {
 	}
 }
 
-// TestPetSetFailCheck checks status of not ready petset
-func TestPetSetFailCheck(t *testing.T) {
+// TestStatefulSetFailCheck checks status of not ready statefulset
+func TestStatefulSetFailCheck(t *testing.T) {
 	c := mocks.NewClient()
-	status, err := petSetStatus(c.PetSets(), "fail", c)
+	status, err := statefulsetStatus(c.StatefulSets(), "fail", c)
 
 	expectedError := "Resource pod/pending-lolo0 is not ready"
 	if err.Error() != expectedError {

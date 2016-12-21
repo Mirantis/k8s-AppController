@@ -18,32 +18,37 @@ import (
 	"log"
 	"os"
 
-	"k8s.io/kubernetes/pkg/api"
-	apiUnversioned "k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/kubernetes"
+	appsbeta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
+	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/rest"
 )
 
 // Interface is as an interface for k8s clients. It expands native k8s client interface.
 type Interface interface {
-	ConfigMaps() unversioned.ConfigMapsInterface
-	Secrets() unversioned.SecretsInterface
-	Pods() unversioned.PodInterface
-	Jobs() unversioned.JobInterface
-	Services() unversioned.ServiceInterface
-	ReplicaSets() unversioned.ReplicaSetInterface
-	PetSets() unversioned.PetSetInterface
-	DaemonSets() unversioned.DaemonSetInterface
+	ConfigMaps() corev1.ConfigMapInterface
+	Secrets() corev1.SecretInterface
+	Pods() corev1.PodInterface
+	Jobs() batchv1.JobInterface
+	Services() corev1.ServiceInterface
+	ReplicaSets() v1beta1.ReplicaSetInterface
+	StatefulSets() appsbeta1.StatefulSetInterface
+	DaemonSets() v1beta1.DaemonSetInterface
+	Deployments() v1beta1.DeploymentInterface
+	PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface
+
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
-	Deployments() unversioned.DeploymentInterface
-	PersistentVolumeClaims() unversioned.PersistentVolumeClaimInterface
 }
 
 type client struct {
-	*unversioned.Client
-	DependenciesInterface
-	ResourceDefinitionsInterface
+	Clientset *kubernetes.Clientset
+	Deps      DependenciesInterface
+	ResDefs   ResourceDefinitionsInterface
 	namespace string
 }
 
@@ -51,65 +56,65 @@ var _ Interface = &client{}
 
 // Dependencies returns dependency client for ThirdPartyResource created by AppController
 func (c client) Dependencies() DependenciesInterface {
-	return c.DependenciesInterface
+	return c.Deps
 }
 
 // ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
 func (c client) ResourceDefinitions() ResourceDefinitionsInterface {
-	return c.ResourceDefinitionsInterface
+	return c.ResDefs
 }
 
 // ConfigMaps returns K8s ConfigMaps client for ac namespace
-func (c client) ConfigMaps() unversioned.ConfigMapsInterface {
-	return c.Client.ConfigMaps(c.namespace)
+func (c client) ConfigMaps() corev1.ConfigMapInterface {
+	return c.Clientset.ConfigMaps(c.namespace)
 }
 
 // Secrets returns K8s Secrets client for ac namespace
-func (c client) Secrets() unversioned.SecretsInterface {
-	return c.Client.Secrets(c.namespace)
+func (c client) Secrets() corev1.SecretInterface {
+	return c.Clientset.Secrets(c.namespace)
 }
 
 // Pods returns K8s Pod client for ac namespace
-func (c client) Pods() unversioned.PodInterface {
-	return c.Client.Pods(c.namespace)
+func (c client) Pods() corev1.PodInterface {
+	return c.Clientset.Pods(c.namespace)
 }
 
 // Jobs returns K8s Job client for ac namespace
-func (c client) Jobs() unversioned.JobInterface {
-	return c.Client.Extensions().Jobs(c.namespace)
+func (c client) Jobs() batchv1.JobInterface {
+	return c.Clientset.Batch().Jobs(c.namespace)
 }
 
 // Services returns K8s Service client for ac namespace
-func (c client) Services() unversioned.ServiceInterface {
-	return c.Client.Services(c.namespace)
+func (c client) Services() corev1.ServiceInterface {
+	return c.Clientset.Services(c.namespace)
 }
 
 // ReplicaSets returns K8s ReplicaSet client for ac namespace
-func (c client) ReplicaSets() unversioned.ReplicaSetInterface {
-	return c.Client.Extensions().ReplicaSets(c.namespace)
+func (c client) ReplicaSets() v1beta1.ReplicaSetInterface {
+	return c.Clientset.Extensions().ReplicaSets(c.namespace)
 }
 
-// PetSets returns K8s PetSet client for ac namespace
-func (c client) PetSets() unversioned.PetSetInterface {
-	return c.Client.Apps().PetSets(c.namespace)
+// StatefulSets returns K8s StatefulSet client for ac namespace
+func (c client) StatefulSets() appsbeta1.StatefulSetInterface {
+	return c.Clientset.Apps().StatefulSets(c.namespace)
 }
 
 // DaemonSets return K8s DaemonSet client for ac namespace
-func (c client) DaemonSets() unversioned.DaemonSetInterface {
-	return c.Client.Extensions().DaemonSets(c.namespace)
+func (c client) DaemonSets() v1beta1.DaemonSetInterface {
+	return c.Clientset.Extensions().DaemonSets(c.namespace)
 }
 
 // Deployments return K8s Deployment client for ac namespace
-func (c client) Deployments() unversioned.DeploymentInterface {
-	return c.Client.Extensions().Deployments(c.namespace)
+func (c client) Deployments() v1beta1.DeploymentInterface {
+	return c.Clientset.Extensions().Deployments(c.namespace)
 }
 
 // PersistentVolumeClaims return K8s PVC client for ac namespace
-func (c client) PersistentVolumeClaims() unversioned.PersistentVolumeClaimInterface {
-	return c.Client.PersistentVolumeClaims(c.namespace)
+func (c client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
+	return c.Clientset.PersistentVolumeClaims(c.namespace)
 }
 
-func newForConfig(c restclient.Config) (Interface, error) {
+func newForConfig(c rest.Config) (Interface, error) {
 	deps, err := newDependencies(c)
 	if err != nil {
 		return nil, err
@@ -118,47 +123,40 @@ func newForConfig(c restclient.Config) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	cl, err := unversioned.New(&c)
+	cl, err := kubernetes.NewForConfig(&c)
 	if err != nil {
 		return nil, err
 	}
 
 	return &client{
-		Client:                       cl,
-		DependenciesInterface:        deps,
-		ResourceDefinitionsInterface: resdefs,
-		namespace:                    getNamespace(),
+		Clientset: cl,
+		Deps:      deps,
+		ResDefs:   resdefs,
+		namespace: getNamespace(),
 	}, nil
 }
 
-func thirdPartyResourceRESTClient(c *restclient.Config) (*restclient.RESTClient, error) {
+func thirdPartyResourceRESTClient(c *rest.Config) (*rest.RESTClient, error) {
 	c.APIPath = "/apis"
-	c.ContentConfig = restclient.ContentConfig{
-		GroupVersion: &apiUnversioned.GroupVersion{
+	c.ContentConfig = rest.ContentConfig{
+		GroupVersion: &unversioned.GroupVersion{
 			Group:   "appcontroller.k8s",
 			Version: "v1alpha1",
 		},
 		NegotiatedSerializer: api.Codecs,
 	}
-	rc, err := restclient.RESTClientFor(c)
-	return rc, err
+	return rest.RESTClientFor(c)
 }
 
 // GetConfig returns restclient.Config for given URL.
 // If url is empty, assume in-cluster config. Otherwise, return config for remote cluster.
-func GetConfig(url string) (rc *restclient.Config, err error) {
+func GetConfig(url string) (*rest.Config, error) {
 	if url == "" {
 		log.Println("No Kubernetes cluster URL provided. Assume in-cluster.")
-		rc, err = restclient.InClusterConfig()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		rc = &restclient.Config{
-			Host: url,
-		}
+		return rest.InClusterConfig()
+
 	}
-	return
+	return &rest.Config{Host: url}, nil
 }
 
 // New returns client k8s api server under given url

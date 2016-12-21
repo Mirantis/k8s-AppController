@@ -18,80 +18,93 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/client-go/kubernetes/typed/apps/v1beta1"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
+	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
+	"k8s.io/client-go/pkg/watch"
+	"k8s.io/client-go/rest"
 )
 
 type petSetClient struct {
 }
 
-// MakePetSet returns a new K8s PetSet object for the client to return. If it's name is "fail" it will have labels that will cause it's underlying mock Pods to fail.
-func MakePetSet(name string) *apps.PetSet {
-	petSet := &apps.PetSet{}
+func pointer(i int32) *int32 {
+	return &i
+}
+
+// MakeStatefulSet returns a new K8s StatefulSet object for the client to return. If it's name is "fail" it will have labels that will cause it's underlying mock Pods to fail.
+func MakeStatefulSet(name string) *appsbeta1.StatefulSet {
+	petSet := &appsbeta1.StatefulSet{}
 	petSet.Name = name
-	petSet.Spec.Replicas = 3
+	petSet.Spec.Replicas = pointer(int32(3))
 	petSet.Spec.Template.ObjectMeta.Labels = make(map[string]string)
 	if name == "fail" {
 		petSet.Spec.Template.ObjectMeta.Labels["failedpod"] = "yes"
-		petSet.Status.Replicas = 2
+		petSet.Status.Replicas = int32(2)
 	} else {
-		petSet.Status.Replicas = 3
+		petSet.Status.Replicas = int32(3)
 	}
 
 	return petSet
 }
 
-func (r *petSetClient) List(opts api.ListOptions) (*apps.PetSetList, error) {
-	var petSets []apps.PetSet
+func (r *petSetClient) List(opts v1.ListOptions) (*appsbeta1.StatefulSetList, error) {
+	var petSets []appsbeta1.StatefulSet
 	for i := 0; i < 3; i++ {
-		petSets = append(petSets, *MakePetSet(fmt.Sprintf("ready-trolo%d", i)))
+		petSets = append(petSets, *MakeStatefulSet(fmt.Sprintf("ready-trolo%d", i)))
 	}
 
 	// use ListOptions.LabelSelector to check if there should be any failed petSets
-	if strings.Index(opts.LabelSelector.String(), "failedpetSet=yes") >= 0 {
-		petSets = append(petSets, *MakePetSet("fail"))
+	if strings.Index(opts.LabelSelector, "failedpetSet=yes") >= 0 {
+		petSets = append(petSets, *MakeStatefulSet("fail"))
 	}
 
-	return &apps.PetSetList{Items: petSets}, nil
+	return &appsbeta1.StatefulSetList{Items: petSets}, nil
 }
 
-func (r *petSetClient) Get(name string) (*apps.PetSet, error) {
+func (r *petSetClient) Get(name string) (*appsbeta1.StatefulSet, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock service %s returned error", name)
 	}
 
-	return MakePetSet(name), nil
+	return MakeStatefulSet(name), nil
 }
 
-func (r *petSetClient) Create(rs *apps.PetSet) (*apps.PetSet, error) {
-	return MakePetSet(rs.Name), nil
+func (r *petSetClient) Create(rs *appsbeta1.StatefulSet) (*appsbeta1.StatefulSet, error) {
+	return MakeStatefulSet(rs.Name), nil
 }
 
-func (r *petSetClient) Update(rs *apps.PetSet) (*apps.PetSet, error) {
+func (r *petSetClient) Update(rs *appsbeta1.StatefulSet) (*appsbeta1.StatefulSet, error) {
 	panic("not implemented")
 }
 
-func (r *petSetClient) UpdateStatus(rs *apps.PetSet) (*apps.PetSet, error) {
+func (r *petSetClient) UpdateStatus(rs *appsbeta1.StatefulSet) (*appsbeta1.StatefulSet, error) {
 	panic("not implemented")
 }
 
-func (r *petSetClient) Delete(name string, options *api.DeleteOptions) error {
+func (r *petSetClient) Delete(name string, options *v1.DeleteOptions) error {
 	panic("not implemented")
 }
 
-func (r *petSetClient) Watch(opts api.ListOptions) (watch.Interface, error) {
+func (r *petSetClient) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	panic("not implemented")
 }
 
-func (r *petSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) restclient.ResponseWrapper {
+func (r *petSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
 	panic("not implemented")
 }
 
-// NewPetSetClient is a client constructor
-func NewPetSetClient() unversioned.PetSetInterface {
+func (r *petSetClient) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	panic("not implemented")
+}
+
+func (r *petSetClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *appsbeta1.StatefulSet, err error) {
+	panic("not implemented")
+}
+
+// NewStatefulSetClient is a client constructor
+func NewStatefulSetClient() v1beta1.StatefulSetInterface {
 	return &petSetClient{}
 }

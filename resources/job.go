@@ -19,23 +19,23 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
-	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-
 	"github.com/Mirantis/k8s-AppController/report"
+
+	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
+	"k8s.io/client-go/pkg/apis/batch/v1"
 )
 
 type Job struct {
 	Base
-	Job    *batch.Job
-	Client unversioned.JobInterface
+	Job    *v1.Job
+	Client batchv1.JobInterface
 }
 
 func jobKey(name string) string {
 	return "job/" + name
 }
 
-func jobStatus(j unversioned.JobInterface, name string) (string, error) {
+func jobStatus(j batchv1.JobInterface, name string) (string, error) {
 	job, err := j.Get(name)
 	if err != nil {
 		return "error", err
@@ -91,14 +91,14 @@ func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingJob(name, c.Jobs())
 }
 
-func NewJob(job *batch.Job, client unversioned.JobInterface, meta map[string]string) interfaces.Resource {
+func NewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Job{Base: Base{meta}, Job: job, Client: client}}
 }
 
 type ExistingJob struct {
 	Base
 	Name   string
-	Client unversioned.JobInterface
+	Client batchv1.JobInterface
 }
 
 func (j ExistingJob) Key() string {
@@ -118,6 +118,6 @@ func (j ExistingJob) Delete() error {
 	return j.Client.Delete(j.Name, nil)
 }
 
-func NewExistingJob(name string, client unversioned.JobInterface) interfaces.Resource {
+func NewExistingJob(name string, client batchv1.JobInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingJob{Name: name, Client: client}}
 }

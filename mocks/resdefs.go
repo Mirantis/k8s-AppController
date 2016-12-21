@@ -18,8 +18,9 @@ import (
 	"log"
 	"strings"
 
+	"k8s.io/client-go/pkg/api"
+
 	"github.com/Mirantis/k8s-AppController/client"
-	"k8s.io/kubernetes/pkg/api"
 )
 
 type resDefClient struct {
@@ -44,8 +45,8 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 			rd.Service = MakeService(n)
 		} else if typ == "replicaset" {
 			rd.ReplicaSet = MakeReplicaSet(n)
-		} else if typ == "petset" {
-			rd.PetSet = MakePetSet(n)
+		} else if typ == "statefulset" {
+			rd.StatefulSet = MakeStatefulSet(n)
 		} else if typ == "daemonset" {
 			rd.DaemonSet = MakeDaemonSet(n)
 		} else if typ == "configmap" {

@@ -9,7 +9,7 @@ vendor: Makefile
 	glide install --strip-vendor
 
 test: vendor glide.lock Makefile
-	go list ./... | grep -v /vendor/ | xargs go test
+	go list ./... | grep -v /vendor/ | xargs go test -v
 
 kubeac:
 	bash hooks/pre_build

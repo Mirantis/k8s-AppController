@@ -18,39 +18,40 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/watch"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/watch"
+	"k8s.io/client-go/rest"
 )
 
 type persistentVolumeClaimClient struct {
 }
 
 // MakePersistentVolumeClaim creates a persistentVolumeClaim based on its name
-func MakePersistentVolumeClaim(name string) *api.PersistentVolumeClaim {
+func MakePersistentVolumeClaim(name string) *v1.PersistentVolumeClaim {
 	phase := strings.Split(name, "-")[0]
-	pvc := &api.PersistentVolumeClaim{}
+	pvc := &v1.PersistentVolumeClaim{}
 	pvc.Name = name
 	switch phase {
 	case string(api.ClaimPending):
-		pvc.Status.Phase = api.ClaimPending
+		pvc.Status.Phase = v1.ClaimPending
 	case string(api.ClaimBound):
-		pvc.Status.Phase = api.ClaimBound
+		pvc.Status.Phase = v1.ClaimBound
 	case string(api.ClaimLost):
-		pvc.Status.Phase = api.ClaimLost
+		pvc.Status.Phase = v1.ClaimLost
 	default:
-		pvc.Status.Phase = api.ClaimBound
+		pvc.Status.Phase = v1.ClaimBound
 	}
 
 	return pvc
 }
 
-func (s *persistentVolumeClaimClient) List(opts api.ListOptions) (*api.PersistentVolumeClaimList, error) {
+func (s *persistentVolumeClaimClient) List(opts v1.ListOptions) (*v1.PersistentVolumeClaimList, error) {
 	panic("not implemented")
 }
 
-func (s *persistentVolumeClaimClient) Get(name string) (*api.PersistentVolumeClaim, error) {
+func (s *persistentVolumeClaimClient) Get(name string) (*v1.PersistentVolumeClaim, error) {
 	status := strings.Split(name, "-")[0]
 	if status == "error" {
 		return nil, fmt.Errorf("mock persistentVolumeClaim %s returned error", name)
@@ -59,30 +60,38 @@ func (s *persistentVolumeClaimClient) Get(name string) (*api.PersistentVolumeCla
 	return MakePersistentVolumeClaim(name), nil
 }
 
-func (s *persistentVolumeClaimClient) Create(srv *api.PersistentVolumeClaim) (*api.PersistentVolumeClaim, error) {
+func (s *persistentVolumeClaimClient) Create(srv *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
 	return MakePersistentVolumeClaim(srv.Name), nil
 }
 
-func (s *persistentVolumeClaimClient) Update(srv *api.PersistentVolumeClaim) (*api.PersistentVolumeClaim, error) {
+func (s *persistentVolumeClaimClient) Update(srv *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
 	panic("not implemented")
 }
 
-func (s *persistentVolumeClaimClient) UpdateStatus(srv *api.PersistentVolumeClaim) (*api.PersistentVolumeClaim, error) {
+func (s *persistentVolumeClaimClient) UpdateStatus(srv *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
 	panic("not implemented")
 }
 
-func (s *persistentVolumeClaimClient) Delete(name string) error {
+func (s *persistentVolumeClaimClient) Delete(name string, opts *v1.DeleteOptions) error {
 	panic("not implemented")
 }
 
-func (s *persistentVolumeClaimClient) Watch(opts api.ListOptions) (watch.Interface, error) {
+func (s *persistentVolumeClaimClient) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	panic("not implemented")
 }
 
-func (s *persistentVolumeClaimClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) restclient.ResponseWrapper {
+func (s *persistentVolumeClaimClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
 	panic("not implemented")
 }
 
-func NewPersistentVolumeClaimClient() unversioned.PersistentVolumeClaimInterface {
+func (s *persistentVolumeClaimClient) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	panic("not implemented")
+}
+
+func (s *persistentVolumeClaimClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *v1.PersistentVolumeClaim, err error) {
+	panic("not implemented")
+}
+
+func NewPersistentVolumeClaimClient() corev1.PersistentVolumeClaimInterface {
 	return &persistentVolumeClaimClient{}
 }

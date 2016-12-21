@@ -49,7 +49,7 @@ func (b Base) Meta(paramName string) string {
 var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"daemonset":             DaemonSet{},
 	"job":                   Job{},
-	"petset":                PetSet{},
+	"statefulset":           StatefulSet{},
 	"pod":                   Pod{},
 	"replicaset":            ReplicaSet{},
 	"service":               Service{},

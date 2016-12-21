@@ -19,26 +19,26 @@ import (
 	"log"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/client-go/kubernetes/typed/apps/v1beta1"
+	"k8s.io/client-go/pkg/api/v1"
+	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
+	"k8s.io/client-go/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
 	"github.com/Mirantis/k8s-AppController/report"
 )
 
-// PetSet is a wrapper for K8s PetSet object
-type PetSet struct {
+// StatefulSet is a wrapper for K8s StatefulSet object
+type StatefulSet struct {
 	Base
-	PetSet    *apps.PetSet
-	Client    unversioned.PetSetInterface
-	APIClient client.Interface
+	StatefulSet *appsbeta1.StatefulSet
+	Client      v1beta1.StatefulSetInterface
+	APIClient   client.Interface
 }
 
-func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.Interface) (string, error) {
-	// Use label from petset spec to get needed pods
+func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (string, error) {
+	// Use label from statefulset spec to get needed pods
 
 	ps, err := p.Get(name)
 	if err != nil {
@@ -54,7 +54,7 @@ func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.I
 	if err != nil {
 		return "error", err
 	}
-	options := api.ListOptions{LabelSelector: selector}
+	options := v1.ListOptions{LabelSelector: selector.String()}
 
 	pods, err := apiClient.Pods().List(options)
 	if err != nil {
@@ -74,85 +74,85 @@ func petSetStatus(p unversioned.PetSetInterface, name string, apiClient client.I
 	return "ready", nil
 }
 
-func petSetKey(name string) string {
-	return "petset/" + name
+func statefulsetKey(name string) string {
+	return "statefulset/" + name
 }
 
-// Key returns PetSet name
-func (p PetSet) Key() string {
-	return petSetKey(p.PetSet.Name)
+// Key returns StatefulSet name
+func (p StatefulSet) Key() string {
+	return statefulsetKey(p.StatefulSet.Name)
 }
 
-// Create looks for a PetSet in Kubernetes cluster and creates it if it's not there
-func (p PetSet) Create() error {
+// Create looks for a StatefulSet in Kubernetes cluster and creates it if it's not there
+func (p StatefulSet) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating ", p.Key())
-		_, err = p.Client.Create(p.PetSet)
+		_, err = p.Client.Create(p.StatefulSet)
 		return err
 	}
 	return nil
 }
 
-// Delete deletes PetSet from the cluster
-func (p PetSet) Delete() error {
-	return p.Client.Delete(p.PetSet.Name, nil)
+// Delete deletes StatefulSet from the cluster
+func (p StatefulSet) Delete() error {
+	return p.Client.Delete(p.StatefulSet.Name, nil)
 }
 
-// Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p PetSet) Status(meta map[string]string) (string, error) {
-	return petSetStatus(p.Client, p.PetSet.Name, p.APIClient)
+// Status returns StatefulSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
+func (p StatefulSet) Status(meta map[string]string) (string, error) {
+	return statefulsetStatus(p.Client, p.StatefulSet.Name, p.APIClient)
 }
 
 // NameMatches gets resource definition and a name and checks if
-// the PetSet part of resource definition has matching name.
-func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.PetSet != nil && def.PetSet.Name == name
+// the StatefulSet part of resource definition has matching name.
+func (p StatefulSet) NameMatches(def client.ResourceDefinition, name string) bool {
+	return def.StatefulSet != nil && def.StatefulSet.Name == name
 }
 
-// New returns new PetSet based on resource definition
-func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewPetSet(def.PetSet, c.PetSets(), c, def.Meta)
+// New returns new StatefulSet based on resource definition
+func (p StatefulSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return NewStatefulSet(def.StatefulSet, c.StatefulSets(), c, def.Meta)
 }
 
-// NewExisting returns new ExistingPetSet based on resource definition
-func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingPetSet(name, c.PetSets(), c)
+// NewExisting returns new ExistingStatefulSet based on resource definition
+func (p StatefulSet) NewExisting(name string, c client.Interface) interfaces.Resource {
+	return NewExistingStatefulSet(name, c.StatefulSets(), c)
 }
 
-// NewPetSet is a constructor
-func NewPetSet(petSet *apps.PetSet, client unversioned.PetSetInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: PetSet{Base: Base{meta}, PetSet: petSet, Client: client, APIClient: apiClient}}
+// NewStatefulSet is a constructor
+func NewStatefulSet(statefulset *appsbeta1.StatefulSet, client v1beta1.StatefulSetInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: StatefulSet{Base: Base{meta}, StatefulSet: statefulset, Client: client, APIClient: apiClient}}
 }
 
-// ExistingPetSet is a wrapper for K8s PetSet object which is meant to already be in a cluster bofer AppController execution
-type ExistingPetSet struct {
+// ExistingStatefulSet is a wrapper for K8s StatefulSet object which is meant to already be in a cluster bofer AppController execution
+type ExistingStatefulSet struct {
 	Base
 	Name      string
-	Client    unversioned.PetSetInterface
+	Client    v1beta1.StatefulSetInterface
 	APIClient client.Interface
 }
 
-// Key returns PetSet name
-func (p ExistingPetSet) Key() string {
-	return petSetKey(p.Name)
+// Key returns StatefulSet name
+func (p ExistingStatefulSet) Key() string {
+	return statefulsetKey(p.Name)
 }
 
-// Create looks for existing PetSet and returns an error if there is no such PetSet in a cluster
-func (p ExistingPetSet) Create() error {
+// Create looks for existing StatefulSet and returns an error if there is no such StatefulSet in a cluster
+func (p ExistingStatefulSet) Create() error {
 	return createExistingResource(p)
 }
 
-// Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p ExistingPetSet) Status(meta map[string]string) (string, error) {
-	return petSetStatus(p.Client, p.Name, p.APIClient)
+// Status returns StatefulSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
+func (p ExistingStatefulSet) Status(meta map[string]string) (string, error) {
+	return statefulsetStatus(p.Client, p.Name, p.APIClient)
 }
 
-// Delete deletes PetSet from the cluster
-func (p ExistingPetSet) Delete() error {
+// Delete deletes StatefulSet from the cluster
+func (p ExistingStatefulSet) Delete() error {
 	return p.Client.Delete(p.Name, nil)
 }
 
-// NewExistingPetSet is a constructor
-func NewExistingPetSet(name string, client unversioned.PetSetInterface, apiClient client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingPetSet{Name: name, Client: client, APIClient: apiClient}}
+// NewExistingStatefulSet is a constructor
+func NewExistingStatefulSet(name string, client v1beta1.StatefulSetInterface, apiClient client.Interface) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingStatefulSet{Name: name, Client: client, APIClient: apiClient}}
 }

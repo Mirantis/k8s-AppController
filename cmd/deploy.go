@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/client-go/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/scheduler"
