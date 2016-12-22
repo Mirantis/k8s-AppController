@@ -376,7 +376,9 @@ func Create(depGraph DependencyGraph, concurrency int) {
 
 	log.Printf("Wait for %d deps to create\n", depCount)
 	for i := 0; i < depCount; i++ {
-		<-created
+		log.Printf("waiting for creation of %d", i)
+		createdKey := <-created
+		log.Printf("Created %s, index: %d, waiting for %d more", createdKey, i, depCount-i-1)
 	}
 	close(toCreate)
 	close(created)

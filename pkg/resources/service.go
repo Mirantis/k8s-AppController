@@ -19,6 +19,8 @@ import (
 	"log"
 
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	coreerrors "k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/labels"
 
@@ -47,6 +49,7 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 		log.Printf("Checking status for %s", stringSelector)
 		selector, err := labels.Parse(stringSelector)
 		if err != nil {
+			log.Printf("error: %v", err)
 			return "error", err
 		}
 
@@ -54,20 +57,38 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 
 		pods, err := apiClient.Pods().List(options)
 		if err != nil {
+			log.Printf("error: %v", err)
 			return "error", err
 		}
 		jobs, err := apiClient.Jobs().List(options)
 		if err != nil {
+			log.Printf("error: %v", err)
 			return "error", err
 		}
 		replicasets, err := apiClient.ReplicaSets().List(options)
 		if err != nil {
+			log.Printf("error: %v", err)
 			return "error", err
 		}
+
+		// Due to petsets/statefulsets drama we need to handle these carefully
+		// TODO: do the same for petests
 		statefulsets, err := apiClient.StatefulSets().List(options)
 		if err != nil {
-			return "error", err
+			switch err.(type) {
+			case *coreerrors.StatusError:
+				if err.(*coreerrors.StatusError).ErrStatus.Reason == unversioned.StatusReasonNotFound {
+					log.Println("k8s cluster version doesn't support StatefulSets")
+				} else {
+					log.Printf("error: %v", err)
+					return "error", err
+				}
+			default:
+				log.Printf("error: %v", err)
+				return "error", err
+			}
 		}
+
 		resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 		for _, pod := range pods.Items {
 			p := pod
@@ -87,6 +108,8 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 		}
 		status, err := resourceListReady(resources)
 		if status != "ready" || err != nil {
+			log.Printf("error: %v", err)
+			log.Printf("status: %s", status)
 			return status, err
 		}
 	}
