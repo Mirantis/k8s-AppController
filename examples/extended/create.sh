@@ -5,9 +5,7 @@ source ../common.sh
 $KUBECTL_NAME create -f existing_job.yaml
 
 $KUBECTL_NAME create -f ../../manifests/appcontroller.yaml
-
-#wait for appcontroller pod creation
-sleep 20
+wait-appcontroller
 
 $KUBECTL_NAME create -f deps.yaml
 
