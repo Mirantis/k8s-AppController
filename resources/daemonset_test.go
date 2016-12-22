@@ -8,7 +8,7 @@ import (
 
 // TestDaemonSetSuccessCheck check status for ready DaemonSet
 func TestDaemonSetSuccessCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeDaemonSet("not-fail"))
 	status, err := daemonSetStatus(c.DaemonSets(), "not-fail")
 
 	if err != nil {
@@ -21,7 +21,7 @@ func TestDaemonSetSuccessCheck(t *testing.T) {
 
 // TestDaemonSetFailCheck status of not ready daemonset
 func TestDaemonSetFailCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeDaemonSet("fail"))
 	status, err := daemonSetStatus(c.DaemonSets(), "fail")
 	if err != nil {
 		t.Error(err)

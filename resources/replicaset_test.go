@@ -21,7 +21,7 @@ import (
 )
 
 func TestSuccessCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeReplicaSet("notfail"))
 	status, err := replicaSetStatus(c.ReplicaSets(), "notfail", nil)
 
 	if err != nil {
@@ -34,7 +34,7 @@ func TestSuccessCheck(t *testing.T) {
 }
 
 func TestFailCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeReplicaSet("fail"))
 	status, err := replicaSetStatus(c.ReplicaSets(), "fail", map[string]string{"success_factor": "80"})
 
 	if err != nil {

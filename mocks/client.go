@@ -15,94 +15,17 @@
 package mocks
 
 import (
-	appsbeta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
-	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-
 	"github.com/Mirantis/k8s-AppController/client"
+
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/runtime"
 )
 
-// Interface is as an interface for k8s clients. It expands native k8s client interface.
-type Client struct {
-	corev1.ConfigMapInterface
-	corev1.SecretInterface
-	corev1.PodInterface
-	batchv1.JobInterface
-	corev1.ServiceInterface
-	v1beta1.ReplicaSetInterface
-	appsbeta1.StatefulSetInterface
-	v1beta1.DaemonSetInterface
-	v1beta1.DeploymentInterface
-	corev1.PersistentVolumeClaimInterface
-
-	client.DependenciesInterface
-	client.ResourceDefinitionsInterface
-}
-
-func (c *Client) Pods() corev1.PodInterface {
-	return c.PodInterface
-}
-
-func (c *Client) Jobs() batchv1.JobInterface {
-	return c.JobInterface
-}
-
-func (c *Client) Services() corev1.ServiceInterface {
-	return c.ServiceInterface
-}
-
-func (c *Client) ReplicaSets() v1beta1.ReplicaSetInterface {
-	return c.ReplicaSetInterface
-}
-
-func (c *Client) StatefulSets() appsbeta1.StatefulSetInterface {
-	return c.StatefulSetInterface
-}
-
-// DaemonSets return a DaemonSetInterface of k8s
-func (c *Client) DaemonSets() v1beta1.DaemonSetInterface {
-	return c.DaemonSetInterface
-}
-
-// Deployments returns mock deployment client
-func (c *Client) Deployments() v1beta1.DeploymentInterface {
-	return c.DeploymentInterface
-}
-
-func (c *Client) Dependencies() client.DependenciesInterface {
-	return c.DependenciesInterface
-}
-
-func (c *Client) ResourceDefinitions() client.ResourceDefinitionsInterface {
-	return c.ResourceDefinitionsInterface
-}
-
-func (c *Client) ConfigMaps() corev1.ConfigMapInterface {
-	return c.ConfigMapInterface
-}
-
-func (c *Client) Secrets() corev1.SecretInterface {
-	return c.SecretInterface
-}
-
-func (c *Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
-	return c.PersistentVolumeClaimInterface
-}
-
-func NewClient() *Client {
-	return &Client{
-		NewConfigMapClient(),
-		NewSecretClient(),
-		NewPodClient(),
-		NewJobClient(),
-		NewServiceClient(),
-		NewReplicaSetClient(),
-		NewStatefulSetClient(),
-		NewDaemonSetClient(),
-		NewDeploymentClient(),
-		NewPersistentVolumeClaimClient(),
-		NewDependencyClient(),
-		NewResourceDefinitionClient(),
+func NewClient(objects ...runtime.Object) *client.Client {
+	return &client.Client{
+		Clientset: fake.NewSimpleClientset(objects...),
+		Deps:      NewDependencyClient(),
+		ResDefs:   NewResourceDefinitionClient(),
+		Namespace: "testing",
 	}
 }

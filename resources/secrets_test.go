@@ -22,7 +22,7 @@ import (
 
 // TestSecretSuccessCheck checks status of ready Secret
 func TestSecretSuccessCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeSecret("notfail"))
 	status, err := secretStatus(c.Secrets(), "notfail")
 
 	if err != nil {

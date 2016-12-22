@@ -17,67 +17,24 @@ package mocks
 import (
 	"fmt"
 
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/watch"
+	"k8s.io/client-go/pkg/runtime"
 )
 
-type configMapClient struct {
-}
-
 func MakeConfigMap(name string) *v1.ConfigMap {
-
 	configMap := &v1.ConfigMap{}
 	configMap.Name = name
-
+	configMap.Namespace = "testing"
 	return configMap
 }
 
-func (p *configMapClient) List(opts v1.ListOptions) (*v1.ConfigMapList, error) {
+func ConfigMaps(names ...string) runtime.Object {
 	var configMaps []v1.ConfigMap
 	for i := 0; i < 3; i++ {
 		configMaps = append(configMaps, *MakeConfigMap(fmt.Sprintf("cfgmap-%d", i)))
 	}
-
-	return &v1.ConfigMapList{Items: configMaps}, nil
-}
-
-func (p *configMapClient) Get(name string) (*v1.ConfigMap, error) {
-	if name != "fail" {
-		return MakeConfigMap(name), nil
+	for _, name := range names {
+		configMaps = append(configMaps, *MakeConfigMap(name))
 	}
-	return MakeConfigMap(name), fmt.Errorf("Mock ConfigMap not created")
-}
-
-func (p *configMapClient) Delete(name string, opts *v1.DeleteOptions) error {
-	panic("not implemented")
-}
-
-func (p *configMapClient) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	panic("not implemented")
-}
-
-func (p *configMapClient) Create(configMap *v1.ConfigMap) (*v1.ConfigMap, error) {
-	return MakeConfigMap(configMap.Name), nil
-}
-
-func (p *configMapClient) Update(configMap *v1.ConfigMap) (*v1.ConfigMap, error) {
-	panic("not implemented")
-}
-
-func (p *configMapClient) Watch(opts v1.ListOptions) (watch.Interface, error) {
-	panic("not implemented")
-}
-
-func (p *configMapClient) Bind(binding *api.Binding) error {
-	panic("not implemented")
-}
-
-func (p *configMapClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *v1.ConfigMap, err error) {
-	panic("not implemented")
-}
-
-func NewConfigMapClient() corev1.ConfigMapInterface {
-	return &configMapClient{}
+	return &v1.ConfigMapList{Items: configMaps}
 }

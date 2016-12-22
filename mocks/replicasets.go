@@ -14,87 +14,16 @@
 
 package mocks
 
-import (
-	"fmt"
-	"strings"
-
-	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/watch"
-	"k8s.io/client-go/rest"
-)
-
-type replicaSetClient struct {
-}
+import extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 
 func MakeReplicaSet(name string) *extbeta1.ReplicaSet {
 	replicaSet := &extbeta1.ReplicaSet{}
 	replicaSet.Name = name
+	replicaSet.Namespace = "testing"
 	replicaSet.Spec.Replicas = pointer(int32(2))
 	if name != "fail" {
 		replicaSet.Status.Replicas = int32(3)
 	}
 
 	return replicaSet
-}
-
-func (r *replicaSetClient) List(opts v1.ListOptions) (*extbeta1.ReplicaSetList, error) {
-	var replicaSets []extbeta1.ReplicaSet
-	for i := 0; i < 3; i++ {
-		replicaSets = append(replicaSets, *MakeReplicaSet(fmt.Sprintf("ready-trolo%d", i)))
-	}
-
-	// use ListOptions.LabelSelector to check if there should be any failed replicaSets
-	if strings.Index(opts.LabelSelector, "failedreplicaSet=yes") >= 0 {
-		replicaSets = append(replicaSets, *MakeReplicaSet("fail"))
-	}
-
-	return &extbeta1.ReplicaSetList{Items: replicaSets}, nil
-}
-
-func (r *replicaSetClient) Get(name string) (*extbeta1.ReplicaSet, error) {
-	status := strings.Split(name, "-")[0]
-	if status == "error" {
-		return nil, fmt.Errorf("mock service %s returned error", name)
-	}
-
-	return MakeReplicaSet(name), nil
-}
-
-func (r *replicaSetClient) Create(rs *extbeta1.ReplicaSet) (*extbeta1.ReplicaSet, error) {
-	return MakeReplicaSet(rs.Name), nil
-}
-
-func (r *replicaSetClient) Update(rs *extbeta1.ReplicaSet) (*extbeta1.ReplicaSet, error) {
-	panic("not implemented")
-}
-
-func (r *replicaSetClient) UpdateStatus(rs *extbeta1.ReplicaSet) (*extbeta1.ReplicaSet, error) {
-	panic("not implemented")
-}
-
-func (r *replicaSetClient) Delete(name string, options *v1.DeleteOptions) error {
-	panic("not implemented")
-}
-
-func (r *replicaSetClient) Watch(opts v1.ListOptions) (watch.Interface, error) {
-	panic("not implemented")
-}
-
-func (r *replicaSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
-	panic("not implemented")
-}
-
-func (r *replicaSetClient) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	panic("not implemented")
-}
-
-func (r *replicaSetClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *extbeta1.ReplicaSet, err error) {
-	panic("not implemented")
-}
-
-func NewReplicaSetClient() v1beta1.ReplicaSetInterface {
-	return &replicaSetClient{}
 }
