@@ -9,7 +9,7 @@ spec:
   containers:
   - name: kubeac
     image: mirantis/k8s-appcontroller
-    imagePullPolicy: IfNotPresent
+    imagePullPolicy: Always
     command:  ["/usr/bin/run_runit"]
     env:
     - name: KUBERNETES_AC_LABEL_SELECTOR
