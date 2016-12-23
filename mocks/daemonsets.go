@@ -14,17 +14,7 @@
 
 package mocks
 
-import (
-	"fmt"
-	"strings"
-
-	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/watch"
-	"k8s.io/client-go/rest"
-)
+import extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 
 type daemonSetClient struct {
 }
@@ -33,6 +23,7 @@ type daemonSetClient struct {
 func MakeDaemonSet(name string) *extbeta1.DaemonSet {
 	daemonSet := &extbeta1.DaemonSet{}
 	daemonSet.Name = name
+	daemonSet.Namespace = "testing"
 	daemonSet.Status.DesiredNumberScheduled = 3
 	if name == "fail" {
 		daemonSet.Status.CurrentNumberScheduled = 2
@@ -41,64 +32,4 @@ func MakeDaemonSet(name string) *extbeta1.DaemonSet {
 	}
 
 	return daemonSet
-}
-
-func (r *daemonSetClient) List(opts v1.ListOptions) (*extbeta1.DaemonSetList, error) {
-	var daemonSets []extbeta1.DaemonSet
-	for i := 0; i < 3; i++ {
-		daemonSets = append(daemonSets, *MakeDaemonSet(fmt.Sprintf("ready-trolo%d", i)))
-	}
-
-	// use ListOptions.LabelSelector to check if there should be any failed daemonSets
-	if strings.Index(opts.LabelSelector, "faileddaemonSet=yes") >= 0 {
-		daemonSets = append(daemonSets, *MakeDaemonSet("fail"))
-	}
-
-	return &extbeta1.DaemonSetList{Items: daemonSets}, nil
-}
-
-func (r *daemonSetClient) Get(name string) (*extbeta1.DaemonSet, error) {
-	status := strings.Split(name, "-")[0]
-	if status == "error" {
-		return nil, fmt.Errorf("mock daemonset %s returned error", name)
-	}
-
-	return MakeDaemonSet(name), nil
-}
-
-func (r *daemonSetClient) Create(rs *extbeta1.DaemonSet) (*extbeta1.DaemonSet, error) {
-	return MakeDaemonSet(rs.Name), nil
-}
-
-func (r *daemonSetClient) Update(rs *extbeta1.DaemonSet) (*extbeta1.DaemonSet, error) {
-	panic("not implemented")
-}
-
-func (r *daemonSetClient) UpdateStatus(rs *extbeta1.DaemonSet) (*extbeta1.DaemonSet, error) {
-	panic("not implemented")
-}
-
-func (r *daemonSetClient) Delete(name string, opts *v1.DeleteOptions) error {
-	panic("not implemented")
-}
-
-func (r *daemonSetClient) Watch(opts v1.ListOptions) (watch.Interface, error) {
-	panic("not implemented")
-}
-
-func (r *daemonSetClient) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	panic("not implemented")
-}
-
-func (r *daemonSetClient) Patch(name string, pt api.PatchType, data []byte, subresources ...string) (result *extbeta1.DaemonSet, err error) {
-	panic("not implemented")
-}
-
-func (r *daemonSetClient) ProxyGet(scheme string, name string, port string, path string, params map[string]string) rest.ResponseWrapper {
-	panic("not implemented")
-}
-
-// NewDaemonSetClient is a daemonset client constructor
-func NewDaemonSetClient() v1beta1.DaemonSetInterface {
-	return &daemonSetClient{}
 }

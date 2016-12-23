@@ -22,7 +22,7 @@ import (
 
 // TestConfigMapSuccessCheck checks status of ready ConfigMap
 func TestConfigMapSuccessCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.ConfigMaps("notfail"))
 	status, err := configMapStatus(c.ConfigMaps(), "notfail")
 
 	if err != nil {
@@ -36,7 +36,7 @@ func TestConfigMapSuccessCheck(t *testing.T) {
 
 // TestConfigMapFailCheck checks status of not existing ConfigMap
 func TestConfigMapFailCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.ConfigMaps())
 	status, err := configMapStatus(c.ConfigMaps(), "fail")
 
 	if err == nil {

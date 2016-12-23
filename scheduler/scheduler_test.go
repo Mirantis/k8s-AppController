@@ -25,9 +25,9 @@ import (
 )
 
 func TestBuildDependencyGraph(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c := mocks.NewClient(mocks.MakePod("ready-1"), mocks.MakePod("ready-2"))
+	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"})
 
 	depGraph, err := BuildDependencyGraph(c, nil)
@@ -130,9 +130,9 @@ func TestIsBlocked(t *testing.T) {
 }
 
 func TestDetectCyclesAcyclic(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c := mocks.NewClient(mocks.MakePod("ready-1"), mocks.MakePod("ready-2"))
+	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"})
 
 	depGraph, _ := BuildDependencyGraph(c, nil)
@@ -145,9 +145,9 @@ func TestDetectCyclesAcyclic(t *testing.T) {
 }
 
 func TestDetectCyclesSimpleCycle(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c := mocks.NewClient(mocks.MakePod("ready-1"), mocks.MakePod("ready-2"))
+	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"},
 		mocks.Dependency{Parent: "pod/ready-2", Child: "pod/ready-1"})
 
@@ -162,9 +162,9 @@ func TestDetectCyclesSimpleCycle(t *testing.T) {
 }
 
 func TestDetectCyclesSelf(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/ready-1")
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c := mocks.NewClient(mocks.MakePod("ready-1"))
+	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1")
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-1"})
 
 	depGraph, _ := BuildDependencyGraph(c, nil)
@@ -190,8 +190,8 @@ func TestDetectCyclesSelf(t *testing.T) {
 
 func TestDetectCyclesLongCycle(t *testing.T) {
 	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4", "pod/5")
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.ResDefs = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4")
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
 		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
 		mocks.Dependency{Parent: "pod/3", Child: "pod/4"},
@@ -214,8 +214,8 @@ func TestDetectCyclesLongCycle(t *testing.T) {
 
 func TestDetectCyclesComplex(t *testing.T) {
 	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4", "pod/5")
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.ResDefs = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4", "pod/5")
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
 		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
 		mocks.Dependency{Parent: "pod/3", Child: "pod/1"},
@@ -240,9 +240,9 @@ func TestDetectCyclesComplex(t *testing.T) {
 
 func TestDetectCyclesMultiple(t *testing.T) {
 	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+	c.ResDefs = mocks.NewResourceDefinitionClient(
 		"pod/1", "pod/2", "pod/3", "pod/4", "pod/5", "pod/6", "pod/7")
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
 		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
 		mocks.Dependency{Parent: "pod/3", Child: "pod/4"},
@@ -298,8 +298,18 @@ func TestLimitConcurrency(t *testing.T) {
 
 // TestGraphAllResourceTypes aims to test if all resource types supported by AppController are able to be part of deployment graph
 func TestGraphAllResourceTypes(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+	c := mocks.NewClient(
+		mocks.MakePod("ready-1"),
+		mocks.MakeJob("ready-2"),
+		mocks.MakeReplicaSet("ready-3"),
+		mocks.MakeService("ready-4"),
+		mocks.MakeStatefulSet("ready-5"),
+		mocks.MakeDaemonSet("ready-6"),
+		mocks.MakeConfigMap("cfg-1"),
+		mocks.MakeDeployment("ready-7"),
+		mocks.MakePersistentVolumeClaim("pvc-1"),
+	)
+	c.ResDefs = mocks.NewResourceDefinitionClient(
 		"pod/ready-1",
 		"job/ready-2",
 		"replicaset/ready-3",
@@ -311,7 +321,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		"deployment/ready-7",
 		"persistentvolumeclaim/pvc-1")
 
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "job/ready-2"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "replicaset/ready-3"},
 		mocks.Dependency{Parent: "replicaset/ready-3", Child: "service/ready-4"},
@@ -341,7 +351,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 
 func TestEmptyStatus(t *testing.T) {
 	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient()
+	c.ResDefs = mocks.NewResourceDefinitionClient()
 	depGraph, err := BuildDependencyGraph(c, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -353,12 +363,15 @@ func TestEmptyStatus(t *testing.T) {
 }
 
 func TestPreparedStatus(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+	c := mocks.NewClient(
+		mocks.MakeJob("1"),
+		mocks.MakeJob("2"),
+	)
+	c.ResDefs = mocks.NewResourceDefinitionClient(
 		"job/1",
 		"job/2",
 	)
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "job/1", Child: "job/2"},
 	)
 	depGraph, err := BuildDependencyGraph(c, nil)
@@ -372,12 +385,15 @@ func TestPreparedStatus(t *testing.T) {
 }
 
 func TestRunningStatus(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+	c := mocks.NewClient(
+		mocks.MakeJob("ready-1"),
+		mocks.MakeJob("2"),
+	)
+	c.ResDefs = mocks.NewResourceDefinitionClient(
 		"job/ready-1",
 		"job/2",
 	)
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "job/ready-1", Child: "job/2"},
 	)
 	depGraph, err := BuildDependencyGraph(c, nil)
@@ -391,12 +407,15 @@ func TestRunningStatus(t *testing.T) {
 }
 
 func TestFinishedStatus(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+	c := mocks.NewClient(
+		mocks.MakeJob("ready-1"),
+		mocks.MakeJob("ready-2"),
+	)
+	c.ResDefs = mocks.NewResourceDefinitionClient(
 		"job/ready-1",
 		"job/ready-2",
 	)
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "job/ready-1", Child: "job/ready-2"},
 	)
 	depGraph, err := BuildDependencyGraph(c, nil)
@@ -411,13 +430,17 @@ func TestFinishedStatus(t *testing.T) {
 
 // TestGraph tests a simple DependencyGraph report
 func TestGraph(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResourceDefinitionsInterface = mocks.NewResourceDefinitionClient(
+	c := mocks.NewClient(
+		mocks.MakeJob("1"),
+		mocks.MakeJob("ready-2"),
+		mocks.MakeJob("3"),
+	)
+	c.ResDefs = mocks.NewResourceDefinitionClient(
 		"job/1",
 		"job/ready-2",
 		"job/3",
 	)
-	c.DependenciesInterface = mocks.NewDependencyClient(
+	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "job/ready-2", Child: "job/1"},
 		mocks.Dependency{Parent: "job/3", Child: "job/1"},
 	)

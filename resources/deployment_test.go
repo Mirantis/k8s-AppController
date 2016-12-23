@@ -22,7 +22,7 @@ import (
 
 // TestDeploymentSuccessCheck checks status of ready Deployment
 func TestDeploymentSuccessCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeDeployment("notfail"))
 	status, err := deploymentStatus(c.Deployments(), "notfail")
 
 	if err != nil {
@@ -36,7 +36,7 @@ func TestDeploymentSuccessCheck(t *testing.T) {
 
 // TestDeploymentFailUpdatedCheck checks status of not ready deployment
 func TestDeploymentFailUpdatedCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeDeployment("fail"))
 	status, err := deploymentStatus(c.Deployments(), "fail")
 
 	if err != nil {
@@ -50,7 +50,7 @@ func TestDeploymentFailUpdatedCheck(t *testing.T) {
 
 // TestDeploymentFailAvailableCheck checks status of not ready deployment
 func TestDeploymentFailAvailableCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeDeployment("failav"))
 	status, err := deploymentStatus(c.Deployments(), "failav")
 
 	if err != nil {

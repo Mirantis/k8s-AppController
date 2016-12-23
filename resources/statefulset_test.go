@@ -22,7 +22,7 @@ import (
 
 // TestStatefulSetSuccessCheck checks status of ready StatefulSet
 func TestStatefulSetSuccessCheck(t *testing.T) {
-	c := mocks.NewClient()
+	c := mocks.NewClient(mocks.MakeStatefulSet("notfail"))
 	status, err := statefulsetStatus(c.StatefulSets(), "notfail", c)
 
 	if err != nil {
@@ -36,10 +36,13 @@ func TestStatefulSetSuccessCheck(t *testing.T) {
 
 // TestStatefulSetFailCheck checks status of not ready statefulset
 func TestStatefulSetFailCheck(t *testing.T) {
-	c := mocks.NewClient()
+	ss := mocks.MakeStatefulSet("fail")
+	pod := mocks.MakePod("fail")
+	pod.Labels = ss.Spec.Template.ObjectMeta.Labels
+	c := mocks.NewClient(ss, pod)
 	status, err := statefulsetStatus(c.StatefulSets(), "fail", c)
 
-	expectedError := "Resource pod/pending-lolo0 is not ready"
+	expectedError := "Resource pod/fail is not ready"
 	if err.Error() != expectedError {
 		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
 	}

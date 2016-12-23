@@ -45,73 +45,73 @@ type Interface interface {
 	ResourceDefinitions() ResourceDefinitionsInterface
 }
 
-type client struct {
-	Clientset *kubernetes.Clientset
+type Client struct {
+	Clientset kubernetes.Interface
 	Deps      DependenciesInterface
 	ResDefs   ResourceDefinitionsInterface
-	namespace string
+	Namespace string
 }
 
-var _ Interface = &client{}
+var _ Interface = &Client{}
 
 // Dependencies returns dependency client for ThirdPartyResource created by AppController
-func (c client) Dependencies() DependenciesInterface {
+func (c Client) Dependencies() DependenciesInterface {
 	return c.Deps
 }
 
 // ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
-func (c client) ResourceDefinitions() ResourceDefinitionsInterface {
+func (c Client) ResourceDefinitions() ResourceDefinitionsInterface {
 	return c.ResDefs
 }
 
 // ConfigMaps returns K8s ConfigMaps client for ac namespace
-func (c client) ConfigMaps() corev1.ConfigMapInterface {
-	return c.Clientset.ConfigMaps(c.namespace)
+func (c Client) ConfigMaps() corev1.ConfigMapInterface {
+	return c.Clientset.Core().ConfigMaps(c.Namespace)
 }
 
 // Secrets returns K8s Secrets client for ac namespace
-func (c client) Secrets() corev1.SecretInterface {
-	return c.Clientset.Secrets(c.namespace)
+func (c Client) Secrets() corev1.SecretInterface {
+	return c.Clientset.Core().Secrets(c.Namespace)
 }
 
 // Pods returns K8s Pod client for ac namespace
-func (c client) Pods() corev1.PodInterface {
-	return c.Clientset.Pods(c.namespace)
+func (c Client) Pods() corev1.PodInterface {
+	return c.Clientset.Core().Pods(c.Namespace)
 }
 
 // Jobs returns K8s Job client for ac namespace
-func (c client) Jobs() batchv1.JobInterface {
-	return c.Clientset.Batch().Jobs(c.namespace)
+func (c Client) Jobs() batchv1.JobInterface {
+	return c.Clientset.Batch().Jobs(c.Namespace)
 }
 
 // Services returns K8s Service client for ac namespace
-func (c client) Services() corev1.ServiceInterface {
-	return c.Clientset.Services(c.namespace)
+func (c Client) Services() corev1.ServiceInterface {
+	return c.Clientset.Core().Services(c.Namespace)
 }
 
 // ReplicaSets returns K8s ReplicaSet client for ac namespace
-func (c client) ReplicaSets() v1beta1.ReplicaSetInterface {
-	return c.Clientset.Extensions().ReplicaSets(c.namespace)
+func (c Client) ReplicaSets() v1beta1.ReplicaSetInterface {
+	return c.Clientset.Extensions().ReplicaSets(c.Namespace)
 }
 
 // StatefulSets returns K8s StatefulSet client for ac namespace
-func (c client) StatefulSets() appsbeta1.StatefulSetInterface {
-	return c.Clientset.Apps().StatefulSets(c.namespace)
+func (c Client) StatefulSets() appsbeta1.StatefulSetInterface {
+	return c.Clientset.Apps().StatefulSets(c.Namespace)
 }
 
 // DaemonSets return K8s DaemonSet client for ac namespace
-func (c client) DaemonSets() v1beta1.DaemonSetInterface {
-	return c.Clientset.Extensions().DaemonSets(c.namespace)
+func (c Client) DaemonSets() v1beta1.DaemonSetInterface {
+	return c.Clientset.Extensions().DaemonSets(c.Namespace)
 }
 
 // Deployments return K8s Deployment client for ac namespace
-func (c client) Deployments() v1beta1.DeploymentInterface {
-	return c.Clientset.Extensions().Deployments(c.namespace)
+func (c Client) Deployments() v1beta1.DeploymentInterface {
+	return c.Clientset.Extensions().Deployments(c.Namespace)
 }
 
 // PersistentVolumeClaims return K8s PVC client for ac namespace
-func (c client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
-	return c.Clientset.PersistentVolumeClaims(c.namespace)
+func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
+	return c.Clientset.Core().PersistentVolumeClaims(c.Namespace)
 }
 
 func newForConfig(c rest.Config) (Interface, error) {
@@ -128,11 +128,11 @@ func newForConfig(c rest.Config) (Interface, error) {
 		return nil, err
 	}
 
-	return &client{
+	return &Client{
 		Clientset: cl,
 		Deps:      deps,
 		ResDefs:   resdefs,
-		namespace: getNamespace(),
+		Namespace: getNamespace(),
 	}, nil
 }
 
