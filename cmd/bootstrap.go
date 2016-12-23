@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 
-	"github.com/Mirantis/k8s-AppController/client"
+	"github.com/Mirantis/k8s-AppController/pkg/client"
 )
 
 // KubernetesRequiredMajorVersion is minimal required major version of Kubernetes cluster
