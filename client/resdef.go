@@ -18,34 +18,34 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
+	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
+	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/rest"
 )
 
 type ResourceDefinition struct {
 	unversioned.TypeMeta `json:",inline"`
 
 	// Standard object metadata
-	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Meta map[string]string `json:"meta,omitempty"`
 
 	//TODO: add other object types
-	Pod                   *api.Pod                   `json:"pod,omitempty"`
-	Job                   *batch.Job                 `json:"job,omitempty"`
-	Service               *api.Service               `json:"service,omitempty"`
-	ReplicaSet            *extensions.ReplicaSet     `json:"replicaset,omitempty"`
-	PetSet                *apps.PetSet               `json:"petset,omitempty"`
-	DaemonSet             *extensions.DaemonSet      `json:"daemonset,omitempty"`
-	ConfigMap             *api.ConfigMap             `json:"configmap,omitempty"`
-	Secret                *api.Secret                `json:"secret,omitempty"`
-	Deployment            *extensions.Deployment     `json:"deployment, omitempty"`
-	PersistentVolumeClaim *api.PersistentVolumeClaim `json:"persistentvolumeclaim, omitempty"`
+	Pod                   *v1.Pod                   `json:"pod,omitempty"`
+	Job                   *batchv1.Job              `json:"job,omitempty"`
+	Service               *v1.Service               `json:"service,omitempty"`
+	ReplicaSet            *v1beta1.ReplicaSet       `json:"replicaset,omitempty"`
+	StatefulSet           *appsbeta1.StatefulSet    `json:"statefulset,omitempty"`
+	DaemonSet             *v1beta1.DaemonSet        `json:"daemonset,omitempty"`
+	ConfigMap             *v1.ConfigMap             `json:"configmap,omitempty"`
+	Secret                *v1.Secret                `json:"secret,omitempty"`
+	Deployment            *v1beta1.Deployment       `json:"deployment, omitempty"`
+	PersistentVolumeClaim *v1.PersistentVolumeClaim `json:"persistentvolumeclaim, omitempty"`
 }
 
 type ResourceDefinitionList struct {
@@ -62,10 +62,10 @@ type ResourceDefinitionsInterface interface {
 }
 
 type resourceDefinitions struct {
-	rc *restclient.RESTClient
+	rc *rest.RESTClient
 }
 
-func newResourceDefinitions(c restclient.Config) (*resourceDefinitions, error) {
+func newResourceDefinitions(c rest.Config) (*resourceDefinitions, error) {
 	rc, err := thirdPartyResourceRESTClient(&c)
 	if err != nil {
 		return nil, err

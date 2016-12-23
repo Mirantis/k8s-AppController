@@ -304,7 +304,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		"job/ready-2",
 		"replicaset/ready-3",
 		"service/ready-4",
-		"petset/ready-5",
+		"statefulset/ready-5",
 		"daemonset/ready-6",
 		"configmap/cfg-1",
 		"secret/secret-1",
@@ -315,11 +315,11 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		mocks.Dependency{Parent: "pod/ready-1", Child: "job/ready-2"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "replicaset/ready-3"},
 		mocks.Dependency{Parent: "replicaset/ready-3", Child: "service/ready-4"},
-		mocks.Dependency{Parent: "service/ready-4", Child: "petset/ready-5"},
-		mocks.Dependency{Parent: "petset/ready-5", Child: "daemonset/ready-6"},
+		mocks.Dependency{Parent: "service/ready-4", Child: "statefulset/ready-5"},
+		mocks.Dependency{Parent: "statefulset/ready-5", Child: "daemonset/ready-6"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "configmap/cfg-1"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "secret/secret-1"},
-		mocks.Dependency{Parent: "petset/ready-5", Child: "deployment/ready-7"},
+		mocks.Dependency{Parent: "statefulset/ready-5", Child: "deployment/ready-7"},
 		mocks.Dependency{Parent: "deployment/ready-7", Child: "persistentvolumeclaim/pvc-1"})
 
 	depGraph, err := BuildDependencyGraph(c, nil)

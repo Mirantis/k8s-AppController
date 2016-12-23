@@ -30,7 +30,7 @@ cat replicaset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUB
 
 cat service.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
 
-cat petset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
+cat statefulset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
 
 cat daemonset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
 

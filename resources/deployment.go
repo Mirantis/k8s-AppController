@@ -4,8 +4,8 @@ import (
 	"errors"
 	"log"
 
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -15,21 +15,21 @@ import (
 // Deployment is wrapper for K8s Deployment object
 type Deployment struct {
 	Base
-	Deployment *extensions.Deployment
-	Client     unversioned.DeploymentInterface
+	Deployment *extbeta1.Deployment
+	Client     v1beta1.DeploymentInterface
 }
 
 func deploymentKey(name string) string {
 	return "deployment/" + name
 }
 
-func deploymentStatus(d unversioned.DeploymentInterface, name string) (string, error) {
+func deploymentStatus(d v1beta1.DeploymentInterface, name string) (string, error) {
 	deployment, err := d.Get(name)
 	if err != nil {
 		return "error", err
 	}
 
-	if deployment.Status.UpdatedReplicas >= deployment.Spec.Replicas && deployment.Status.AvailableReplicas >= deployment.Spec.Replicas {
+	if deployment.Status.UpdatedReplicas >= *deployment.Spec.Replicas && deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
 		return "ready", nil
 	}
 	return "not ready", nil
@@ -81,7 +81,7 @@ func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Reso
 }
 
 // NewDeployment is a constructor
-func NewDeployment(deployment *extensions.Deployment, client unversioned.DeploymentInterface, meta map[string]string) interfaces.Resource {
+func NewDeployment(deployment *extbeta1.Deployment, client v1beta1.DeploymentInterface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Deployment{Base: Base{meta}, Deployment: deployment, Client: client}}
 }
 
@@ -89,7 +89,7 @@ func NewDeployment(deployment *extensions.Deployment, client unversioned.Deploym
 type ExistingDeployment struct {
 	Base
 	Name   string
-	Client unversioned.DeploymentInterface
+	Client v1beta1.DeploymentInterface
 }
 
 // UpdateMeta does nothing at the moment
@@ -127,6 +127,6 @@ func (d ExistingDeployment) Delete() error {
 }
 
 // NewExistingDeployment is a constructor
-func NewExistingDeployment(name string, client unversioned.DeploymentInterface) interfaces.Resource {
+func NewExistingDeployment(name string, client v1beta1.DeploymentInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingDeployment{Name: name, Client: client}}
 }

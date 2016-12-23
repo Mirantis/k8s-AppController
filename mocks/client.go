@@ -15,53 +15,58 @@
 package mocks
 
 import (
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	appsbeta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
+	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 )
 
+// Interface is as an interface for k8s clients. It expands native k8s client interface.
 type Client struct {
-	unversioned.PodInterface
-	unversioned.JobInterface
-	unversioned.ServiceInterface
-	unversioned.ReplicaSetInterface
-	unversioned.PetSetInterface
-	unversioned.DaemonSetInterface
-	unversioned.ConfigMapsInterface
-	unversioned.SecretsInterface
-	unversioned.DeploymentInterface
-	unversioned.PersistentVolumeClaimInterface
+	corev1.ConfigMapInterface
+	corev1.SecretInterface
+	corev1.PodInterface
+	batchv1.JobInterface
+	corev1.ServiceInterface
+	v1beta1.ReplicaSetInterface
+	appsbeta1.StatefulSetInterface
+	v1beta1.DaemonSetInterface
+	v1beta1.DeploymentInterface
+	corev1.PersistentVolumeClaimInterface
+
 	client.DependenciesInterface
 	client.ResourceDefinitionsInterface
 }
 
-func (c *Client) Pods() unversioned.PodInterface {
+func (c *Client) Pods() corev1.PodInterface {
 	return c.PodInterface
 }
 
-func (c *Client) Jobs() unversioned.JobInterface {
+func (c *Client) Jobs() batchv1.JobInterface {
 	return c.JobInterface
 }
 
-func (c *Client) Services() unversioned.ServiceInterface {
+func (c *Client) Services() corev1.ServiceInterface {
 	return c.ServiceInterface
 }
 
-func (c *Client) ReplicaSets() unversioned.ReplicaSetInterface {
+func (c *Client) ReplicaSets() v1beta1.ReplicaSetInterface {
 	return c.ReplicaSetInterface
 }
 
-func (c *Client) PetSets() unversioned.PetSetInterface {
-	return c.PetSetInterface
+func (c *Client) StatefulSets() appsbeta1.StatefulSetInterface {
+	return c.StatefulSetInterface
 }
 
 // DaemonSets return a DaemonSetInterface of k8s
-func (c *Client) DaemonSets() unversioned.DaemonSetInterface {
+func (c *Client) DaemonSets() v1beta1.DaemonSetInterface {
 	return c.DaemonSetInterface
 }
 
 // Deployments returns mock deployment client
-func (c *Client) Deployments() unversioned.DeploymentInterface {
+func (c *Client) Deployments() v1beta1.DeploymentInterface {
 	return c.DeploymentInterface
 }
 
@@ -73,28 +78,28 @@ func (c *Client) ResourceDefinitions() client.ResourceDefinitionsInterface {
 	return c.ResourceDefinitionsInterface
 }
 
-func (c *Client) ConfigMaps() unversioned.ConfigMapsInterface {
-	return c.ConfigMapsInterface
+func (c *Client) ConfigMaps() corev1.ConfigMapInterface {
+	return c.ConfigMapInterface
 }
 
-func (c *Client) Secrets() unversioned.SecretsInterface {
-	return c.SecretsInterface
+func (c *Client) Secrets() corev1.SecretInterface {
+	return c.SecretInterface
 }
 
-func (c *Client) PersistentVolumeClaims() unversioned.PersistentVolumeClaimInterface {
+func (c *Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 	return c.PersistentVolumeClaimInterface
 }
 
 func NewClient() *Client {
 	return &Client{
+		NewConfigMapClient(),
+		NewSecretClient(),
 		NewPodClient(),
 		NewJobClient(),
 		NewServiceClient(),
 		NewReplicaSetClient(),
-		NewPetSetClient(),
+		NewStatefulSetClient(),
 		NewDaemonSetClient(),
-		NewConfigMapClient(),
-		NewSecretClient(),
 		NewDeploymentClient(),
 		NewPersistentVolumeClaimClient(),
 		NewDependencyClient(),

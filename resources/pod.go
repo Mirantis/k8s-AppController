@@ -17,8 +17,8 @@ package resources
 import (
 	"log"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api/v1"
 
 	"github.com/Mirantis/k8s-AppController/client"
 	"github.com/Mirantis/k8s-AppController/interfaces"
@@ -27,8 +27,8 @@ import (
 
 type Pod struct {
 	Base
-	Pod    *api.Pod
-	Client unversioned.PodInterface
+	Pod    *v1.Pod
+	Client corev1.PodInterface
 }
 
 func podKey(name string) string {
@@ -39,7 +39,7 @@ func (p Pod) Key() string {
 	return podKey(p.Pod.Name)
 }
 
-func podStatus(p unversioned.PodInterface, name string) (string, error) {
+func podStatus(p corev1.PodInterface, name string) (string, error) {
 	pod, err := p.Get(name)
 	if err != nil {
 		return "error", err
@@ -56,7 +56,7 @@ func podStatus(p unversioned.PodInterface, name string) (string, error) {
 	return "not ready", nil
 }
 
-func isReady(pod *api.Pod) bool {
+func isReady(pod *v1.Pod) bool {
 	for _, cond := range pod.Status.Conditions {
 		if cond.Type == "Ready" && cond.Status == "True" {
 			return true
@@ -100,14 +100,14 @@ func (p Pod) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingPod(name, c.Pods())
 }
 
-func NewPod(pod *api.Pod, client unversioned.PodInterface, meta map[string]string) interfaces.Resource {
+func NewPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]string) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Pod{Base: Base{meta}, Pod: pod, Client: client}}
 }
 
 type ExistingPod struct {
 	Base
 	Name   string
-	Client unversioned.PodInterface
+	Client corev1.PodInterface
 }
 
 func (p ExistingPod) Key() string {
@@ -127,6 +127,6 @@ func (p ExistingPod) Delete() error {
 	return p.Client.Delete(p.Name, nil)
 }
 
-func NewExistingPod(name string, client unversioned.PodInterface) interfaces.Resource {
+func NewExistingPod(name string, client corev1.PodInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingPod{Name: name, Client: client}}
 }
