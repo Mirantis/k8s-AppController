@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/labels"
 
-	"github.com/Mirantis/k8s-AppController/client"
-	"github.com/Mirantis/k8s-AppController/scheduler"
+	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
 )
 
 func deploy(cmd *cobra.Command, args []string) {
