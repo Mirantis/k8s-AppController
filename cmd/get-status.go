@@ -6,8 +6,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/Mirantis/k8s-AppController/client"
-	"github.com/Mirantis/k8s-AppController/scheduler"
+	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
+
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/labels"
 )
