@@ -40,7 +40,5 @@ cat secret.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL
 
 cat deployment.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
 
-cat pvc.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
-
 $KUBECTL_NAME exec k8s-appcontroller ac-run
 $KUBECTL_NAME logs -f k8s-appcontroller
