@@ -18,6 +18,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
+
 	"k8s.io/client-go/kubernetes"
 	appsbeta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
 	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
@@ -37,6 +39,7 @@ type Interface interface {
 	Services() corev1.ServiceInterface
 	ReplicaSets() v1beta1.ReplicaSetInterface
 	StatefulSets() appsbeta1.StatefulSetInterface
+	PetSets() v1alpha1.PetSetInterface
 	DaemonSets() v1beta1.DaemonSetInterface
 	Deployments() v1beta1.DeploymentInterface
 	PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface
@@ -47,6 +50,7 @@ type Interface interface {
 
 type Client struct {
 	Clientset kubernetes.Interface
+	AlphaApps v1alpha1.AppsInterface
 	Deps      DependenciesInterface
 	ResDefs   ResourceDefinitionsInterface
 	Namespace string
@@ -99,6 +103,10 @@ func (c Client) StatefulSets() appsbeta1.StatefulSetInterface {
 	return c.Clientset.Apps().StatefulSets(c.Namespace)
 }
 
+func (c Client) PetSets() v1alpha1.PetSetInterface {
+	return c.AlphaApps.PetSets(c.Namespace)
+}
+
 // DaemonSets return K8s DaemonSet client for ac namespace
 func (c Client) DaemonSets() v1beta1.DaemonSetInterface {
 	return c.Clientset.Extensions().DaemonSets(c.Namespace)
@@ -127,9 +135,13 @@ func newForConfig(c rest.Config) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	apps, err := v1alpha1.NewForConfig(&c)
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
 		Clientset: cl,
+		AlphaApps: apps,
 		Deps:      deps,
 		ResDefs:   resdefs,
 		Namespace: getNamespace(),

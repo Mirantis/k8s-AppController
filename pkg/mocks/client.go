@@ -16,14 +16,18 @@ package mocks
 
 import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	alphafake "github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1/fake"
 
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/runtime"
 )
 
 func NewClient(objects ...runtime.Object) *client.Client {
+	fakeClientset := fake.NewSimpleClientset(objects...)
+	apps := &alphafake.FakeApps{fakeClientset.Fake}
 	return &client.Client{
-		Clientset: fake.NewSimpleClientset(objects...),
+		Clientset: fakeClientset,
+		AlphaApps: apps,
 		Deps:      NewDependencyClient(),
 		ResDefs:   NewResourceDefinitionClient(),
 		Namespace: "testing",

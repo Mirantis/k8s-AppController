@@ -15,14 +15,10 @@
 package resources
 
 import (
-	"fmt"
 	"log"
-	"strings"
 
 	"k8s.io/client-go/kubernetes/typed/apps/v1beta1"
-	"k8s.io/client-go/pkg/api/v1"
 	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
-	"k8s.io/client-go/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -39,39 +35,11 @@ type StatefulSet struct {
 
 func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (string, error) {
 	// Use label from statefulset spec to get needed pods
-
 	ps, err := p.Get(name)
 	if err != nil {
 		return "error", err
 	}
-	var labelSelectors []string
-	for k, v := range ps.Spec.Template.ObjectMeta.Labels {
-		labelSelectors = append(labelSelectors, fmt.Sprintf("%s=%s", k, v))
-	}
-	stringSelector := strings.Join(labelSelectors, ",")
-	selector, err := labels.Parse(stringSelector)
-	log.Printf("%s,%v\n", stringSelector, selector)
-	if err != nil {
-		return "error", err
-	}
-	options := v1.ListOptions{LabelSelector: selector.String()}
-
-	pods, err := apiClient.Pods().List(options)
-	if err != nil {
-		return "error", err
-	}
-	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
-	for _, pod := range pods.Items {
-		p := pod
-		resources = append(resources, NewPod(&p, apiClient.Pods(), nil))
-	}
-
-	status, err := resourceListReady(resources)
-	if status != "ready" || err != nil {
-		return status, err
-	}
-
-	return "ready", nil
+	return podsStateFromLabels(ps.Spec.Template.ObjectMeta.Labels)
 }
 
 func statefulsetKey(name string) string {
