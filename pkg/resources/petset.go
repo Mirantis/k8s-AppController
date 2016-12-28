@@ -38,7 +38,7 @@ func petsetStatus(p v1alpha1.PetSetInterface, name string, apiClient client.Inte
 	if err != nil {
 		return "error", err
 	}
-	return podsStateFromLabels(ps.Spec.Template.ObjectMeta.Labels)
+	return podsStateFromLabels(apiClient, ps.Spec.Template.ObjectMeta.Labels)
 }
 
 func petsetKey(name string) string {

@@ -18,6 +18,7 @@ import (
 	"log"
 	"os"
 
+	_ "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/install"
 	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
 
 	"k8s.io/client-go/kubernetes"
@@ -46,14 +47,17 @@ type Interface interface {
 
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
+
+	IsEnabled(version unversioned.GroupVersion) bool
 }
 
 type Client struct {
-	Clientset kubernetes.Interface
-	AlphaApps v1alpha1.AppsInterface
-	Deps      DependenciesInterface
-	ResDefs   ResourceDefinitionsInterface
-	Namespace string
+	Clientset   kubernetes.Interface
+	AlphaApps   v1alpha1.AppsInterface
+	Deps        DependenciesInterface
+	ResDefs     ResourceDefinitionsInterface
+	Namespace   string
+	ApiVersions *unversioned.APIGroupList
 }
 
 var _ Interface = &Client{}
@@ -122,6 +126,23 @@ func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 	return c.Clientset.Core().PersistentVolumeClaims(c.Namespace)
 }
 
+// IsEnabled verifies that required group name and group version is registered in API
+// particularly we need it to support both pet sets and stateful sets using same application
+func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
+	for i := range c.ApiVersions.Groups {
+		group := c.ApiVersions.Groups[i]
+		if group.Name != version.Group {
+			continue
+		}
+		for _, version := range group.Versions {
+			if version.Version == version.Version {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func newForConfig(c rest.Config) (Interface, error) {
 	deps, err := newDependencies(c)
 	if err != nil {
@@ -139,12 +160,17 @@ func newForConfig(c rest.Config) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+	versions, err := cl.Discovery().ServerGroups()
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
-		Clientset: cl,
-		AlphaApps: apps,
-		Deps:      deps,
-		ResDefs:   resdefs,
-		Namespace: getNamespace(),
+		Clientset:   cl,
+		AlphaApps:   apps,
+		Deps:        deps,
+		ResDefs:     resdefs,
+		Namespace:   getNamespace(),
+		ApiVersions: versions,
 	}, nil
 }
 

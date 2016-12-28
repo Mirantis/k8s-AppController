@@ -39,7 +39,7 @@ func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient cl
 	if err != nil {
 		return "error", err
 	}
-	return podsStateFromLabels(ps.Spec.Template.ObjectMeta.Labels)
+	return podsStateFromLabels(apiClient, ps.Spec.Template.ObjectMeta.Labels)
 }
 
 func statefulsetKey(name string) string {

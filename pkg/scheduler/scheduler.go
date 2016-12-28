@@ -280,6 +280,8 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			resource = resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets(), r.Meta)
 		} else if r.StatefulSet != nil {
 			resource = resources.NewStatefulSet(r.StatefulSet, c.StatefulSets(), c, r.Meta)
+		} else if r.PetSet != nil {
+			resource = resources.NewPetSet(r.PetSet, c.PetSets(), c, r.Meta)
 		} else if r.DaemonSet != nil {
 			resource = resources.NewDaemonSet(r.DaemonSet, c.DaemonSets(), r.Meta)
 		} else if r.ConfigMap != nil {

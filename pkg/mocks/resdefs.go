@@ -61,7 +61,7 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 		case "persistentvolumeclaim":
 			rd.PersistentVolumeClaim = MakePersistentVolumeClaim(n)
 		default:
-			log.Fatal("Unrecognized resource type for name ", typ)
+			log.Fatal("Unrecognized resource type for name ", objectType)
 		}
 
 		list.Items = append(list.Items, rd)

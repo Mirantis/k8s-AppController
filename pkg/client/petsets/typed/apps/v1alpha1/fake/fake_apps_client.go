@@ -17,7 +17,7 @@ limitations under the License.
 package fake
 
 import (
-	"github.com/Mirantis//k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
+	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

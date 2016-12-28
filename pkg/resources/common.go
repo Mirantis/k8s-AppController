@@ -22,7 +22,9 @@ import (
 	"strings"
 
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/labels"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 )
 
@@ -53,6 +55,7 @@ var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"daemonset":             DaemonSet{},
 	"job":                   Job{},
 	"statefulset":           StatefulSet{},
+	"petset":                PetSet{},
 	"pod":                   Pod{},
 	"replicaset":            ReplicaSet{},
 	"service":               Service{},
@@ -123,9 +126,9 @@ func createExistingResource(r interfaces.BaseResource) error {
 	return nil
 }
 
-func podsStateFromLabels(labels map[string]string) (string, error) {
+func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string) (string, error) {
 	var labelSelectors []string
-	for k, v := range labels {
+	for k, v := range objLabels {
 		labelSelectors = append(labelSelectors, fmt.Sprintf("%s=%s", k, v))
 	}
 	stringSelector := strings.Join(labelSelectors, ",")

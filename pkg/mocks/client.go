@@ -16,15 +16,18 @@ package mocks
 
 import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 	alphafake "github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1/fake"
 
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 )
 
-func NewClient(objects ...runtime.Object) *client.Client {
+func newClient(objects ...runtime.Object) *client.Client {
 	fakeClientset := fake.NewSimpleClientset(objects...)
-	apps := &alphafake.FakeApps{fakeClientset.Fake}
+	apps := &alphafake.FakeApps{&fakeClientset.Fake}
 	return &client.Client{
 		Clientset: fakeClientset,
 		AlphaApps: apps,
@@ -32,4 +35,27 @@ func NewClient(objects ...runtime.Object) *client.Client {
 		ResDefs:   NewResourceDefinitionClient(),
 		Namespace: "testing",
 	}
+}
+
+func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupList {
+	return &unversioned.APIGroupList{Groups: []unversioned.APIGroup{
+		{
+			Name: version.Group,
+			Versions: []unversioned.GroupVersionForDiscovery{
+				{GroupVersion: version.Version},
+			},
+		},
+	}}
+}
+
+func NewClient(objects ...runtime.Object) *client.Client {
+	c := newClient(objects...)
+	c.ApiVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
+	return c
+}
+
+func NewClient_1_4(objects ...runtime.Object) *client.Client {
+	c := newClient(objects...)
+	c.ApiVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
+	return c
 }

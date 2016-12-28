@@ -17,13 +17,14 @@ package resources
 import (
 	"testing"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 // TestPetSetSuccessCheck checks status of ready PetSet
 func TestPetSetSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakePetSet("notfail"))
-	status, err := statefulsetStatus(c.PetSets(), "notfail", c)
+	status, err := petsetStatus(c.PetSets(), "notfail", c)
 
 	if err != nil {
 		t.Error(err)
@@ -40,7 +41,7 @@ func TestPetSetFailCheck(t *testing.T) {
 	pod := mocks.MakePod("fail")
 	pod.Labels = ss.Spec.Template.ObjectMeta.Labels
 	c := mocks.NewClient(ss, pod)
-	status, err := statefulsetStatus(c.PetSets(), "fail", c)
+	status, err := petsetStatus(c.PetSets(), "fail", c)
 
 	expectedError := "Resource pod/fail is not ready"
 	if err.Error() != expectedError {
@@ -49,5 +50,12 @@ func TestPetSetFailCheck(t *testing.T) {
 
 	if status != "not ready" {
 		t.Errorf("Status should be `not ready`, is `%s` instead.", status)
+	}
+}
+
+func TestPetSetIsEnabled(t *testing.T) {
+	c := mocks.NewClient_1_4()
+	if !c.IsEnabled(v1alpha1.SchemeGroupVersion) {
+		t.Errorf("%v expected to be enabled", v1alpha1.SchemeGroupVersion)
 	}
 }

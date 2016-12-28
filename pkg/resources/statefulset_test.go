@@ -17,6 +17,8 @@ package resources
 import (
 	"testing"
 
+	"k8s.io/client-go/pkg/apis/apps/v1beta1"
+
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
@@ -49,5 +51,12 @@ func TestStatefulSetFailCheck(t *testing.T) {
 
 	if status != "not ready" {
 		t.Errorf("Status should be `not ready`, is `%s` instead.", status)
+	}
+}
+
+func TestStatefulSetIsEnabled(t *testing.T) {
+	c := mocks.NewClient()
+	if !c.IsEnabled(v1beta1.SchemeGroupVersion) {
+		t.Errorf("%v expected to be enabled", v1beta1.SchemeGroupVersion)
 	}
 }

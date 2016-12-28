@@ -19,7 +19,9 @@ import (
 	"log"
 
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
@@ -64,26 +66,32 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 		if err != nil {
 			return "error", err
 		}
-		statefulsets, err := apiClient.StatefulSets().List(options)
-		if err != nil {
-			return "error", err
-		}
 		resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 		for _, pod := range pods.Items {
-			p := pod
-			resources = append(resources, NewPod(&p, apiClient.Pods(), nil))
+			resources = append(resources, NewPod(&pod, apiClient.Pods(), nil))
 		}
-		for _, job := range jobs.Items {
-			j := job
+		for _, j := range jobs.Items {
 			resources = append(resources, NewJob(&j, apiClient.Jobs(), nil))
 		}
-		for _, rs := range replicasets.Items {
-			r := rs
+		for _, r := range replicasets.Items {
 			resources = append(resources, NewReplicaSet(&r, apiClient.ReplicaSets(), nil))
 		}
-		for _, ps := range statefulsets.Items {
-			p := ps
-			resources = append(resources, NewStatefulSet(&p, apiClient.StatefulSets(), apiClient, nil))
+		if apiClient.IsEnabled(v1beta1.SchemeGroupVersion) {
+			statefulsets, err := apiClient.StatefulSets().List(options)
+			if err != nil {
+				return "error", err
+			}
+			for _, ps := range statefulsets.Items {
+				resources = append(resources, NewStatefulSet(&ps, apiClient.StatefulSets(), apiClient, nil))
+			}
+		} else {
+			petsets, err := apiClient.PetSets().List(api.ListOptions{LabelSelector: selector})
+			if err != nil {
+				return "error", err
+			}
+			for _, ps := range petsets.Items {
+				resources = append(resources, NewPetSet(&ps, apiClient.PetSets(), apiClient, nil))
+			}
 		}
 		status, err := resourceListReady(resources)
 		if status != "ready" || err != nil {
