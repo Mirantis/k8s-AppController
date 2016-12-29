@@ -29,8 +29,48 @@ import (
 	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/apimachinery/announced"
+	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/rest"
 )
+
+const (
+	GroupName string = "appcontroller.k8s"
+	Version   string = "v1alpha1"
+)
+
+var (
+	SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: Version}
+	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
+)
+
+func addKnownTypes(scheme *runtime.Scheme) error {
+	definitionGVK := SchemeGroupVersion.WithKind("Definition")
+	scheme.AddKnownTypeWithName(
+		definitionGVK,
+		&ResourceDefinition{},
+	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&Dependency{},
+	)
+	return nil
+}
+
+func init() {
+	if err := announced.NewGroupMetaFactory(
+		&announced.GroupMetaFactoryArgs{
+			GroupName:                  GroupName,
+			VersionPreferenceOrder:     []string{SchemeGroupVersion.Version},
+			AddInternalObjectsToScheme: SchemeBuilder.AddToScheme,
+		},
+		announced.VersionToSchemeFunc{
+			SchemeGroupVersion.Version: SchemeBuilder.AddToScheme,
+		},
+	).Announce().RegisterAndEnable(); err != nil {
+		panic(err)
+	}
+}
 
 // Interface is as an interface for k8s clients. It expands native k8s client interface.
 type Interface interface {
@@ -179,8 +219,8 @@ func thirdPartyResourceRESTClient(c *rest.Config) (*rest.RESTClient, error) {
 	c.APIPath = "/apis"
 	c.ContentConfig = rest.ContentConfig{
 		GroupVersion: &unversioned.GroupVersion{
-			Group:   "appcontroller.k8s",
-			Version: "v1alpha1",
+			Group:   GroupName,
+			Version: Version,
 		},
 		NegotiatedSerializer: api.Codecs,
 	}
