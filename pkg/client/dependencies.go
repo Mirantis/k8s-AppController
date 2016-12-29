@@ -45,6 +45,8 @@ type DependencyList struct {
 
 type DependenciesInterface interface {
 	List(opts api.ListOptions) (*DependencyList, error)
+	Create(*Dependency) (*Dependency, error)
+	Delete(name string, opts *api.DeleteOptions) error
 }
 
 type dependencies struct {
@@ -78,4 +80,25 @@ func (c dependencies) List(opts api.ListOptions) (*DependencyList, error) {
 	}
 
 	return result, nil
+}
+
+func (c dependencies) Create(d *Dependency) (result *Dependency, err error) {
+	result = &Dependency{}
+	err = c.rc.Post().
+		Namespace("default").
+		Resource("Dependencies").
+		Body(d).
+		Do().
+		Into(result)
+	return
+}
+
+func (c *dependencies) Delete(name string, opts *api.DeleteOptions) error {
+	return c.rc.Delete().
+		Namespace("default").
+		Resource("dependencies").
+		Name(name).
+		Body(opts).
+		Do().
+		Error()
 }
