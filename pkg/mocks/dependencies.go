@@ -46,6 +46,14 @@ func (d *dependencyClient) List(opts api.ListOptions) (*client.DependencyList, e
 	return list, nil
 }
 
+func (d *dependencyClient) Create(_ *client.Dependency) (*client.Dependency, error) {
+	panic("Not implemented")
+}
+
+func (d *dependencyClient) Delete(_ string, _ *api.DeleteOptions) error {
+	panic("Not implemented")
+}
+
 func NewDependencyClient(dependencies ...Dependency) client.DependenciesInterface {
 	return &dependencyClient{dependencies}
 }
