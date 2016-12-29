@@ -70,6 +70,14 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 	return list, nil
 }
 
+func (r *resDefClient) Create(_ *client.ResourceDefinition) (*client.ResourceDefinition, error) {
+	panic("Not implemented")
+}
+
+func (r *resDefClient) Delete(_ string, _ *api.DeleteOptions) error {
+	panic("Not implemented")
+}
+
 func NewResourceDefinitionClient(names ...string) client.ResourceDefinitionsInterface {
 	return &resDefClient{names}
 }

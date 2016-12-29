@@ -21,6 +21,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/meta"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
@@ -61,11 +62,21 @@ type ResourceDefinitionList struct {
 }
 
 type ResourceDefinitionsInterface interface {
+	Create(*ResourceDefinition) (*ResourceDefinition, error)
 	List(opts api.ListOptions) (*ResourceDefinitionList, error)
+	Delete(name string, opts *api.DeleteOptions) error
 }
 
 type resourceDefinitions struct {
 	rc *rest.RESTClient
+}
+
+func (r *ResourceDefinition) GetObjectKind() unversioned.ObjectKind {
+	return &r.TypeMeta
+}
+
+func (r *ResourceDefinition) GetObjectMeta() meta.Object {
+	return &r.ObjectMeta
 }
 
 func newResourceDefinitions(c rest.Config) (*resourceDefinitions, error) {
@@ -95,4 +106,26 @@ func (c *resourceDefinitions) List(opts api.ListOptions) (*ResourceDefinitionLis
 	}
 
 	return result, nil
+}
+
+func (c *resourceDefinitions) Create(rd *ResourceDefinition) (result *ResourceDefinition, err error) {
+	result = &ResourceDefinition{}
+	req := c.rc.Post().
+		Namespace("default").
+		Resource("definitions").
+		Body(rd)
+	err = req.
+		Do().
+		Into(result)
+	return
+}
+
+func (c *resourceDefinitions) Delete(name string, opts *api.DeleteOptions) error {
+	return c.rc.Delete().
+		Namespace("default").
+		Resource("definitions").
+		Name(name).
+		Body(opts).
+		Do().
+		Error()
 }
