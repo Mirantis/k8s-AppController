@@ -10,9 +10,7 @@ $KUBECTL_NAME create -f existing_job.yaml
 echo "Creating pod with AppController binary. This is going to be our entry point."
 echo "$KUBECTL_NAME create -f ../../appcontroller.yaml"
 $KUBECTL_NAME create -f ../../manifests/appcontroller.yaml
-
-echo "Wait for cluster to register new endpoints and run appcontroller container"
-sleep 10
+wait-appcontroller
 
 echo "Let's create dependencies. Please refer to https://github.com/Mirantis/k8s-AppController/tree/demo/examples/simple/graph.svg to see the graph composition."
 echo "$KUBECTL_NAME create -f deps.yaml"

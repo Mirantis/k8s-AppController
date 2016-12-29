@@ -5,8 +5,7 @@ source ../common.sh
 set -x
 
 $KUBECTL_NAME create -f ../../manifests/appcontroller.yaml
-
-sleep 15
+wait-appcontroller
 
 $KUBECTL_NAME create -f deps.yaml
 
