@@ -67,7 +67,7 @@ func New(c *rest.RESTClient) *AppsClient {
 
 func setConfigDefaults(config *rest.Config) error {
 	// if apps group is not registered, return an error
-	g, err := registered.Group("apps")
+	g, err := registered.Group("alphaapps")
 	if err != nil {
 		return err
 	}

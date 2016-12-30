@@ -31,7 +31,7 @@ type FakePetSets struct {
 	ns   string
 }
 
-var petsetsResource = unversioned.GroupVersionResource{Group: "apps", Version: "v1alpha1", Resource: "petsets"}
+var petsetsResource = unversioned.GroupVersionResource{Group: "alphaapps", Version: "v1alpha1", Resource: "petsets"}
 
 func (c *FakePetSets) Create(petSet *v1alpha1.PetSet) (result *v1alpha1.PetSet, err error) {
 	obj, err := c.Fake.
