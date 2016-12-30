@@ -28,6 +28,7 @@ const GroupName = "alphaapps"
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: "v1alpha1"}
+var OriginalGroupVersion = unversioned.GroupVersion{Group: "apps", Version: "v1alpha1"}
 
 var (
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes, addDefaultingFuncs, addConversionFuncs)
@@ -42,6 +43,11 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&v1.ListOptions{},
 		&v1.DeleteOptions{},
 	)
+	scheme.AddKnownTypes(OriginalGroupVersion,
+		&PetSet{},
+		&PetSetList{},
+		&v1.ListOptions{},
+		&v1.DeleteOptions{})
 	versionedwatch.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }

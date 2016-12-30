@@ -32,6 +32,7 @@ const GroupName = "alphaapps"
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
+var OriginalGroupVersion = unversioned.GroupVersion{Group: "apps", Version: runtime.APIVersionInternal}
 
 // Kind takes an unqualified kind and returns a Group qualified GroupKind
 func Kind(kind string) unversioned.GroupKind {
@@ -52,5 +53,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&api.ListOptions{},
 		&api.DeleteOptions{},
 	)
+	scheme.AddKnownTypes(OriginalGroupVersion,
+		&PetSet{},
+		&PetSetList{},
+		&api.ListOptions{},
+		&api.DeleteOptions{})
 	return nil
 }

@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	api "k8s.io/client-go/pkg/api"
 	registered "k8s.io/client-go/pkg/apimachinery/registered"
+	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 	serializer "k8s.io/client-go/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
@@ -79,6 +80,8 @@ func setConfigDefaults(config *rest.Config) error {
 	//if config.Version == "" {
 	copyGroupVersion := g.GroupVersion
 	config.GroupVersion = &copyGroupVersion
+	// NOTE(dshulyak) this is a workaround to construct correct URL for k8s
+	config.GroupVersion.Group = v1beta1.GroupName
 	//}
 
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
