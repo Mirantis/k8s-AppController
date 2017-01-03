@@ -50,12 +50,12 @@ func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupLis
 
 func NewClient(objects ...runtime.Object) *client.Client {
 	c := newClient(objects...)
-	c.ApiVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
+	c.APIVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
 	return c
 }
 
-func NewClient_1_4(objects ...runtime.Object) *client.Client {
+func NewClient1_4(objects ...runtime.Object) *client.Client {
 	c := newClient(objects...)
-	c.ApiVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
+	c.APIVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
 	return c
 }

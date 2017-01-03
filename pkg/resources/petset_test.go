@@ -54,7 +54,7 @@ func TestPetSetFailCheck(t *testing.T) {
 }
 
 func TestPetSetIsEnabled(t *testing.T) {
-	c := mocks.NewClient_1_4()
+	c := mocks.NewClient1_4()
 	if !c.IsEnabled(v1alpha1.SchemeGroupVersion) {
 		t.Errorf("%v expected to be enabled", v1alpha1.SchemeGroupVersion)
 	}

@@ -297,7 +297,7 @@ func TestLimitConcurrency(t *testing.T) {
 }
 
 func TestGraphWithPetSets(t *testing.T) {
-	c := mocks.NewClient_1_4(
+	c := mocks.NewClient1_4(
 		mocks.MakePetSet("ready-6"),
 		mocks.MakePetSet("ready-7"),
 	)

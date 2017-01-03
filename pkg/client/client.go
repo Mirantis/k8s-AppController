@@ -18,6 +18,7 @@ import (
 	"log"
 	"os"
 
+	// install v1alpha1 petset api
 	_ "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/install"
 	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
 
@@ -57,7 +58,7 @@ type Client struct {
 	Deps        DependenciesInterface
 	ResDefs     ResourceDefinitionsInterface
 	Namespace   string
-	ApiVersions *unversioned.APIGroupList
+	APIVersions *unversioned.APIGroupList
 }
 
 var _ Interface = &Client{}
@@ -129,8 +130,8 @@ func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 // IsEnabled verifies that required group name and group version is registered in API
 // particularly we need it to support both pet sets and stateful sets using same application
 func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
-	for i := range c.ApiVersions.Groups {
-		group := c.ApiVersions.Groups[i]
+	for i := range c.APIVersions.Groups {
+		group := c.APIVersions.Groups[i]
 		if group.Name != version.Group {
 			continue
 		}
@@ -170,7 +171,7 @@ func newForConfig(c rest.Config) (Interface, error) {
 		Deps:        deps,
 		ResDefs:     resdefs,
 		Namespace:   getNamespace(),
-		ApiVersions: versions,
+		APIVersions: versions,
 	}, nil
 }
 
