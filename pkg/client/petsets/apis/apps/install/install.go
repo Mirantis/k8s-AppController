@@ -27,7 +27,7 @@ import (
 func init() {
 	if err := announced.NewGroupMetaFactory(
 		&announced.GroupMetaFactoryArgs{
-			GroupName:                  apps.GroupName,
+			GroupName:                  "alpha" + apps.GroupName,
 			VersionPreferenceOrder:     []string{v1alpha1.SchemeGroupVersion.Version},
 			ImportPrefix:               "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps",
 			AddInternalObjectsToScheme: apps.AddToScheme,

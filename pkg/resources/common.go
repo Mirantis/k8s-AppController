@@ -133,7 +133,6 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 	}
 	stringSelector := strings.Join(labelSelectors, ",")
 	selector, err := labels.Parse(stringSelector)
-	log.Printf("%s,%v\n", stringSelector, selector)
 	if err != nil {
 		return "error", err
 	}

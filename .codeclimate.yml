@@ -14,3 +14,4 @@ ratings:
 exclude_paths:
   - "utils/graph-builder/js-yaml.min.js"
   - "utils/graph-builder/cytoscape-cxtmenu.js"
+  - "pkg/client/petsets/"

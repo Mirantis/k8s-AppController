@@ -28,11 +28,11 @@ var (
 )
 
 // GroupName is the group name use in this package
-const GroupName = "alphaapps"
+const GroupName = "apps"
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
-var OriginalGroupVersion = unversioned.GroupVersion{Group: "apps", Version: runtime.APIVersionInternal}
+var OriginalGroupVersion = unversioned.GroupVersion{Group: "alphaapps", Version: runtime.APIVersionInternal}
 
 // Kind takes an unqualified kind and returns a Group qualified GroupKind
 func Kind(kind string) unversioned.GroupKind {

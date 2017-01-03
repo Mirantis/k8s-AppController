@@ -83,7 +83,6 @@ func setConfigDefaults(config *rest.Config) error {
 	// NOTE(dshulyak) this is a workaround to construct correct URL for k8s
 	config.GroupVersion.Group = v1beta1.GroupName
 	//}
-
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
 
 	return nil

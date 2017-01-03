@@ -24,11 +24,11 @@ import (
 )
 
 // GroupName is the group name use in this package
-const GroupName = "alphaapps"
+const GroupName = "apps"
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: "v1alpha1"}
-var OriginalGroupVersion = unversioned.GroupVersion{Group: "apps", Version: "v1alpha1"}
+var OriginalGroupVersion = unversioned.GroupVersion{Group: "alphaapps", Version: "v1alpha1"}
 
 var (
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes, addDefaultingFuncs, addConversionFuncs)
