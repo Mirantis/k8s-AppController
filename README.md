@@ -124,3 +124,17 @@ Example value of this variable could be `app=app1`. AppController pod with this 
 If the selector is empty, the AppController pod will use all Dependencies and Definitions available in cluster.
 
 You can also override this behaviour by using `-l` flag for `kubeac deploy` command available on AppController pod, but this should be only done for testing purposes and is not encouraged in production.
+
+
+
+# Roadmap
+
+Here is the brief list of our mid term Roadmap:
+
+* Joining Kubernetes Incubator
+* Cooperation with [Helm](https://github.com/kubernetes/helm) project
+* [Failure handling](https://github.com/Mirantis/k8s-AppController/blob/master/docs/research/failure-handling.md)
+* Implementation of [AppController Mysql Multi Slave research](https://github.com/Mirantis/k8s-AppController/blob/master/docs/research/lcm.md)
+* Real life examples
+* HA for AppController Pod
+* Documentation improvements
