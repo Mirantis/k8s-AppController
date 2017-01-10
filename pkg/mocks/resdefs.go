@@ -34,31 +34,34 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 		rd := client.ResourceDefinition{}
 
 		splitted := strings.Split(name, "/")
-		typ := splitted[0]
+		objectType := splitted[0]
 		n := strings.Join(splitted[1:], "/")
 
-		if typ == "pod" {
+		switch objectType {
+		case "pod":
 			rd.Pod = MakePod(n)
-		} else if typ == "job" {
+		case "job":
 			rd.Job = MakeJob(n)
-		} else if typ == "service" {
+		case "service":
 			rd.Service = MakeService(n)
-		} else if typ == "replicaset" {
+		case "replicaset":
 			rd.ReplicaSet = MakeReplicaSet(n)
-		} else if typ == "statefulset" {
+		case "statefulset":
 			rd.StatefulSet = MakeStatefulSet(n)
-		} else if typ == "daemonset" {
+		case "petset":
+			rd.PetSet = MakePetSet(n)
+		case "daemonset":
 			rd.DaemonSet = MakeDaemonSet(n)
-		} else if typ == "configmap" {
+		case "configmap":
 			rd.ConfigMap = MakeConfigMap(n)
-		} else if typ == "secret" {
+		case "secret":
 			rd.Secret = MakeSecret(n)
-		} else if typ == "deployment" {
+		case "deployment":
 			rd.Deployment = MakeDeployment(n)
-		} else if typ == "persistentvolumeclaim" {
+		case "persistentvolumeclaim":
 			rd.PersistentVolumeClaim = MakePersistentVolumeClaim(n)
-		} else {
-			log.Fatal("Unrecognized resource type for name ", typ)
+		default:
+			log.Fatal("Unrecognized resource type for name ", objectType)
 		}
 
 		list.Items = append(list.Items, rd)

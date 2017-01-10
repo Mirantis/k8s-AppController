@@ -18,6 +18,10 @@ import (
 	"log"
 	"os"
 
+	// install v1alpha1 petset api
+	_ "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/install"
+	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
+
 	"k8s.io/client-go/kubernetes"
 	appsbeta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
 	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
@@ -37,19 +41,24 @@ type Interface interface {
 	Services() corev1.ServiceInterface
 	ReplicaSets() v1beta1.ReplicaSetInterface
 	StatefulSets() appsbeta1.StatefulSetInterface
+	PetSets() v1alpha1.PetSetInterface
 	DaemonSets() v1beta1.DaemonSetInterface
 	Deployments() v1beta1.DeploymentInterface
 	PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface
 
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
+
+	IsEnabled(version unversioned.GroupVersion) bool
 }
 
 type Client struct {
-	Clientset kubernetes.Interface
-	Deps      DependenciesInterface
-	ResDefs   ResourceDefinitionsInterface
-	Namespace string
+	Clientset   kubernetes.Interface
+	AlphaApps   v1alpha1.AppsInterface
+	Deps        DependenciesInterface
+	ResDefs     ResourceDefinitionsInterface
+	Namespace   string
+	APIVersions *unversioned.APIGroupList
 }
 
 var _ Interface = &Client{}
@@ -99,6 +108,10 @@ func (c Client) StatefulSets() appsbeta1.StatefulSetInterface {
 	return c.Clientset.Apps().StatefulSets(c.Namespace)
 }
 
+func (c Client) PetSets() v1alpha1.PetSetInterface {
+	return c.AlphaApps.PetSets(c.Namespace)
+}
+
 // DaemonSets return K8s DaemonSet client for ac namespace
 func (c Client) DaemonSets() v1beta1.DaemonSetInterface {
 	return c.Clientset.Extensions().DaemonSets(c.Namespace)
@@ -114,6 +127,23 @@ func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 	return c.Clientset.Core().PersistentVolumeClaims(c.Namespace)
 }
 
+// IsEnabled verifies that required group name and group version is registered in API
+// particularly we need it to support both pet sets and stateful sets using same application
+func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
+	for i := range c.APIVersions.Groups {
+		group := c.APIVersions.Groups[i]
+		if group.Name != version.Group {
+			continue
+		}
+		for _, version := range group.Versions {
+			if version.Version == version.Version {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func newForConfig(c rest.Config) (Interface, error) {
 	deps, err := newDependencies(c)
 	if err != nil {
@@ -127,12 +157,21 @@ func newForConfig(c rest.Config) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	apps, err := v1alpha1.NewForConfig(&c)
+	if err != nil {
+		return nil, err
+	}
+	versions, err := cl.Discovery().ServerGroups()
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
-		Clientset: cl,
-		Deps:      deps,
-		ResDefs:   resdefs,
-		Namespace: getNamespace(),
+		Clientset:   cl,
+		AlphaApps:   apps,
+		Deps:        deps,
+		ResDefs:     resdefs,
+		Namespace:   getNamespace(),
+		APIVersions: versions,
 	}, nil
 }
 

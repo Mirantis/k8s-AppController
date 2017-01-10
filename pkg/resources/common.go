@@ -19,7 +19,12 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/labels"
+
+	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 )
 
@@ -50,6 +55,7 @@ var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"daemonset":             DaemonSet{},
 	"job":                   Job{},
 	"statefulset":           StatefulSet{},
+	"petset":                PetSet{},
 	"pod":                   Pod{},
 	"replicaset":            ReplicaSet{},
 	"service":               Service{},
@@ -118,4 +124,34 @@ func createExistingResource(r interfaces.BaseResource) error {
 		return errors.New("Resource not found")
 	}
 	return nil
+}
+
+func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string) (string, error) {
+	var labelSelectors []string
+	for k, v := range objLabels {
+		labelSelectors = append(labelSelectors, fmt.Sprintf("%s=%s", k, v))
+	}
+	stringSelector := strings.Join(labelSelectors, ",")
+	selector, err := labels.Parse(stringSelector)
+	if err != nil {
+		return "error", err
+	}
+	options := v1.ListOptions{LabelSelector: selector.String()}
+
+	pods, err := apiClient.Pods().List(options)
+	if err != nil {
+		return "error", err
+	}
+	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
+	for _, pod := range pods.Items {
+		p := pod
+		resources = append(resources, NewPod(&p, apiClient.Pods(), nil))
+	}
+
+	status, err := resourceListReady(resources)
+	if status != "ready" || err != nil {
+		return status, err
+	}
+
+	return "ready", nil
 }

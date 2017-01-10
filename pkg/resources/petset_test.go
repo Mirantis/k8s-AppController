@@ -17,15 +17,14 @@ package resources
 import (
 	"testing"
 
-	"k8s.io/client-go/pkg/apis/apps/v1beta1"
-
+	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
-// TestStatefulSetSuccessCheck checks status of ready StatefulSet
-func TestStatefulSetSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeStatefulSet("notfail"))
-	status, err := statefulsetStatus(c.StatefulSets(), "notfail", c)
+// TestPetSetSuccessCheck checks status of ready PetSet
+func TestPetSetSuccessCheck(t *testing.T) {
+	c := mocks.NewClient(mocks.MakePetSet("notfail"))
+	status, err := petsetStatus(c.PetSets(), "notfail", c)
 
 	if err != nil {
 		t.Error(err)
@@ -36,13 +35,13 @@ func TestStatefulSetSuccessCheck(t *testing.T) {
 	}
 }
 
-// TestStatefulSetFailCheck checks status of not ready statefulset
-func TestStatefulSetFailCheck(t *testing.T) {
-	ss := mocks.MakeStatefulSet("fail")
+// TestPetSetFailCheck checks status of not ready statefulset
+func TestPetSetFailCheck(t *testing.T) {
+	ss := mocks.MakePetSet("fail")
 	pod := mocks.MakePod("fail")
 	pod.Labels = ss.Spec.Template.ObjectMeta.Labels
 	c := mocks.NewClient(ss, pod)
-	status, err := statefulsetStatus(c.StatefulSets(), "fail", c)
+	status, err := petsetStatus(c.PetSets(), "fail", c)
 
 	expectedError := "Resource pod/fail is not ready"
 	if err.Error() != expectedError {
@@ -54,9 +53,9 @@ func TestStatefulSetFailCheck(t *testing.T) {
 	}
 }
 
-func TestStatefulSetIsEnabled(t *testing.T) {
-	c := mocks.NewClient()
-	if !c.IsEnabled(v1beta1.SchemeGroupVersion) {
-		t.Errorf("%v expected to be enabled", v1beta1.SchemeGroupVersion)
+func TestPetSetIsEnabled(t *testing.T) {
+	c := mocks.NewClient1_4()
+	if !c.IsEnabled(v1alpha1.SchemeGroupVersion) {
+		t.Errorf("%v expected to be enabled", v1alpha1.SchemeGroupVersion)
 	}
 }
