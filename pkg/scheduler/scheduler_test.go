@@ -296,28 +296,6 @@ func TestLimitConcurrency(t *testing.T) {
 	}
 }
 
-func TestGraphWithPetSets(t *testing.T) {
-	c := mocks.NewClient1_4(
-		mocks.MakePetSet("ready-6"),
-		mocks.MakePetSet("ready-7"),
-	)
-	c.ResDefs = mocks.NewResourceDefinitionClient(
-		"petset/ready-6",
-		"petset/ready-7",
-	)
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "petset/ready-6", Child: "petset/ready-7"},
-	)
-	depGraph, err := BuildDependencyGraph(c, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	status, _ := depGraph.GetStatus()
-	if status != Finished {
-		t.Errorf("Expected status to be Finished, but got %s", status)
-	}
-}
-
 // TestGraphAllResourceTypes aims to test if all resource types supported by AppController are able to be part of deployment graph
 func TestGraphAllResourceTypes(t *testing.T) {
 	c := mocks.NewClient(
