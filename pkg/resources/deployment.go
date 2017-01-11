@@ -81,7 +81,7 @@ func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Reso
 }
 
 // NewDeployment is a constructor
-func NewDeployment(deployment *extbeta1.Deployment, client v1beta1.DeploymentInterface, meta map[string]string) interfaces.Resource {
+func NewDeployment(deployment *extbeta1.Deployment, client v1beta1.DeploymentInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Deployment{Base: Base{meta}, Deployment: deployment, Client: client}}
 }
 

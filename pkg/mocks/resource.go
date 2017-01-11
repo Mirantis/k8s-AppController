@@ -47,8 +47,8 @@ func (c *Resource) Delete() error {
 }
 
 // Meta returns empty string
-func (c *Resource) Meta(string) string {
-	return ""
+func (c *Resource) Meta(string) interface{} {
+	return nil
 }
 
 // NameMatches returns true

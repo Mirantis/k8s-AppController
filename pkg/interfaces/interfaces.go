@@ -23,7 +23,7 @@ type BaseResource interface {
 	Status(meta map[string]string) (string, error)
 	Create() error
 	Delete() error
-	Meta(string) string
+	Meta(string) interface{}
 }
 
 // DependencyReport is a report of a single dependency of a node in graph

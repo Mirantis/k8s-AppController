@@ -86,7 +86,7 @@ func (p PersistentVolumeClaim) NewExisting(name string, c client.Interface) inte
 	return NewExistingPersistentVolumeClaim(name, c.PersistentVolumeClaims())
 }
 
-func NewPersistentVolumeClaim(persistentVolumeClaim *v1.PersistentVolumeClaim, client corev1.PersistentVolumeClaimInterface, meta map[string]string) interfaces.Resource {
+func NewPersistentVolumeClaim(persistentVolumeClaim *v1.PersistentVolumeClaim, client corev1.PersistentVolumeClaimInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: PersistentVolumeClaim{Base: Base{meta}, PersistentVolumeClaim: persistentVolumeClaim, Client: client}}
 }
 

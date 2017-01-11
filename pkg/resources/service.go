@@ -145,7 +145,7 @@ func (s Service) NewExisting(name string, c client.Interface) interfaces.Resourc
 }
 
 // NewService is Service constructor. Needs apiClient for service status checks
-func NewService(service *v1.Service, client corev1.ServiceInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+func NewService(service *v1.Service, client corev1.ServiceInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Service{Base: Base{meta}, Service: service, Client: client, APIClient: apiClient}}
 }
 
