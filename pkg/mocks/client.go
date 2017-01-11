@@ -16,7 +16,6 @@ package mocks
 
 import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
-	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 	alphafake "github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1/fake"
 
 	"k8s.io/client-go/kubernetes/fake"
@@ -51,11 +50,5 @@ func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupLis
 func NewClient(objects ...runtime.Object) *client.Client {
 	c := newClient(objects...)
 	c.APIVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
-	return c
-}
-
-func NewClient1_4(objects ...runtime.Object) *client.Client {
-	c := newClient(objects...)
-	c.APIVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
 	return c
 }
