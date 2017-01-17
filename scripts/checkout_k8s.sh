@@ -6,7 +6,7 @@ CURRENT=`pwd`
 WORKING=`mktemp -d`
 K8S_TAG="${K8S_TAG:-v1.5.1}"
 
-if [ "$#" -ne 1]; then
+if [ "$#" -ne 1 ]; then
     echo "Missing argument"
     exit 1
 fi
