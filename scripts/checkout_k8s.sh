@@ -7,9 +7,11 @@ WORKING=`mktemp -d`
 K8S_TAG="${K8S_TAG:-v1.5.1}"
 
 if [ "$#" -ne 1 ]; then
-    echo "Missing argument"
+    echo "This script accepts only one argument"
     exit 1
 fi
+
+set -e
 
 cd $WORKING
 git clone --branch $K8S_TAG --depth 1 --single-branch https://github.com/kubernetes/kubernetes.git
