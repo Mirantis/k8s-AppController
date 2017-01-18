@@ -6,7 +6,7 @@ In ideal workd of Kubernetes you don't need to care about dependencies. Unfortun
 
 Despite managing complex dependencies and ordered execution, AppController is completely Kubernetes native, using k8s objects and features. This way once you refactor your applications to be full blown micro services, you don't need to change anything. Zero vendor lock-in.
 
-AppController team works closely with other Kubernetes projects to provide wide and seamless integrations. Currently we are concentrating on Helm integration (PoC available)
+AppController team works closely with other Kubernetes projects to provide wide and seamless integrations.
 
 ## Basic concepts
 
