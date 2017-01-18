@@ -24,16 +24,7 @@ Dependency on Replica Set accepts `success_factor` key with stringified percenta
 
 ### Resource Definitions
 
-Resource Definitions are objects that represent Kubernetes Objects that are not yet created, but are part of deployment graph. They store manifests of underlying objects. Objects currently supported by Resource Definitions: (the list is growing steadily)
-* Jobs
-* Pods
-* Services
-* Replica Sets
-* Pet Sets
-* DaemonSet
-* Config Maps
-* Secrets
-* Deployments
+Resource Definitions are objects that represent Kubernetes Objects that are not yet created, but are part of deployment graph. They store manifests of underlying objects. AppController supports most of Kubernetes Objects, if some object type is missing please create github issue about it.
 
 Resource Definitions are (the same as Dependencies) ThirdPartyResource API extension.
 
