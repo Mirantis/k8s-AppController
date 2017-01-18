@@ -1,7 +1,13 @@
+# xxx
+sudo: required
 language: go
+services:
+    - docker
 go:
   - 1.6
   - tip
+install:
+  - go get github.com/Masterminds/glide github.com/onsi/ginkgo/ginkgo github.com/onsi/gomega
+  - make ".k8s-cluster"
 script:
-  - go get github.com/Masterminds/glide
-  - make test
+  - NUM_NODES=0 make test-all
