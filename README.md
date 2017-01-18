@@ -2,6 +2,12 @@ AppController [![Build Status](https://travis-ci.org/Mirantis/k8s-AppController.
 =============
 AppController is a pod that you can spawn in your Kubernetes cluster which will take care of your complex deployments for you.
 
+In ideal world of Kubernetes you don't need to care about dependencies. Unfortunately reality can be different: your applications most like will have some sort of dependencies and your components will require to be deployed in certain order. One of the examples is the database that needs to be installed before all other components can be launched. Best way is to refactor your apps in such a way so they do not fail when database connection is not yet available. For complex applications it can take a lot of time, blocking you from running your workloads on Kubernetes. AppController enables you to use Kubernetes for your complex applications out of hand.
+
+Despite managing complex dependencies and ordered execution, AppController is completely Kubernetes native, using k8s objects and features. This way once you refactor your applications to be full blown micro services, you don't need to change anything. Zero vendor lock-in.
+
+AppController team works closely with other Kubernetes projects to provide wide and seamless integrations.
+
 ## Basic concepts
 
 AppController uses three basic concepts:
@@ -32,10 +38,19 @@ Resource Definitions are objects that represent Kubernetes Objects that are not 
 Resource Definitions are (the same as Dependencies) ThirdPartyResource API extension.
 
 # Demo
+
+
+## General AppController demos
+
 [![asciicast](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1.png)](https://asciinema.org/a/c4ujuq2f8mv1cl16h0u5x0sl1)
 
 [Voice demo from sig-apps meeting](https://youtu.be/BXRToNV4Rdw?t=178)
+
 [Voice demo from kubernetes community meeting](https://youtu.be/NzkoocVeFMQ?t=31)
+
+## Helm integration demo
+
+[![asciicast](https://asciinema.org/a/0pzyc1tuyk9ohabohnzenvpbe.png)](https://asciinema.org/a/0pzyc1tuyk9ohabohnzenvpbe)
 
 # Usage
 
