@@ -22,13 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/labels"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 	"github.com/Mirantis/k8s-AppController/pkg/resources"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/labels"
 )
 
 // ScheduledResourceStatus describes possible status of a single resource
@@ -311,41 +310,61 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 		go func(r *ScheduledResource, finished chan string, ccLimiter chan struct{}) {
 			// Acquire sepmaphor
 			ccLimiter <- struct{}{}
-			log.Println("Creating resource", r.Key())
-			err := r.Create()
-			if err != nil {
-				log.Printf("Error creating resource %s: %v", r.Key(), err)
-			}
 
-			// NOTE(gluke77): We start goroutines for dependencies
-			// before the resource becomes ready, since dependencies
-			// could have metadata defining their own readiness condition
-			for _, req := range r.RequiredBy {
-				go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
-					for {
-						time.Sleep(CheckInterval)
-						if req.RequestCreation(toCreate) {
-							break
-						}
+			attempts := resources.GetIntMeta(r.Resource, "retry", 1)
+
+			for attemptNo := 1; attemptNo <= attempts; attemptNo++ {
+				var err error
+
+				if attemptNo > 1 {
+					log.Printf("Trying to delete resource %s after previous unsuccessful attempt", r.Key())
+					err = r.Delete()
+					if err != nil {
+						log.Printf("Error deleting resource %s: %v", r.Key(), err)
 					}
-				}(req, toCreate)
-			}
 
-			log.Printf("Checking status for %s", r.Key())
+				}
 
-			for {
-				time.Sleep(CheckInterval)
-				var isFinished bool
-				isFinished, err = r.IsFinished()
-				if isFinished {
+				log.Printf("Creating resource %s, attempt %d of %d", r.Key(), attemptNo, attempts)
+				err = r.Create()
+				if err != nil {
+					log.Printf("Error creating resource %s: %v", r.Key(), err)
+					continue
+				}
+
+				// NOTE(gluke77): We start goroutines for dependencies
+				// before the resource becomes ready, since dependencies
+				// could have metadata defining their own readiness condition
+				for _, req := range r.RequiredBy {
+					go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
+						for {
+							time.Sleep(CheckInterval)
+							if req.RequestCreation(toCreate) {
+								break
+							}
+						}
+					}(req, toCreate)
+				}
+
+				log.Printf("Checking status for %s", r.Key())
+
+				for {
+					time.Sleep(CheckInterval)
+					var isFinished bool
+					isFinished, err = r.IsFinished()
+					if isFinished {
+						break
+					}
+				}
+
+				if err != nil {
+					log.Printf("Resource %s was not created: %v", r.Key(), err)
+					continue
+				} else {
+					log.Printf("Resource %s created", r.Key())
 					break
 				}
-			}
 
-			if err != nil {
-				log.Printf("Resource %s was not created: %v", r.Key(), err)
-			} else {
-				log.Printf("Resource %s created", r.Key())
 			}
 			finished <- r.Key()
 			// Release semaphor

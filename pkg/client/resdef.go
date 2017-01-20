@@ -36,7 +36,7 @@ type ResourceDefinition struct {
 	// Standard object metadata
 	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Meta map[string]string `json:"meta,omitempty"`
+	Meta map[string]interface{} `json:"meta,omitempty"`
 
 	//TODO: add other object types
 	Pod                   *v1.Pod                   `json:"pod,omitempty"`

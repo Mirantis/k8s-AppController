@@ -132,7 +132,7 @@ func (r ReplicaSet) GetDependencyReport(meta map[string]string) interfaces.Depen
 	return replicaSetReport(r.Client, r.ReplicaSet.Name, meta)
 }
 
-func NewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]string) ReplicaSet {
+func NewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) ReplicaSet {
 	return ReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
 }
 

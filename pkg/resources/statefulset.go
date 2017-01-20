@@ -88,7 +88,7 @@ func (p StatefulSet) NewExisting(name string, c client.Interface) interfaces.Res
 }
 
 // NewStatefulSet is a constructor
-func NewStatefulSet(statefulset *appsbeta1.StatefulSet, client v1beta1.StatefulSetInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+func NewStatefulSet(statefulset *appsbeta1.StatefulSet, client v1beta1.StatefulSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: StatefulSet{Base: Base{meta}, StatefulSet: statefulset, Client: client, APIClient: apiClient}}
 }
 

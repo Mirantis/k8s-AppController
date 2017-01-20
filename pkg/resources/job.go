@@ -91,7 +91,7 @@ func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
 	return NewExistingJob(name, c.Jobs())
 }
 
-func NewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]string) interfaces.Resource {
+func NewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Job{Base: Base{meta}, Job: job, Client: client}}
 }
 

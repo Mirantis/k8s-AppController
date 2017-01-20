@@ -61,8 +61,8 @@ func (c *CountingResource) Delete() error {
 }
 
 // Meta returns empty string
-func (c *CountingResource) Meta(string) string {
-	return ""
+func (c *CountingResource) Meta(string) interface{} {
+	return nil
 }
 
 // NameMatches returns true

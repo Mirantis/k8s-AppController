@@ -87,7 +87,7 @@ func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource
 }
 
 // NewPetSet is a constructor
-func NewPetSet(petset *appsalpha1.PetSet, client v1alpha1.PetSetInterface, apiClient client.Interface, meta map[string]string) interfaces.Resource {
+func NewPetSet(petset *appsalpha1.PetSet, client v1alpha1.PetSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: PetSet{Base: Base{meta}, PetSet: petset, Client: client, APIClient: apiClient}}
 }
 

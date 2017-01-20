@@ -30,20 +30,20 @@ import (
 
 // Base is a base struct that contains data common for all resources
 type Base struct {
-	meta map[string]string
+	meta map[string]interface{}
 }
 
 // Meta returns metadata parameter with given name, or empty string,
 // if no metadata were provided or such parameter does not exist.
-func (b Base) Meta(paramName string) string {
+func (b Base) Meta(paramName string) interface{} {
 	if b.meta == nil {
-		return ""
+		return nil
 	}
 
 	val, ok := b.meta[paramName]
 
 	if !ok {
-		return ""
+		return nil
 	}
 
 	return val
@@ -154,4 +154,21 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 	}
 
 	return "ready", nil
+}
+
+// GetIntMeta returns metadata value for parameter 'paramName', or 'defaultValue'
+// if parameter is not set or is not an integer value
+func GetIntMeta(r interfaces.BaseResource, paramName string, defaultValue int) int {
+	value := r.Meta(paramName)
+	if value == nil {
+		return defaultValue
+	}
+
+	intVal, ok := value.(float64)
+	if !ok {
+		log.Printf("Metadata parameter '%s' for resource '%s' is set to '%v' but it does not seem to be a number, using default value %d", paramName, r.Key(), value, defaultValue)
+		return defaultValue
+	}
+
+	return int(intVal)
 }

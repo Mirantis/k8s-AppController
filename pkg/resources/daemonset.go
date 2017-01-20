@@ -76,7 +76,7 @@ func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resou
 }
 
 // NewDaemonSet is a constructor
-func NewDaemonSet(daemonset *extbeta1.DaemonSet, client v1beta1.DaemonSetInterface, meta map[string]string) interfaces.Resource {
+func NewDaemonSet(daemonset *extbeta1.DaemonSet, client v1beta1.DaemonSetInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: DaemonSet{Base: Base{meta}, DaemonSet: daemonset, Client: client}}
 }
 

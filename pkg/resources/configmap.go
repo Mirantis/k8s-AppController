@@ -75,7 +75,7 @@ func (c ConfigMap) NameMatches(def client.ResourceDefinition, name string) bool 
 	return def.ConfigMap != nil && def.ConfigMap.Name == name
 }
 
-func NewConfigMap(c *v1.ConfigMap, client corev1.ConfigMapInterface, meta map[string]string) interfaces.Resource {
+func NewConfigMap(c *v1.ConfigMap, client corev1.ConfigMapInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ConfigMap{Base: Base{meta}, ConfigMap: c, Client: client}}
 }
 
