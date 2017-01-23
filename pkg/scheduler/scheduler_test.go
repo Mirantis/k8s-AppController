@@ -123,6 +123,7 @@ func TestIsBlocked(t *testing.T) {
 	}
 
 	one.Requires = append(one.Requires, three)
+	one.Meta["fake3"] = map[string]string{"non-empty-meta": "true"}
 
 	if !one.IsBlocked() {
 		t.Errorf("Scheduled resource is not blocked but it must be")
