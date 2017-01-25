@@ -31,7 +31,7 @@ clean-all: clean clean-k8s
 .PHONY: clean
 clean:
 	rm -f kubeac
-	docker rmi $(TAG)
+	-docker rmi $(TAG)
 
 
 .PHONY: clean-k8s
