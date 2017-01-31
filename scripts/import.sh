@@ -9,13 +9,12 @@ IMAGE_REPO=${IMAGE_REPO:-mirantis/k8s-appcontroller}
 IMAGE_TAG=${IMAGE_TAG:-latest}
 NUM_NODES=${NUM_NODES:-2}
 TMP_IMAGE_PATH=${TMP_IMAGE_PATH:-/tmp/image.tar}
-MASTER_NAME=${MASTER_NAME="kube-master"}
-SLAVE_PATTERN=${SLAVE_PATTERN:-"kube-node-"}
+MASTER_NAME=${MASTER_NAME=}
+SLAVE_PATTERN=${SLAVE_PATTERN:-"dind_node_"}
 
 
 function import-image {
     docker save ${IMAGE_REPO}:${IMAGE_TAG} -o "${TMP_IMAGE_PATH}"
-
 
     if [ -n "$MASTER_NAME" ]; then
         docker cp "${TMP_IMAGE_PATH}" kube-master:/image.tar

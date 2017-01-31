@@ -1,2 +1,4 @@
 vendor
 kubeac
+e2e.test
+.k8s-*
