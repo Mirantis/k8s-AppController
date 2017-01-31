@@ -1,7 +1,18 @@
+sudo: required
 language: go
+services:
+    - docker
 go:
   - 1.6
   - tip
+env:
+  - WORKING=$HOME/kube1.5 K8S_TAG=v1.5.1
+  - WORKING=$HOME/kube1.4 K8S_TAG=v1.4.8
+cache:
+  directories:
+    - $HOME/kube1.5
+    - $HOME/kube1.4
 script:
   - go get github.com/Masterminds/glide
   - make test
+  - make e2e

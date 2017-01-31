@@ -1,21 +1,28 @@
 #!/bin/bash
-# Checks out K8S and kubeadm-dind-cluster with correct versions and stores the
-# Location in a given file
 
-CURRENT=`pwd`
-WORKING=`mktemp -d`
-K8S_TAG="${K8S_TAG:-v1.5.1}"
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
 
-if [ "$#" -ne 1 ]; then
-    echo "This script accepts only one argument"
-    exit 1
+WORKING=${WORKING:-`mktemp -d`}
+K8S_TAG=${K8S_TAG:-v1.5.1}
+DIND_COMPATIBLE_COMMIT=${DIND_COMPATIBLE_COMMIT:-897ad95a8e0e1fe674ff81533d4198a3cecee41e}
+mkdir -p $WORKING
+
+pushd $WORKING &> /dev/null
+if [ ! -d kubernetes ]; then
+  git clone --branch $K8S_TAG --depth 1 --single-branch https://github.com/kubernetes/kubernetes.git
 fi
+pushd kubernetes &> /dev/null
+if [ ! -d dind ]; then 
+  git clone --single-branch https://github.com/sttts/kubernetes-dind-cluster.git dind
+fi
+go get -u github.com/jteeuwen/go-bindata/go-bindata
+pushd dind &> /dev/null
+git checkout $DIND_COMPATIBLE_COMMIT
+popd &> /dev/null
+popd &> /dev/null
+popd &> /dev/null
 
-set -e
-
-cd $WORKING
-git clone --branch $K8S_TAG --depth 1 --single-branch https://github.com/kubernetes/kubernetes.git
-cd kubernetes
-git clone --depth 1 --single-branch https://github.com/Mirantis/kubeadm-dind-cluster.git dind
-cd $CURRENT
-echo $WORKING > $1
+echo $WORKING
