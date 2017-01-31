@@ -3,5 +3,5 @@ go:
   - 1.6
   - tip
 script:
-  - go get github.com/Masterminds/glide
-  - make test
+  - go get github.com/Masterminds/glide github.com/onsi/ginkgo/ginkgo github.com/onsi/gomega
+  - make test-all
