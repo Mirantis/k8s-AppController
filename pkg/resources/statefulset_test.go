@@ -60,3 +60,10 @@ func TestStatefulSetIsEnabled(t *testing.T) {
 		t.Errorf("%v expected to be enabled", v1beta1.SchemeGroupVersion)
 	}
 }
+
+func TestStatefulSetDisabledOn14Version(t *testing.T) {
+	c := mocks.NewClient1_4()
+	if c.IsEnabled(v1beta1.SchemeGroupVersion) {
+		t.Errorf("%v expected to be disabled", v1beta1.SchemeGroupVersion)
+	}
+}
