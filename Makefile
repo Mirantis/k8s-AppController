@@ -1,5 +1,6 @@
 
 TAG ?= mirantis/k8s-appcontroller
+WORKING ?= ~/testappcontroller
 K8S_SOURCE_LOCATION = .k8s-source
 K8S_CLUSTER_MARKER = .k8s-cluster
 
@@ -23,7 +24,8 @@ img-in-dind: docker $(K8S_CLUSTER_MARKER)
 
 .PHONY: e2e
 e2e: $(K8S_CLUSTER_MARKER) img-in-dind
-	cd e2e && go test
+	go test -c -o e2e.test ./e2e/
+	PATH=$(PATH):$(WORKING)/kubernetes/_output/bin/ ./e2e.test --cluster-url=http://0.0.0.0:8888
 
 .PHONY: clean-all
 clean-all: clean clean-k8s
@@ -33,19 +35,15 @@ clean:
 	rm -f kubeac
 	-docker rmi $(TAG)
 
-
 .PHONY: clean-k8s
-clean-k8s: k8s-down
+clean-k8s:
 	<$(K8S_SOURCE_LOCATION) xargs rm -rf
 	rm $(K8S_SOURCE_LOCATION)
-
+	rm $(K8S_CLUSTER_MARKER)
 
 $(K8S_SOURCE_LOCATION):
-	scripts/checkout_k8s.sh $(K8S_SOURCE_LOCATION)
+	WORKING=$(WORKING) scripts/checkout_k8s.sh > $(K8S_SOURCE_LOCATION)
 
 $(K8S_CLUSTER_MARKER): $(K8S_SOURCE_LOCATION)
-	<$(K8S_SOURCE_LOCATION) xargs -I % bash -c "cd %/kubernetes && dind/dind-cluster.sh up"
-
-.PHONY: k8s-down
-k8s-down:
-	<$(K8S_SOURCE_LOCATION) xargs -I % bash -c "cd %/kubernetes && dind/dind-cluster.sh down"
+	WORKING=$(WORKING) ./scripts/prepare_dind.sh
+	touch $(K8S_CLUSTER_MARKER)
