@@ -175,8 +175,9 @@ func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
 		if group.Name != version.Group {
 			continue
 		}
-		for _, version := range group.Versions {
-			if version.Version == version.Version {
+		for _, v := range group.Versions {
+			if v.Version == version.Version {
+				log.Printf("Found version %v and group %v", group.Name, v.Version)
 				return true
 			}
 		}

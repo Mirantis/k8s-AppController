@@ -18,6 +18,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	alphafake "github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1/fake"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
@@ -41,7 +42,8 @@ func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupLis
 		{
 			Name: version.Group,
 			Versions: []unversioned.GroupVersionForDiscovery{
-				{GroupVersion: version.Version},
+				{
+					Version: version.Version},
 			},
 		},
 	}}
@@ -50,5 +52,11 @@ func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupLis
 func NewClient(objects ...runtime.Object) *client.Client {
 	c := newClient(objects...)
 	c.APIVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
+	return c
+}
+
+func NewClient1_4(objects ...runtime.Object) *client.Client {
+	c := newClient(objects...)
+	c.APIVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
 	return c
 }
