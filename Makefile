@@ -25,6 +25,9 @@ img-in-dind: docker $(K8S_CLUSTER_MARKER)
 e2e: $(K8S_CLUSTER_MARKER) img-in-dind
 	cd e2e && go test
 
+.PHONY: test-all
+test-all: test e2e
+
 .PHONY: clean-all
 clean-all: clean clean-k8s
 
