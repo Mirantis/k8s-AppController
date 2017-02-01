@@ -47,14 +47,14 @@ var _ = Describe("Basic Suite", func() {
 			},
 			Status: v1.NamespaceStatus{},
 		}
-		ns, err := clientset.Namespaces().Create(namespaceObj)
+		namespace, err = clientset.Namespaces().Create(namespaceObj)
 		Expect(err).NotTo(HaveOccurred())
 		c, err = testutils.GetAcClient()
 		Expect(err).NotTo(HaveOccurred())
 		framework = GraphFramework{
 			client:    c,
 			clientset: clientset,
-			ns:        ns.Name,
+			ns:        namespace.Name,
 		}
 		By("Deploying appcontroller image")
 		framework.Prepare()
