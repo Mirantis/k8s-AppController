@@ -37,6 +37,7 @@ clean:
 
 .PHONY: clean-k8s
 clean-k8s:
+	WORKING=$(WORKING) scripts/dind_down.sh
 	<$(K8S_SOURCE_LOCATION) xargs rm -rf
 	-rm $(K8S_SOURCE_LOCATION)
 	-rm $(K8S_CLUSTER_MARKER)
