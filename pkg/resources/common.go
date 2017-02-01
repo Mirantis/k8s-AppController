@@ -120,7 +120,7 @@ func checkExistence(r interfaces.BaseResource) error {
 
 func createExistingResource(r interfaces.BaseResource) error {
 	if err := checkExistence(r); err != nil {
-		log.Fatalf("Expected resource %s to exist, not found", r.Key())
+		log.Printf("Expected resource %s to exist, not found", r.Key())
 		return errors.New("Resource not found")
 	}
 	return nil

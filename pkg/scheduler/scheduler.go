@@ -38,6 +38,7 @@ const (
 	Init ScheduledResourceStatus = iota
 	Creating
 	Ready
+	Error
 )
 
 // DeploymentStatus describes possible status of whole deployment process
@@ -108,21 +109,21 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 	return false
 }
 
-// IsFinished returns true if a scheduled resource processing is finished, regardless successfull or not,
-// false otherwise. The actual result of processing could be obtained from returned error.
-func (sr *ScheduledResource) IsFinished() (bool, error) {
-	status, err := sr.Resource.Status(nil)
-	if err != nil {
-		return true, err
-	}
+// Wait periodically checks resource status and returns if the resource processing is finished,
+// regardless successfull or not. The actual result of processing could be obtained from returned error.
+func (sr *ScheduledResource) Wait(checkInterval time.Duration) error {
+	for {
+		status, err := sr.Resource.Status(nil)
+		if err != nil {
+			return err
+		}
 
-	if status == "ready" {
-		sr.Lock()
-		sr.Status = Ready
-		sr.Unlock()
-		return true, nil
+		if status == "ready" {
+			return nil
+		}
+
+		time.Sleep(checkInterval)
 	}
-	return false, nil
 }
 
 // IsBlocked checks whether a scheduled resource can be created. It checks status of resources
@@ -135,21 +136,23 @@ func (sr *ScheduledResource) IsBlocked() bool {
 			break
 		}
 
+		meta := sr.Meta[req.Key()]
+
 		req.RLock()
-		meta := req.Meta[sr.Key()]
-		if strings.HasPrefix(req.Resource.Key(), "service") {
+
+		// For services, we should ignore 'Ready' status and check it manually, providing meta,
+		// because meta could contain success_factor AND we should perform real status check
+		if len(meta) > 0 || strings.HasPrefix(req.Resource.Key(), "service") {
 			status, err := req.Resource.Status(meta)
-			if err != nil || status != "ready" {
+			_, onErrorSet := meta["on-error"]
+
+			if ((err != nil || status != "ready") && !onErrorSet) || (err == nil && onErrorSet) {
 				isBlocked = true
 			}
 		} else {
-			if meta == nil && req.Status != Ready {
+			// meta is empty so we newer get "onError" condiditon
+			if req.Status != Ready {
 				isBlocked = true
-			} else {
-				status, err := req.Resource.Status(meta)
-				if err != nil || status != "ready" {
-					isBlocked = true
-				}
 			}
 		}
 		req.RUnlock()
@@ -316,6 +319,20 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 			for attemptNo := 1; attemptNo <= attempts; attemptNo++ {
 				var err error
 
+				// NOTE(gluke77): We start goroutines for dependencies
+				// before the resource becomes ready, since dependencies
+				// could have metadata defining their own readiness condition
+				for _, req := range r.RequiredBy {
+					go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
+						for {
+							time.Sleep(CheckInterval)
+							if req.RequestCreation(toCreate) {
+								break
+							}
+						}
+					}(req, toCreate)
+				}
+
 				if attemptNo > 1 {
 					log.Printf("Trying to delete resource %s after previous unsuccessful attempt", r.Key())
 					err = r.Delete()
@@ -332,39 +349,25 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 					continue
 				}
 
-				// NOTE(gluke77): We start goroutines for dependencies
-				// before the resource becomes ready, since dependencies
-				// could have metadata defining their own readiness condition
-				for _, req := range r.RequiredBy {
-					go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
-						for {
-							time.Sleep(CheckInterval)
-							if req.RequestCreation(toCreate) {
-								break
-							}
-						}
-					}(req, toCreate)
-				}
-
 				log.Printf("Checking status for %s", r.Key())
 
-				for {
-					time.Sleep(CheckInterval)
-					var isFinished bool
-					isFinished, err = r.IsFinished()
-					if isFinished {
-						break
-					}
-				}
+				err = r.Wait(CheckInterval)
 
 				if err != nil {
 					log.Printf("Resource %s was not created: %v", r.Key(), err)
+					if attemptNo >= attempts {
+						r.Lock()
+						r.Status = Error
+						r.Unlock()
+					}
 					continue
-				} else {
-					log.Printf("Resource %s created", r.Key())
-					break
 				}
 
+				r.Lock()
+				r.Status = Ready
+				r.Unlock()
+				log.Printf("Resource %s created", r.Key())
+				break
 			}
 			finished <- r.Key()
 			// Release semaphor
