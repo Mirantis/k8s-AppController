@@ -38,8 +38,8 @@ clean:
 .PHONY: clean-k8s
 clean-k8s:
 	<$(K8S_SOURCE_LOCATION) xargs rm -rf
-	rm $(K8S_SOURCE_LOCATION)
-	rm $(K8S_CLUSTER_MARKER)
+	-rm $(K8S_SOURCE_LOCATION)
+	-rm $(K8S_CLUSTER_MARKER)
 
 $(K8S_SOURCE_LOCATION):
 	WORKING=$(WORKING) scripts/checkout_k8s.sh > $(K8S_SOURCE_LOCATION)
