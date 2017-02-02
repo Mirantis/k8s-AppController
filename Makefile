@@ -1,12 +1,12 @@
 
-TAG ?= mirantis/k8s-appcontroller
+IMAGE_REPO ?= mirantis/k8s-appcontroller
 WORKING ?= ~/testappcontroller
 K8S_SOURCE_LOCATION = .k8s-source
 K8S_CLUSTER_MARKER = .k8s-cluster
 
 .PHONY: docker
 docker: kubeac Makefile
-	docker build -t $(TAG) .
+	docker build -t $(IMAGE_REPO) .
 
 vendor: Makefile
 	glide install --strip-vendor
@@ -18,9 +18,12 @@ test: vendor glide.lock Makefile
 kubeac:
 	bash hooks/pre_build
 
+docker-publish:
+	IMAGE_REPO=$(IMAGE_REPO) ./scripts/docker_publish.sh
+
 .PHONY: img-in-dind
 img-in-dind: docker $(K8S_CLUSTER_MARKER)
-	IMAGE_REPO=mirantis/k8s-appcontroller bash scripts/import.sh
+	IMAGE_REPO=$(IMAGE_REPO) bash scripts/import.sh
 
 .PHONY: e2e
 e2e: $(K8S_CLUSTER_MARKER) img-in-dind
@@ -33,7 +36,7 @@ clean-all: clean clean-k8s
 .PHONY: clean
 clean:
 	rm -f kubeac
-	-docker rmi $(TAG)
+	-docker rmi $(IMAGE_REPO)
 
 .PHONY: clean-k8s
 clean-k8s:
