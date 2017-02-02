@@ -35,7 +35,8 @@ clean-all: clean clean-k8s
 
 .PHONY: clean
 clean:
-	rm -f kubeac
+	-rm -f kubeac
+	-rm e2e.test
 	-docker rmi $(IMAGE_REPO)
 
 .PHONY: clean-k8s
