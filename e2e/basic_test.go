@@ -97,7 +97,7 @@ var _ = Describe("Basic Suite", func() {
 			},
 		}
 		childPod := PodPause("child-pod")
-		framework.Connect(framework.Wrap(parentPod), framework.Wrap(childPod))
+		framework.Connect(framework.WrapAndCreate(parentPod), framework.WrapAndCreate(childPod))
 		framework.Run()
 		testutils.WaitForPod(clientset, namespace.Name, parentPod.Name, "")
 		time.Sleep(time.Second)
@@ -108,7 +108,7 @@ var _ = Describe("Basic Suite", func() {
 	It("Dependent Pod should be created if parent initialises correctly", func() {
 		parentPod := PodPause("parent-pod")
 		childPod := PodPause("child-pod")
-		framework.Connect(framework.Wrap(parentPod), framework.Wrap(childPod))
+		framework.Connect(framework.WrapAndCreate(parentPod), framework.WrapAndCreate(childPod))
 		framework.Run()
 		testutils.WaitForPod(clientset, namespace.Name, parentPod.Name, v1.PodRunning)
 		testutils.WaitForPod(clientset, namespace.Name, childPod.Name, v1.PodRunning)
@@ -131,14 +131,42 @@ var _ = Describe("Basic Suite", func() {
 			},
 		}
 		By("Creating two pods and one service")
-		svcWrapped := framework.Wrap(svc)
+		svcWrapped := framework.WrapAndCreate(svc)
 		By("Service depends on first pod")
-		framework.Connect(framework.Wrap(pod1), svcWrapped)
+		framework.Connect(framework.WrapAndCreate(pod1), svcWrapped)
 		By("Second pod depends on service")
-		framework.Connect(svcWrapped, framework.Wrap(pod2))
+		framework.Connect(svcWrapped, framework.WrapAndCreate(pod2))
 		framework.Run()
 		By("Verifying that second pod will enter running state")
 		testutils.WaitForPod(clientset, namespace.Name, pod2.Name, v1.PodRunning)
+	})
+
+	Describe("Failure handling - subgraph", func() {
+		var parentPod *v1.Pod
+		var childPod *v1.Pod
+
+		BeforeEach(func() {
+			parentPod = PodPause("parent-pod")
+			childPod = PodPause("child-pod")
+		})
+
+		Context("If parent succeeds", func() {
+			It("on-error dependency must not be followed", func() {
+				framework.ConnectWithMeta(framework.WrapAndCreate(parentPod), framework.WrapAndCreate(childPod), map[string]string{"on-error": "true"})
+				framework.Run()
+				testutils.WaitForPod(clientset, namespace.Name, parentPod.Name, v1.PodRunning)
+				testutils.WaitForPodNotToBeCreated(clientset, namespace.Name, childPod.Name)
+			})
+		})
+
+		Context("If parent fails", func() {
+			It("On-error dependency must be followed if parent fails", func() {
+				framework.ConnectWithMeta(framework.Wrap(parentPod), framework.WrapAndCreate(childPod), map[string]string{"on-error": "true"})
+				framework.Run()
+				testutils.WaitForPodNotToBeCreated(clientset, namespace.Name, parentPod.Name)
+				testutils.WaitForPod(clientset, namespace.Name, childPod.Name, v1.PodRunning)
+			})
+		})
 	})
 })
 
@@ -169,12 +197,17 @@ func (g GraphFramework) Wrap(obj runtime.Object) *client.ResourceDefinition {
 	default:
 		panic("Unknown type provided")
 	}
+	return resdef
+}
+
+func (g GraphFramework) WrapAndCreate(obj runtime.Object) *client.ResourceDefinition {
+	resdef := g.Wrap(obj)
 	_, err := g.client.ResourceDefinitions().Create(resdef)
 	Expect(err).NotTo(HaveOccurred())
 	return resdef
 }
 
-func (g GraphFramework) Connect(first, second *client.ResourceDefinition) {
+func (g GraphFramework) ConnectWithMeta(first, second *client.ResourceDefinition, meta map[string]string) {
 	dep := &client.Dependency{
 		ObjectMeta: api.ObjectMeta{
 			GenerateName: "dep-",
@@ -184,10 +217,14 @@ func (g GraphFramework) Connect(first, second *client.ResourceDefinition) {
 		},
 		Parent: getKind(first) + "/" + first.Name,
 		Child:  getKind(second) + "/" + second.Name,
-		Meta:   map[string]string{},
+		Meta:   meta,
 	}
 	_, err := g.client.Dependencies().Create(dep)
 	Expect(err).NotTo(HaveOccurred())
+}
+
+func (g GraphFramework) Connect(first, second *client.ResourceDefinition) {
+	g.ConnectWithMeta(first, second, map[string]string{})
 }
 
 func (g GraphFramework) Run() {
@@ -268,4 +305,8 @@ func PodPause(name string) *v1.Pod {
 			},
 		},
 	}
+}
+
+func FailedPod(name string) *v1.Pod {
+	return nil
 }

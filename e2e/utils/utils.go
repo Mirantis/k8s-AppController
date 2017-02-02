@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -32,6 +33,11 @@ import (
 )
 
 var url string
+
+const (
+	Duration        = 120 * time.Second
+	PollingInterval = 5 * time.Second
+)
 
 func init() {
 	flag.StringVar(&url, "cluster-url", "http://127.0.0.1:8080", "apiserver address to use with restclient")
@@ -82,8 +88,18 @@ func WaitForPod(clientset *kubernetes.Clientset, namespace string, name string, 
 			return fmt.Errorf("pod %v is not %v phase: %v", podUpdated.Name, phase, podUpdated.Status.Phase)
 		}
 		return nil
-	}, 120*time.Second, 5*time.Second).Should(BeNil())
+	}, Duration, PollingInterval).Should(BeNil())
 	return podUpdated
+}
+
+func WaitForPodNotToBeCreated(clientset *kubernetes.Clientset, namespace string, name string) {
+	defer GinkgoRecover()
+	Consistently(func() int32 {
+		_, err := clientset.Core().Pods(namespace).Get(name)
+		statusError, ok := err.(*errors.StatusError)
+		Expect(ok).To(BeTrue())
+		return statusError.ErrStatus.Code
+	}, Duration, PollingInterval).Should(BeNumerically("==", 404))
 }
 
 func DumpLogs(clientset *kubernetes.Clientset, pods ...v1.Pod) {
