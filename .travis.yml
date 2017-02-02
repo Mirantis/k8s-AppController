@@ -6,12 +6,12 @@ go:
   - 1.6
   - 1.7
 env:
-  - WORKING=$HOME/kube1.5 K8S_TAG=v1.5.2
+  - WORKING=$HOME/kube1.5 K8S_TAG=v1.5.2 PUBLISH=1
   - WORKING=$HOME/kube1.4 K8S_TAG=v1.4.8
 matrix:
   exclude:
     - go: 1.6
-      env: WORKING=$HOME/kube1.5 K8S_TAG=v1.5.2
+      env: WORKING=$HOME/kube1.5 K8S_TAG=v1.5.2 PUBLISH=1
     - go: 1.7
       env: WORKING=$HOME/kube1.4 K8S_TAG=v1.4.8
 cache:
@@ -22,3 +22,5 @@ script:
   - go get github.com/Masterminds/glide
   - make test
   - make e2e
+after_success:
+  - make docker-publish
