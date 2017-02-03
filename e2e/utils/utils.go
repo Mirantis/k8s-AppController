@@ -18,9 +18,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"time"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -82,8 +82,17 @@ func WaitForPod(clientset *kubernetes.Clientset, namespace string, name string, 
 			return fmt.Errorf("pod %v is not %v phase: %v", podUpdated.Name, phase, podUpdated.Status.Phase)
 		}
 		return nil
-	}, 120*time.Second, 5*time.Second).Should(BeNil())
+	}).Should(BeNil())
 	return podUpdated
+}
+
+func WaitForPodNotToBeCreated(clientset *kubernetes.Clientset, namespace string, name string) {
+	defer GinkgoRecover()
+	Consistently(func() bool {
+		_, err := clientset.Core().Pods(namespace).Get(name)
+		Expect(err).ToNot(BeNil())
+		return errors.IsNotFound(err)
+	}).Should(BeTrue())
 }
 
 func DumpLogs(clientset *kubernetes.Clientset, pods ...v1.Pod) {
