@@ -76,6 +76,7 @@ func init() {
 type Interface interface {
 	ConfigMaps() corev1.ConfigMapInterface
 	Secrets() corev1.SecretInterface
+	ServiceAccounts() corev1.ServiceAccountInterface
 	Pods() corev1.PodInterface
 	Jobs() batchv1.JobInterface
 	Services() corev1.ServiceInterface
@@ -136,6 +137,11 @@ func (c Client) Jobs() batchv1.JobInterface {
 // Services returns K8s Service client for ac namespace
 func (c Client) Services() corev1.ServiceInterface {
 	return c.Clientset.Core().Services(c.Namespace)
+}
+
+// ServiceAccounts returns K8s ServiceAccount client for ac namespace
+func (c Client) ServiceAccounts() corev1.ServiceAccountInterface {
+	return c.Clientset.Core().ServiceAccounts(c.Namespace)
 }
 
 // ReplicaSets returns K8s ReplicaSet client for ac namespace

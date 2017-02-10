@@ -63,6 +63,7 @@ var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
 	"secret":                Secret{},
 	"deployment":            Deployment{},
 	"persistentvolumeclaim": PersistentVolumeClaim{},
+	"serviceaccount":        ServiceAccount{},
 }
 
 // Kinds is slice of keys from KindToResourceTemplate

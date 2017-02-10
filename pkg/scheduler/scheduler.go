@@ -294,6 +294,8 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 			resource = resources.NewDeployment(r.Deployment, c.Deployments(), r.Meta)
 		} else if r.PersistentVolumeClaim != nil {
 			resource = resources.NewPersistentVolumeClaim(r.PersistentVolumeClaim, c.PersistentVolumeClaims(), r.Meta)
+		} else if r.ServiceAccount != nil {
+			resource = resources.NewServiceAccount(r.ServiceAccount, c.ServiceAccounts(), r.Meta)
 		} else {
 			return nil, fmt.Errorf("Found unsupported resource %v", r)
 		}

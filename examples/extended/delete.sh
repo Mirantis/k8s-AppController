@@ -29,6 +29,8 @@ cat secret.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap secret | $
 
 cat service.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
 
+cat serviceaccount.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
+
 cat statefulset.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
 
 cat configmap1.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -

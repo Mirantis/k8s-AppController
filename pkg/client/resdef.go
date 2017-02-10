@@ -44,6 +44,7 @@ type ResourceDefinition struct {
 	Service               *v1.Service               `json:"service,omitempty"`
 	ReplicaSet            *v1beta1.ReplicaSet       `json:"replicaset,omitempty"`
 	StatefulSet           *appsbeta1.StatefulSet    `json:"statefulset,omitempty"`
+	ServiceAccount        *v1.ServiceAccount        `json:"statefulset,omitempty"`
 	PetSet                *v1alpha1.PetSet          `json:"petset,omitempty"`
 	DaemonSet             *v1beta1.DaemonSet        `json:"daemonset,omitempty"`
 	ConfigMap             *v1.ConfigMap             `json:"configmap,omitempty"`

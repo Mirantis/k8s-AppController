@@ -60,6 +60,8 @@ func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionLis
 			rd.Deployment = MakeDeployment(n)
 		case "persistentvolumeclaim":
 			rd.PersistentVolumeClaim = MakePersistentVolumeClaim(n)
+		case "serviceaccount":
+			rd.ServiceAccount = MakeServiceAccount(n)
 		default:
 			log.Fatal("Unrecognized resource type for name ", objectType)
 		}
