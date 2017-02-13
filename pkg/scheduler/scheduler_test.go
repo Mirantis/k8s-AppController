@@ -320,7 +320,8 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		"configmap/cfg-1",
 		"secret/secret-1",
 		"deployment/ready-7",
-		"persistentvolumeclaim/pvc-1")
+		"persistentvolumeclaim/pvc-1",
+		"serviceaccount/sa-1")
 
 	c.Deps = mocks.NewDependencyClient(
 		mocks.Dependency{Parent: "pod/ready-1", Child: "job/ready-2"},
@@ -331,14 +332,15 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		mocks.Dependency{Parent: "job/ready-2", Child: "configmap/cfg-1"},
 		mocks.Dependency{Parent: "job/ready-2", Child: "secret/secret-1"},
 		mocks.Dependency{Parent: "statefulset/ready-5", Child: "deployment/ready-7"},
-		mocks.Dependency{Parent: "deployment/ready-7", Child: "persistentvolumeclaim/pvc-1"})
+		mocks.Dependency{Parent: "deployment/ready-7", Child: "persistentvolumeclaim/pvc-1"},
+		mocks.Dependency{Parent: "pod/ready-1", Child: "serviceaccount/sa-1"})
 
 	depGraph, err := BuildDependencyGraph(c, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expectedLenght := 10
+	expectedLenght := 11
 	if len(depGraph) != expectedLenght {
 		ks := make([]string, 0, len(depGraph))
 		for key := range depGraph {
