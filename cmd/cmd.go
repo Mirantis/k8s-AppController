@@ -37,6 +37,6 @@ func Init() {
 	var format string
 	Wrap.Flags().StringVarP(&format, "format", "f", "yaml", "file format")
 
-	RootCmd = &cobra.Command{Use: "ac"}
+	RootCmd = &cobra.Command{Use: "kubeac"}
 	RootCmd.AddCommand(Bootstrap, run, Wrap, status)
 }
