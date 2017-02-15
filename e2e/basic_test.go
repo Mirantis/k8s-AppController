@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"fmt"
 	"os/exec"
 	"time"
 
@@ -173,6 +174,25 @@ var _ = Describe("Basic Suite", func() {
 			})
 		})
 	})
+
+	Describe("Failure handling - timeout", func() {
+		var parentPod *v1.Pod
+		var childPod *v1.Pod
+
+		BeforeEach(func() {
+			parentPod = DelayedPod("parent-pod", 15)
+			childPod = PodPause("child-pod")
+		})
+
+		Context("If parent timed out", func() {
+			It("on-error dependency must be followed", func() {
+				parentResDef := framework.WrapWithMetaAndCreate(parentPod, map[string]interface{}{"timeout": 5})
+				framework.ConnectWithMeta(parentResDef, framework.WrapAndCreate(childPod), map[string]string{"on-error": "true"})
+				framework.Run()
+				testutils.WaitForPod(clientset, namespace.Name, childPod.Name, v1.PodRunning)
+			})
+		})
+	})
 })
 
 func getKind(resdef *client.ResourceDefinition) string {
@@ -205,8 +225,21 @@ func (g GraphFramework) Wrap(obj runtime.Object) *client.ResourceDefinition {
 	return resdef
 }
 
+func (g GraphFramework) WrapWithMeta(obj runtime.Object, meta map[string]interface{}) *client.ResourceDefinition {
+	resdef := g.Wrap(obj)
+	resdef.Meta = meta
+	return resdef
+}
+
 func (g GraphFramework) WrapAndCreate(obj runtime.Object) *client.ResourceDefinition {
 	resdef := g.Wrap(obj)
+	_, err := g.client.ResourceDefinitions().Create(resdef)
+	Expect(err).NotTo(HaveOccurred())
+	return resdef
+}
+
+func (g GraphFramework) WrapWithMetaAndCreate(obj runtime.Object, meta map[string]interface{}) *client.ResourceDefinition {
+	resdef := g.WrapWithMeta(obj, meta)
 	_, err := g.client.ResourceDefinitions().Create(resdef)
 	Expect(err).NotTo(HaveOccurred())
 	return resdef
@@ -306,6 +339,32 @@ func PodPause(name string) *v1.Pod {
 				{
 					Name:  "sleeper",
 					Image: "kubernetes/pause",
+				},
+			},
+		},
+	}
+}
+
+func DelayedPod(name string, delay int) *v1.Pod {
+	cmdArg := fmt.Sprintf("sleep %d; echo ok > /tmp/health; sleep 60", delay)
+	return &v1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:    "sleeper",
+					Image:   "gcr.io/google_containers/busybox",
+					Command: []string{"/bin/sh"},
+					Args:    []string{"-c", cmdArg},
+					ReadinessProbe: &v1.Probe{
+						Handler: v1.Handler{
+							Exec: &v1.ExecAction{
+								Command: []string{"/bin/cat", "/tmp/health"},
+							},
+						},
+					},
 				},
 			},
 		},

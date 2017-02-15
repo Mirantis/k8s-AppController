@@ -1,0 +1,8 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: ce1b11dc-2850-1dad-a7dd-302038af20af
+meta:
+  on-error: "true"
+parent: pod/timed-out-pod
+child: pod/eventually-alive-pod2
