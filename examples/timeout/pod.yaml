@@ -1,0 +1,24 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Definition
+metadata:
+  name: pod-eventually-alive-pod
+meta:
+  timeout: 60
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: eventually-alive-pod
+  spec:
+    containers:
+    - command: ["/bin/sh"]
+      args:
+      - -c
+      - sleep 30; echo ok > /tmp/health; sleep 60
+      image: gcr.io/google_containers/busybox
+      readinessProbe:
+        exec:
+          command:
+          - /bin/cat
+          - /tmp/health
+      name: test-container

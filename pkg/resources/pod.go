@@ -92,7 +92,6 @@ func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
 
 // New returns new Pod based on resource definition
 func (p Pod) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	log.Println("Creating a pod, meta", def.Meta)
 	return NewPod(def.Pod, c.Pods(), def.Meta)
 }
 
