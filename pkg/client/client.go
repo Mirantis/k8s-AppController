@@ -192,11 +192,13 @@ func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
 }
 
 func newForConfig(c rest.Config) (Interface, error) {
-	deps, err := newDependencies(c)
+	namespace := getNamespace()
+
+	deps, err := newDependencies(c, namespace)
 	if err != nil {
 		return nil, err
 	}
-	resdefs, err := newResourceDefinitions(c)
+	resdefs, err := newResourceDefinitions(c, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -212,12 +214,13 @@ func newForConfig(c rest.Config) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &Client{
 		Clientset:   cl,
 		AlphaApps:   apps,
 		Deps:        deps,
 		ResDefs:     resdefs,
-		Namespace:   getNamespace(),
+		Namespace:   namespace,
 		APIVersions: versions,
 	}, nil
 }
@@ -254,6 +257,7 @@ func New(url string) (Interface, error) {
 	return newForConfig(*rc)
 }
 
+// getNamespace returns the namespace the AC pod lives in. KUBERNETES_AC_POD_NAMESPACE should be populated by metadata.namespace in AC pod definition
 func getNamespace() string {
 	ns := os.Getenv("KUBERNETES_AC_POD_NAMESPACE")
 	if ns == "" {

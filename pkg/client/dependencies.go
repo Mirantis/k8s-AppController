@@ -50,21 +50,22 @@ type DependenciesInterface interface {
 }
 
 type dependencies struct {
-	rc *rest.RESTClient
+	rc        *rest.RESTClient
+	namespace string
 }
 
-func newDependencies(c rest.Config) (*dependencies, error) {
+func newDependencies(c rest.Config, ns string) (*dependencies, error) {
 	rc, err := thirdPartyResourceRESTClient(&c)
 	if err != nil {
 		return nil, err
 	}
 
-	return &dependencies{rc}, nil
+	return &dependencies{rc, ns}, nil
 }
 
 func (c dependencies) List(opts api.ListOptions) (*DependencyList, error) {
 	resp, err := c.rc.Get().
-		Namespace("default").
+		Namespace(c.namespace).
 		Resource("dependencies").
 		LabelsSelectorParam(opts.LabelSelector).
 		DoRaw()
@@ -85,7 +86,7 @@ func (c dependencies) List(opts api.ListOptions) (*DependencyList, error) {
 func (c dependencies) Create(d *Dependency) (result *Dependency, err error) {
 	result = &Dependency{}
 	err = c.rc.Post().
-		Namespace("default").
+		Namespace(c.namespace).
 		Resource("Dependencies").
 		Body(d).
 		Do().
@@ -95,7 +96,7 @@ func (c dependencies) Create(d *Dependency) (result *Dependency, err error) {
 
 func (c *dependencies) Delete(name string, opts *api.DeleteOptions) error {
 	return c.rc.Delete().
-		Namespace("default").
+		Namespace(c.namespace).
 		Resource("dependencies").
 		Name(name).
 		Body(opts).
