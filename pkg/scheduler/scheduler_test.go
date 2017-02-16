@@ -15,6 +15,7 @@
 package scheduler
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -96,7 +97,6 @@ func TestBuildDependencyGraph(t *testing.T) {
 func TestIsBlocked(t *testing.T) {
 	one := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
-		Status:   Init,
 		Meta:     map[string]map[string]string{},
 	}
 
@@ -106,7 +106,6 @@ func TestIsBlocked(t *testing.T) {
 
 	two := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
-		Status:   Ready,
 		Meta:     map[string]map[string]string{},
 	}
 
@@ -116,17 +115,49 @@ func TestIsBlocked(t *testing.T) {
 		t.Errorf("Scheduled resource is blocked but it must not")
 	}
 
+	two.Error = errors.New("non-nil error")
+	if !one.IsBlocked() {
+		t.Errorf("Scheduled resource is not blocked but it must be")
+	}
+
 	three := &ScheduledResource{
 		Resource: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
-		Status:   Ready,
 		Meta:     map[string]map[string]string{},
 	}
 
+	two.Error = nil
 	one.Requires = append(one.Requires, three)
-	one.Meta["fake3"] = map[string]string{"non-empty-meta": "true"}
 
 	if !one.IsBlocked() {
 		t.Errorf("Scheduled resource is not blocked but it must be")
+	}
+}
+
+func TestIsBlockedWithOnErrorDependency(t *testing.T) {
+	one := &ScheduledResource{
+		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
+		Meta:     map[string]map[string]string{},
+	}
+
+	if one.IsBlocked() {
+		t.Errorf("Scheduled resource is blocked but it must be not")
+	}
+
+	two := &ScheduledResource{
+		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
+		Meta:     map[string]map[string]string{},
+	}
+
+	one.Requires = []*ScheduledResource{two}
+	one.Meta["fake2"] = map[string]string{"on-error": "true"}
+
+	if !one.IsBlocked() {
+		t.Errorf("Scheduled resource is not blocked but it must be")
+	}
+
+	two.Error = errors.New("non-nil error")
+	if one.IsBlocked() {
+		t.Errorf("Scheduled resource is blocked but it must be not")
 	}
 }
 
