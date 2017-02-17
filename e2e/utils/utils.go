@@ -55,8 +55,8 @@ func KubeClient() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func GetAcClient() (client.Interface, error) {
-	client, err := client.New(url)
+func GetAcClient(namespace string) (client.Interface, error) {
+	client, err := client.New(url, &namespace)
 	return client, err
 }
 

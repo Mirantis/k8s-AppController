@@ -191,8 +191,13 @@ func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
 	return false
 }
 
-func newForConfig(c rest.Config) (Interface, error) {
-	namespace := getNamespace()
+func newForConfig(c rest.Config, ns *string) (Interface, error) {
+	var namespace string
+	if ns == nil {
+		namespace = getNamespace()
+	} else {
+		namespace = *ns
+	}
 
 	deps, err := newDependencies(c, namespace)
 	if err != nil {
@@ -249,12 +254,12 @@ func GetConfig(url string) (*rest.Config, error) {
 }
 
 // New returns client k8s api server under given url
-func New(url string) (Interface, error) {
+func New(url string, namespace *string) (Interface, error) {
 	rc, err := GetConfig(url)
 	if err != nil {
 		return nil, err
 	}
-	return newForConfig(*rc)
+	return newForConfig(*rc, namespace)
 }
 
 // getNamespace returns the namespace the AC pod lives in. KUBERNETES_AC_POD_NAMESPACE should be populated by metadata.namespace in AC pod definition

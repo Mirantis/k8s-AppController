@@ -51,7 +51,7 @@ func deploy(cmd *cobra.Command, args []string) {
 		url = os.Getenv("KUBERNETES_CLUSTER_URL")
 	}
 
-	c, err := client.New(url)
+	c, err := client.New(url, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

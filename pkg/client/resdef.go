@@ -112,11 +112,10 @@ func (c *resourceDefinitions) List(opts api.ListOptions) (*ResourceDefinitionLis
 
 func (c *resourceDefinitions) Create(rd *ResourceDefinition) (result *ResourceDefinition, err error) {
 	result = &ResourceDefinition{}
-	req := c.rc.Post().
-		Namespace(c.namespace).
+	err = c.rc.Post().
 		Resource("definitions").
-		Body(rd)
-	err = req.
+		Namespace(c.namespace).
+		Body(rd).
 		Do().
 		Into(result)
 	return
