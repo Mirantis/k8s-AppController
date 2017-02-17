@@ -86,8 +86,8 @@ func (c dependencies) List(opts api.ListOptions) (*DependencyList, error) {
 func (c dependencies) Create(d *Dependency) (result *Dependency, err error) {
 	result = &Dependency{}
 	err = c.rc.Post().
-		Namespace(c.namespace).
 		Resource("Dependencies").
+		Namespace(c.namespace).
 		Body(d).
 		Do().
 		Into(result)
