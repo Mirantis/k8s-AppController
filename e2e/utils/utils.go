@@ -55,8 +55,9 @@ func KubeClient() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func GetAcClient() (client.Interface, error) {
-	client, err := client.New(url)
+// GetAcClient returns client for given namespace which will be used in e2e tests
+func GetAcClient(namespace string) (client.Interface, error) {
+	client, err := client.NewForNamespace(url, namespace)
 	return client, err
 }
 

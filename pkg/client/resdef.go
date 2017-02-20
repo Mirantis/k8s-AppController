@@ -69,7 +69,8 @@ type ResourceDefinitionsInterface interface {
 }
 
 type resourceDefinitions struct {
-	rc *rest.RESTClient
+	rc        *rest.RESTClient
+	namespace string
 }
 
 func (r *ResourceDefinition) GetObjectKind() unversioned.ObjectKind {
@@ -80,18 +81,18 @@ func (r *ResourceDefinition) GetObjectMeta() meta.Object {
 	return &r.ObjectMeta
 }
 
-func newResourceDefinitions(c rest.Config) (*resourceDefinitions, error) {
+func newResourceDefinitions(c rest.Config, ns string) (*resourceDefinitions, error) {
 	rc, err := thirdPartyResourceRESTClient(&c)
 	if err != nil {
 		return nil, err
 	}
 
-	return &resourceDefinitions{rc}, nil
+	return &resourceDefinitions{rc, ns}, nil
 }
 
 func (c *resourceDefinitions) List(opts api.ListOptions) (*ResourceDefinitionList, error) {
 	resp, err := c.rc.Get().
-		Namespace("default").
+		Namespace(c.namespace).
 		Resource("definitions").
 		LabelsSelectorParam(opts.LabelSelector).
 		DoRaw()
@@ -111,11 +112,10 @@ func (c *resourceDefinitions) List(opts api.ListOptions) (*ResourceDefinitionLis
 
 func (c *resourceDefinitions) Create(rd *ResourceDefinition) (result *ResourceDefinition, err error) {
 	result = &ResourceDefinition{}
-	req := c.rc.Post().
-		Namespace("default").
+	err = c.rc.Post().
 		Resource("definitions").
-		Body(rd)
-	err = req.
+		Namespace(c.namespace).
+		Body(rd).
 		Do().
 		Into(result)
 	return
@@ -123,7 +123,7 @@ func (c *resourceDefinitions) Create(rd *ResourceDefinition) (result *ResourceDe
 
 func (c *resourceDefinitions) Delete(name string, opts *api.DeleteOptions) error {
 	return c.rc.Delete().
-		Namespace("default").
+		Namespace(c.namespace).
 		Resource("definitions").
 		Name(name).
 		Body(opts).

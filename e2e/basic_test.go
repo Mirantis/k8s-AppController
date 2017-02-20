@@ -54,7 +54,7 @@ var _ = Describe("Basic Suite", func() {
 		}
 		namespace, err = clientset.Namespaces().Create(namespaceObj)
 		Expect(err).NotTo(HaveOccurred())
-		c, err = testutils.GetAcClient()
+		c, err = testutils.GetAcClient(namespace.Name)
 		Expect(err).NotTo(HaveOccurred())
 		framework = GraphFramework{
 			client:    c,
