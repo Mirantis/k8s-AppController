@@ -26,6 +26,8 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
+const SuccessFactorKey = "success_factor"
+
 type ReplicaSet struct {
 	Base
 	ReplicaSet *extbeta1.ReplicaSet
@@ -38,7 +40,7 @@ func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[strin
 		return "error", err
 	}
 
-	successFactor, err := getPercentage("success_factor", meta)
+	successFactor, err := getPercentage(SuccessFactorKey, meta)
 	if err != nil {
 		return "error", err
 	}
@@ -55,7 +57,7 @@ func replicaSetReport(r v1beta1.ReplicaSetInterface, name string, meta map[strin
 	if err != nil {
 		return report.ErrorReport(name, err)
 	}
-	successFactor, err := getPercentage("success_factor", meta)
+	successFactor, err := getPercentage(SuccessFactorKey, meta)
 	if err != nil {
 		return report.ErrorReport(name, err)
 	}
@@ -132,6 +134,12 @@ func (r ReplicaSet) GetDependencyReport(meta map[string]string) interfaces.Depen
 	return replicaSetReport(r.Client, r.ReplicaSet.Name, meta)
 }
 
+// StatusIsCacheable returns false if meta contains SuccessFactorKey
+func (r ReplicaSet) StatusIsCacheable(meta map[string]string) bool {
+	_, ok := meta[SuccessFactorKey]
+	return !ok
+}
+
 func NewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) ReplicaSet {
 	return ReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
 }
@@ -166,4 +174,10 @@ func NewExistingReplicaSet(name string, client v1beta1.ReplicaSetInterface) Exis
 // GetDependencyReport returns a DependencyReport for this replicaset
 func (r ExistingReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
 	return replicaSetReport(r.Client, r.Name, meta)
+}
+
+// StatusIsCacheable returns false if meta contains SuccessFactorKey
+func (r ExistingReplicaSet) StatusIsCacheable(meta map[string]string) bool {
+	_, ok := meta[SuccessFactorKey]
+	return !ok
 }

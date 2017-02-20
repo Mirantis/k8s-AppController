@@ -80,6 +80,7 @@ type ScheduledResource struct {
 	RequiredBy []*ScheduledResource
 	Started    bool
 	Error      error
+	status     string
 	interfaces.Resource
 	// parentKey -> dependencyMetadata
 	Meta map[string]map[string]string
@@ -127,6 +128,22 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration) error {
 	}
 }
 
+// Status either returns cached copy of resource's status or retrieves it via Resource.Status
+// depending on presense of cached copy and resource's settings
+func (sr *ScheduledResource) Status(meta map[string]string) (string, error) {
+	if (sr.status == "ready" || sr.Error != nil) && sr.Resource.StatusIsCacheable(meta) {
+		return sr.status, sr.Error
+	}
+	sr.Lock()
+	defer sr.Unlock()
+	status, err := sr.Resource.Status(meta)
+	sr.Error = err
+	if sr.Resource.StatusIsCacheable(meta) {
+		sr.status = status
+	}
+	return status, err
+}
+
 // IsBlocked checks whether a scheduled resource can be created. It checks status of resources
 // it depends on, via API
 func (sr *ScheduledResource) IsBlocked() bool {
@@ -134,25 +151,25 @@ func (sr *ScheduledResource) IsBlocked() bool {
 		meta := sr.Meta[req.Key()]
 		_, onErrorSet := meta["on-error"]
 
-		if req.Error != nil {
-			if !onErrorSet {
-				return true
-			}
-		} else {
-			req.RLock()
-			status, err := req.Status(meta)
-			req.RUnlock()
+		status, err := req.Status(meta)
 
-			if err != nil && !onErrorSet {
-				return true
-			} else if status == "ready" && onErrorSet {
-				return true
-			} else if err == nil && status != "ready" {
-				return true
-			}
+		if err != nil && !onErrorSet {
+			return true
+		} else if status == "ready" && onErrorSet {
+			return true
+		} else if err == nil && status != "ready" {
+			return true
 		}
 	}
 	return false
+}
+
+// ResetStatus resets cached status of scheduled resource
+func (sr *ScheduledResource) ResetStatus() {
+	sr.Lock()
+	defer sr.Unlock()
+	sr.Error = nil
+	sr.status = ""
 }
 
 // DependencyGraph is a full deployment graph as a mapping from job keys to
@@ -314,6 +331,9 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 			attempts := resources.GetIntMeta(r.Resource, "retry", 1)
 
 			for attemptNo := 1; attemptNo <= attempts; attemptNo++ {
+
+				r.ResetStatus()
+
 				var err error
 
 				// NOTE(gluke77): We start goroutines for dependencies
@@ -358,11 +378,6 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 				}
 
 				log.Printf("Resource %s was not created: %v", r.Key(), err)
-				if attemptNo >= attempts {
-					r.Lock()
-					r.Error = err
-					r.Unlock()
-				}
 			}
 			finished <- r.Key()
 			// Release semaphor
@@ -487,7 +502,7 @@ func (sr *ScheduledResource) GetNodeReport(name string) report.NodeReport {
 	var ready bool
 	isBlocked := false
 	dependencies := make([]interfaces.DependencyReport, 0, len(sr.Requires))
-	status, err := sr.Resource.Status(nil)
+	status, err := sr.Status(nil)
 	if err != nil {
 		ready = false
 	} else {

@@ -144,7 +144,7 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	}
 
 	two := &ScheduledResource{
-		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
+		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "not ready")},
 		Meta:     map[string]map[string]string{},
 	}
 
