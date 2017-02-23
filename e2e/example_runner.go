@@ -114,7 +114,7 @@ func (f *ExamplesFramework) VerifyStatus() {
 			utils.Logf("STATUS: %s\n", status)
 			return status == scheduler.Finished
 		},
-		120*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(report.AsText(0), "\n"))
+		240*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(report.AsText(0), "\n"))
 }
 
 func (f *ExamplesFramework) CreateRunAndVerify(exampleName string) {
