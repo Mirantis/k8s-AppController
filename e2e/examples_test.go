@@ -25,4 +25,8 @@ var _ = Describe("Examples Suite", func() {
 	It("Example 'simple' should finish", func() {
 		framework.CreateRunAndVerify("simple")
 	})
+
+	It("Example 'services' should finish", func() {
+		framework.CreateRunAndVerify("services")
+	})
 })

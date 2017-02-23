@@ -12,5 +12,5 @@ spec:
       containers:
       - name: test-container
         image: gcr.io/google_containers/busybox
-        command: [ "/bin/sh", "-c", "sleep 360; env"]
+        command: [ "/bin/sh", "-c", "sleep 10; env"]
       restartPolicy: Never
