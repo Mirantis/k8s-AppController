@@ -1,5 +1,5 @@
 hash: 2f834ec155cd18ba87aa9e1d956eddb68e27fed79ce906a755642f746da88757
-updated: 2017-01-12T12:05:48.238613214+01:00
+updated: 2017-02-21T17:08:06.756552076+02:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -37,7 +37,7 @@ imports:
   - log
   - swagger
 - name: github.com/fatih/color
-  version: 34e4ee095d12986a2cef5ddb9aeb3b8cfcfea17c
+  version: 7824417a424b65227be8ac9b14d545a7f3e6c3f0
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
@@ -173,6 +173,10 @@ imports:
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+- name: k8s.io/apimachinery
+  version: 0f8a3af747f81547246d79ca00c20af330868fa6
+  subpackages:
+  - pkg/util/yaml
 - name: k8s.io/client-go
   version: d81cb85237595f720d83eda492bae8f6162fc5c0
   subpackages:

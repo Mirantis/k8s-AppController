@@ -28,12 +28,30 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"strings"
+
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 )
+
+type TContext struct {
+	Examples string
+	Version  string
+}
+
+func SkipIf14() {
+	// TODO semver compare
+	if strings.Contains(TestContext.Version, "1.4") {
+		Skip("This test is disabled on kubernetes of version 1.4")
+	}
+}
+
+var TestContext = TContext{}
 
 var url string
 
 func init() {
+	flag.StringVar(&TestContext.Examples, "examples-directory", "examples", "Provide path to directory with examples")
+	flag.StringVar(&TestContext.Version, "k8s-version", "", "Specify kubernetes version that is used for e2e tests")
 	flag.StringVar(&url, "cluster-url", "http://127.0.0.1:8080", "apiserver address to use with restclient")
 }
 
@@ -96,13 +114,13 @@ func WaitForPodNotToBeCreated(clientset *kubernetes.Clientset, namespace string,
 	}).Should(BeTrue())
 }
 
-func DumpLogs(clientset *kubernetes.Clientset, pods ...v1.Pod) {
+func DumpLogs(clientset *kubernetes.Clientset, pods ...*v1.Pod) {
 	for _, pod := range pods {
 		dumpLogs(clientset, pod)
 	}
 }
 
-func dumpLogs(clientset *kubernetes.Clientset, pod v1.Pod) {
+func dumpLogs(clientset *kubernetes.Clientset, pod *v1.Pod) {
 	req := clientset.Core().Pods(pod.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{})
 	readCloser, err := req.Stream()
 	Expect(err).NotTo(HaveOccurred())
