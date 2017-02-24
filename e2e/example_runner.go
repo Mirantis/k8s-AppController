@@ -101,11 +101,13 @@ func (f *ExamplesFramework) handleListCreation(ustList *runtime.UnstructuredList
 }
 
 func (f *ExamplesFramework) VerifyStatus() {
-	depGraph, err := scheduler.BuildDependencyGraph(f.Client, nil)
-	Expect(err).NotTo(HaveOccurred())
 	var report report.DeploymentReport
 	Eventually(
 		func() bool {
+			depGraph, err := scheduler.BuildDependencyGraph(f.Client, nil)
+			if err != nil {
+				return false
+			}
 			var status scheduler.DeploymentStatus
 			status, report = depGraph.GetStatus()
 			utils.Logf("STATUS: %s\n", status)
