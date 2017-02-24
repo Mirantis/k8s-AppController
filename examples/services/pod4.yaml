@@ -1,4 +1,4 @@
-yapiVersion: v1
+apiVersion: v1
 kind: Pod
 metadata:
   name: eventually-alive-pod4
