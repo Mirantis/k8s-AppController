@@ -8,7 +8,7 @@ spec:
   template:
     metadata:
       labels:
-        app: nginx
+        app: nginx-petset
       annotations:
         pod.alpha.kubernetes.io/initialized: "true"
     spec:
@@ -17,7 +17,7 @@ spec:
       - command: ["/bin/sh"]
         args:
         - -c
-        - sleep 30; echo ok > /tmp/health; sleep 600
+        - sleep 3; echo ok > /tmp/health; sleep 600
         image: gcr.io/google_containers/busybox
         readinessProbe:
           exec:
@@ -28,7 +28,7 @@ spec:
       - command: ["/bin/sh"]
         args:
         - -c
-        - sleep 30; echo ok > /tmp/health; sleep 600
+        - sleep 3; echo ok > /tmp/health; sleep 600
         image: gcr.io/google_containers/busybox
         readinessProbe:
           exec:
