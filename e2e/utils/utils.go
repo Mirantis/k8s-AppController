@@ -114,13 +114,13 @@ func WaitForPodNotToBeCreated(clientset *kubernetes.Clientset, namespace string,
 	}).Should(BeTrue())
 }
 
-func DumpLogs(clientset *kubernetes.Clientset, pods ...v1.Pod) {
+func DumpLogs(clientset *kubernetes.Clientset, pods ...*v1.Pod) {
 	for _, pod := range pods {
 		dumpLogs(clientset, pod)
 	}
 }
 
-func dumpLogs(clientset *kubernetes.Clientset, pod v1.Pod) {
+func dumpLogs(clientset *kubernetes.Clientset, pod *v1.Pod) {
 	req := clientset.Core().Pods(pod.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{})
 	readCloser, err := req.Stream()
 	Expect(err).NotTo(HaveOccurred())

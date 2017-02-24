@@ -32,6 +32,8 @@ type AppControllerManager struct {
 	Clientset *kubernetes.Clientset
 	ns        string
 	Namespace *v1.Namespace
+
+	acPod *v1.Pod
 }
 
 func (a *AppControllerManager) Run() {
@@ -88,9 +90,10 @@ func (a *AppControllerManager) Prepare() {
 			},
 		},
 	}
-	ac, err := a.Clientset.Pods(a.Namespace.Name).Create(appControllerObj)
+	var err error
+	a.acPod, err = a.Clientset.Pods(a.Namespace.Name).Create(appControllerObj)
 	Expect(err).NotTo(HaveOccurred())
-	WaitForPod(a.Clientset, a.Namespace.Name, ac.Name, v1.PodRunning)
+	WaitForPod(a.Clientset, a.Namespace.Name, a.acPod.Name, v1.PodRunning)
 	Eventually(func() bool {
 		_, depsErr := a.Client.ResourceDefinitions().List(api.ListOptions{})
 		_, defsErr := a.Client.Dependencies().List(api.ListOptions{})
@@ -120,6 +123,10 @@ func (a *AppControllerManager) BeforeEach() {
 }
 
 func (a *AppControllerManager) AfterEach() {
+	By("Dumping appcontroller logs")
+	if CurrentGinkgoTestDescription().Failed && a.acPod != nil {
+		DumpLogs(a.Clientset, a.acPod)
+	}
 	By("Removing namespace")
 	DeleteNS(a.Clientset, a.Namespace)
 	By("Removing all resource definitions")
