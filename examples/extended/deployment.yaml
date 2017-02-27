@@ -3,14 +3,12 @@ kind: Deployment
 metadata:
   name: nginx-deployment
 spec:
-  replicas: 3
+  replicas: 2
   template:
     metadata:
       labels:
         app: nginx
     spec:
       containers:
-      - name: nginx
-        image: nginx:1.7.9
-        ports:
-        - containerPort: 80
+      - name: sleeper
+        image: kubernetes/pause

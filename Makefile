@@ -3,6 +3,7 @@ IMAGE_REPO ?= mirantis/k8s-appcontroller
 WORKING ?= ~/testappcontroller
 K8S_SOURCE_LOCATION = .k8s-source
 K8S_CLUSTER_MARKER = .k8s-cluster
+K8S_TAG ?= v1.5.2
 
 .PHONY: docker
 docker: kubeac Makefile
@@ -28,7 +29,7 @@ img-in-dind: docker $(K8S_CLUSTER_MARKER)
 .PHONY: e2e
 e2e: $(K8S_CLUSTER_MARKER) img-in-dind
 	go test -c -o e2e.test ./e2e/
-	PATH=$(PATH):$(WORKING)/kubernetes/_output/bin/ ./e2e.test --cluster-url=http://0.0.0.0:8888
+	PATH=$(PATH):$(WORKING)/kubernetes/_output/bin/ ./e2e.test --cluster-url=http://0.0.0.0:8888 --k8s-version=$(K8S_TAG)
 
 .PHONY: clean-all
 clean-all: clean clean-k8s

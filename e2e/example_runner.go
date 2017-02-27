@@ -41,6 +41,7 @@ type ExamplesFramework struct {
 func (f *ExamplesFramework) CreateExample(exampleName string) {
 	// list all files in directory, for each file run Create
 	fqDir := filepath.Join(utils.TestContext.Examples, exampleName)
+	By("Creating example from directory " + fqDir)
 	files, err := ioutil.ReadDir(fqDir)
 	Expect(err).NotTo(HaveOccurred())
 	for _, file := range files {
@@ -75,7 +76,7 @@ func (f *ExamplesFramework) handleItemCreation(ust *runtime.Unstructured) {
 	// if unstructured is of kind Dependency - just create it as is
 	encodedData, err := json.Marshal(ust)
 	Expect(err).NotTo(HaveOccurred())
-	utils.Logf("Found resource with name %v and kind %v", ust.GetName(), ust.GetKind())
+	utils.Logf("Found resource with name %v and kind %v\n", ust.GetName(), ust.GetKind())
 	if ust.GetKind() == "Dependency" {
 		var dep client.Dependency
 		err = json.Unmarshal(encodedData, &dep)
@@ -113,7 +114,7 @@ func (f *ExamplesFramework) VerifyStatus() {
 			utils.Logf("STATUS: %s\n", status)
 			return status == scheduler.Finished
 		},
-		120*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(report.AsText(0), "\n"))
+		240*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(report.AsText(0), "\n"))
 }
 
 func (f *ExamplesFramework) CreateRunAndVerify(exampleName string) {
