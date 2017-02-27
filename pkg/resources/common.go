@@ -178,3 +178,20 @@ func GetIntMeta(r interfaces.BaseResource, paramName string, defaultValue int) i
 
 	return int(intVal)
 }
+
+// GetStringMeta returns metadata value for parameter 'paramName', or 'defaultValue'
+// if parameter is not set or is not a string value
+func GetStringMeta(r interfaces.BaseResource, paramName string, defaultValue string) string {
+	value := r.Meta(paramName)
+	if value == nil {
+		return defaultValue
+	}
+
+	strVal, ok := value.(string)
+	if !ok {
+		log.Printf("Metadata parameter '%s' for resource '%s' is set to '%v' but it does not seem to be a string, using default value %s", paramName, r.Key(), value, defaultValue)
+		return defaultValue
+	}
+
+	return string(strVal)
+}

@@ -1,0 +1,25 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Definition
+metadata:
+  name: pod-timed-out-pod
+meta:
+  timeout: 5
+  on-error: ignore
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: timed-out-pod
+  spec:
+    containers:
+    - command: ["/bin/sh"]
+      args:
+      - -c
+      - sleep 30; echo ok > /tmp/health; sleep 60
+      image: gcr.io/google_containers/busybox
+      readinessProbe:
+        exec:
+          command:
+          - /bin/cat
+          - /tmp/health
+      name: test-container
