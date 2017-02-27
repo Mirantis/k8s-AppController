@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: eventually-alive-pod
+spec:
+  containers:
+  - command: ["/bin/sh"]
+    args:
+    - -c
+    - echo ok > /tmp/health
+    image: gcr.io/google_containers/busybox
+    name: test-container
+  restartPolicy: Never

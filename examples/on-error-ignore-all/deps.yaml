@@ -1,0 +1,13 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: ce1b11dc-2850-1dad-a7dd-302038af20af
+parent: pod/timed-out-pod
+child: pod/eventually-alive-pod
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: 6d3a53be-6cec-425d-aec0-e188d739e9f6
+parent: pod/eventually-alive-pod
+child: pod/eventually-alive-pod2
