@@ -36,11 +36,11 @@ type Service struct {
 	APIClient client.Interface
 }
 
-func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Interface) (string, error) {
+func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
 	service, err := s.Get(name)
 
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
 	log.Printf("Checking service status for selector %v", service.Spec.Selector)
@@ -49,22 +49,22 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 		log.Printf("Checking status for %s", stringSelector)
 		selector, err := labels.Parse(stringSelector)
 		if err != nil {
-			return "error", err
+			return interfaces.ResourceError, err
 		}
 
 		options := v1.ListOptions{LabelSelector: selector.String()}
 
 		pods, err := apiClient.Pods().List(options)
 		if err != nil {
-			return "error", err
+			return interfaces.ResourceError, err
 		}
 		jobs, err := apiClient.Jobs().List(options)
 		if err != nil {
-			return "error", err
+			return interfaces.ResourceError, err
 		}
 		replicasets, err := apiClient.ReplicaSets().List(options)
 		if err != nil {
-			return "error", err
+			return interfaces.ResourceError, err
 		}
 		resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 		for _, pod := range pods.Items {
@@ -79,7 +79,7 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 		if apiClient.IsEnabled(v1beta1.SchemeGroupVersion) {
 			statefulsets, err := apiClient.StatefulSets().List(options)
 			if err != nil {
-				return "error", err
+				return interfaces.ResourceError, err
 			}
 			for _, ps := range statefulsets.Items {
 				resources = append(resources, NewStatefulSet(&ps, apiClient.StatefulSets(), apiClient, nil))
@@ -87,19 +87,19 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 		} else {
 			petsets, err := apiClient.PetSets().List(api.ListOptions{LabelSelector: selector})
 			if err != nil {
-				return "error", err
+				return interfaces.ResourceError, err
 			}
 			for _, ps := range petsets.Items {
 				resources = append(resources, NewPetSet(&ps, apiClient.PetSets(), apiClient, nil))
 			}
 		}
-		status, err := resourceListReady(resources)
-		if status != "ready" || err != nil {
+		status, err := resourceListStatus(resources)
+		if status != interfaces.ResourceReady || err != nil {
 			return status, err
 		}
 	}
 
-	return "ready", nil
+	return interfaces.ResourceReady, nil
 }
 
 func serviceKey(name string) string {
@@ -124,7 +124,7 @@ func (s Service) Delete() error {
 	return s.Client.Delete(s.Service.Name, nil)
 }
 
-func (s Service) Status(meta map[string]string) (string, error) {
+func (s Service) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
 }
 
@@ -170,7 +170,7 @@ func (s ExistingService) Create() error {
 	return createExistingResource(s)
 }
 
-func (s ExistingService) Status(meta map[string]string) (string, error) {
+func (s ExistingService) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceStatus(s.Client, s.Name, s.APIClient)
 }
 

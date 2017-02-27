@@ -32,11 +32,11 @@ type PetSet struct {
 	APIClient client.Interface
 }
 
-func petsetStatus(p v1alpha1.PetSetInterface, name string, apiClient client.Interface) (string, error) {
+func petsetStatus(p v1alpha1.PetSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
 	// Use label from petset spec to get needed pods
 	ps, err := p.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 	return podsStateFromLabels(apiClient, ps.Spec.Template.ObjectMeta.Labels)
 }
@@ -65,8 +65,8 @@ func (p PetSet) Delete() error {
 	return p.Client.Delete(p.PetSet.Name, nil)
 }
 
-// Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p PetSet) Status(meta map[string]string) (string, error) {
+// Status returns PetSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
+func (p PetSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return petsetStatus(p.Client, p.PetSet.Name, p.APIClient)
 }
 
@@ -109,8 +109,8 @@ func (p ExistingPetSet) Create() error {
 	return createExistingResource(p)
 }
 
-// Status returns PetSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p ExistingPetSet) Status(meta map[string]string) (string, error) {
+// Status returns PetSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
+func (p ExistingPetSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return petsetStatus(p.Client, p.Name, p.APIClient)
 }
 

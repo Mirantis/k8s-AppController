@@ -26,7 +26,7 @@ import (
 // It also increases the counter when started and decreases it when becomes ready
 type CountingResource struct {
 	key       string
-	status    string
+	status    interfaces.ResourceStatus
 	counter   *CounterWithMemo
 	timeout   time.Duration
 	startTime time.Time
@@ -39,10 +39,10 @@ func (c CountingResource) Key() string {
 
 // Status returns a status of the CountingResource. It also updates the status
 // after provided timeout and decrements counter
-func (c *CountingResource) Status(meta map[string]string) (string, error) {
-	if time.Since(c.startTime) >= c.timeout && c.status != "ready" {
+func (c *CountingResource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+	if time.Since(c.startTime) >= c.timeout && c.status != interfaces.ResourceReady {
 		c.counter.Dec()
-		c.status = "ready"
+		c.status = interfaces.ResourceReady
 	}
 
 	return c.status, nil
@@ -72,12 +72,12 @@ func (c *CountingResource) NameMatches(_ client.ResourceDefinition, _ string) bo
 
 // New returns new fake resource
 func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.BaseResource {
-	return report.SimpleReporter{BaseResource: NewResource("fake", "ready")}
+	return report.SimpleReporter{BaseResource: NewResource("fake", interfaces.ResourceReady)}
 }
 
 // NewExisting returns new existing resource
 func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.BaseResource {
-	return report.SimpleReporter{BaseResource: NewResource(name, "ready")}
+	return report.SimpleReporter{BaseResource: NewResource(name, interfaces.ResourceReady)}
 }
 
 // StatusIsCacheable is true
@@ -89,7 +89,7 @@ func (c *CountingResource) StatusIsCacheable(meta map[string]string) bool {
 func NewCountingResource(key string, counter *CounterWithMemo, timeout time.Duration) *CountingResource {
 	return &CountingResource{
 		key:     key,
-		status:  "not ready",
+		status:  interfaces.ResourceNotReady,
 		counter: counter,
 		timeout: timeout,
 	}

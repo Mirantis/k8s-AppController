@@ -23,7 +23,7 @@ import (
 // Resource is a fake resource
 type Resource struct {
 	key    string
-	status string
+	status interfaces.ResourceStatus
 }
 
 // Key returns a key of the Resource
@@ -32,7 +32,7 @@ func (c Resource) Key() string {
 }
 
 // Status returns a status of the Resource
-func (c *Resource) Status(meta map[string]string) (string, error) {
+func (c *Resource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return c.status, nil
 }
 
@@ -72,7 +72,7 @@ func (c *Resource) StatusIsCacheable(meta map[string]string) bool {
 }
 
 // NewResource creates new instance of Resource
-func NewResource(key string, status string) *Resource {
+func NewResource(key string, status interfaces.ResourceStatus) *Resource {
 	return &Resource{
 		key:    key,
 		status: status,

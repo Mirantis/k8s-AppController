@@ -45,16 +45,16 @@ func (c ConfigMap) Key() string {
 	return configMapKey(c.ConfigMap.Name)
 }
 
-func configMapStatus(c corev1.ConfigMapInterface, name string) (string, error) {
+func configMapStatus(c corev1.ConfigMapInterface, name string) (interfaces.ResourceStatus, error) {
 	_, err := c.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
-	return "ready", nil
+	return interfaces.ResourceReady, nil
 }
 
-func (c ConfigMap) Status(meta map[string]string) (string, error) {
+func (c ConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return configMapStatus(c.Client, c.ConfigMap.Name)
 }
 
@@ -97,7 +97,7 @@ func (c ExistingConfigMap) Key() string {
 	return configMapKey(c.Name)
 }
 
-func (c ExistingConfigMap) Status(meta map[string]string) (string, error) {
+func (c ExistingConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return configMapStatus(c.Client, c.Name)
 }
 

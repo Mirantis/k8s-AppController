@@ -35,19 +35,19 @@ func jobKey(name string) string {
 	return "job/" + name
 }
 
-func jobStatus(j batchv1.JobInterface, name string) (string, error) {
+func jobStatus(j batchv1.JobInterface, name string) (interfaces.ResourceStatus, error) {
 	job, err := j.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
 	for _, cond := range job.Status.Conditions {
 		if cond.Type == "Complete" && cond.Status == "True" {
-			return "ready", nil
+			return interfaces.ResourceReady, nil
 		}
 	}
 
-	return "not ready", nil
+	return interfaces.ResourceNotReady, nil
 }
 
 // Key returns job name
@@ -56,7 +56,7 @@ func (j Job) Key() string {
 }
 
 // Status returns job status
-func (j Job) Status(meta map[string]string) (string, error) {
+func (j Job) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return jobStatus(j.Client, j.Job.Name)
 }
 
@@ -105,7 +105,7 @@ func (j ExistingJob) Key() string {
 	return jobKey(j.Name)
 }
 
-func (j ExistingJob) Status(meta map[string]string) (string, error) {
+func (j ExistingJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return jobStatus(j.Client, j.Name)
 }
 

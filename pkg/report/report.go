@@ -72,7 +72,7 @@ func (r SimpleReporter) GetDependencyReport(meta map[string]string) interfaces.D
 			Blocks:     false,
 			Percentage: 100,
 			Needed:     100,
-			Message:    status,
+			Message:    string(status),
 		}
 	}
 	return interfaces.DependencyReport{
@@ -80,7 +80,7 @@ func (r SimpleReporter) GetDependencyReport(meta map[string]string) interfaces.D
 		Blocks:     true,
 		Percentage: 0,
 		Needed:     0,
-		Message:    status,
+		Message:    string(status),
 	}
 }
 

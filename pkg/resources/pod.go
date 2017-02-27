@@ -39,21 +39,21 @@ func (p Pod) Key() string {
 	return podKey(p.Pod.Name)
 }
 
-func podStatus(p corev1.PodInterface, name string) (string, error) {
+func podStatus(p corev1.PodInterface, name string) (interfaces.ResourceStatus, error) {
 	pod, err := p.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
 	if pod.Status.Phase == "Succeeded" {
-		return "ready", nil
+		return interfaces.ResourceReady, nil
 	}
 
 	if pod.Status.Phase == "Running" && isReady(pod) {
-		return "ready", nil
+		return interfaces.ResourceReady, nil
 	}
 
-	return "not ready", nil
+	return interfaces.ResourceNotReady, nil
 }
 
 func isReady(pod *v1.Pod) bool {
@@ -80,7 +80,7 @@ func (p Pod) Delete() error {
 	return p.Client.Delete(p.Pod.Name, nil)
 }
 
-func (p Pod) Status(meta map[string]string) (string, error) {
+func (p Pod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return podStatus(p.Client, p.Pod.Name)
 }
 
@@ -118,7 +118,7 @@ func (p ExistingPod) Create() error {
 	return createExistingResource(p)
 }
 
-func (p ExistingPod) Status(meta map[string]string) (string, error) {
+func (p ExistingPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return podStatus(p.Client, p.Name)
 }
 

@@ -81,7 +81,7 @@ type ScheduledResource struct {
 	RequiredBy []*ScheduledResource
 	Started    bool
 	Error      error
-	status     string
+	status     interfaces.ResourceStatus
 	interfaces.Resource
 	// parentKey -> dependencyMetadata
 	Meta map[string]map[string]string
@@ -122,7 +122,7 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 				ch <- err
 			}
 
-			if status == "ready" {
+			if status == interfaces.ResourceReady {
 				ch <- nil
 			}
 
@@ -144,10 +144,10 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 
 // Status either returns cached copy of resource's status or retrieves it via Resource.Status
 // depending on presense of cached copy and resource's settings
-func (sr *ScheduledResource) Status(meta map[string]string) (string, error) {
+func (sr *ScheduledResource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	sr.Lock()
 	defer sr.Unlock()
-	if (sr.status == "ready" || sr.Error != nil) && sr.Resource.StatusIsCacheable(meta) {
+	if (sr.status == interfaces.ResourceReady || sr.Error != nil) && sr.Resource.StatusIsCacheable(meta) {
 		return sr.status, sr.Error
 	}
 	status, err := sr.Resource.Status(meta)

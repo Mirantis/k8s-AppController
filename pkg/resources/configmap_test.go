@@ -17,6 +17,7 @@ package resources
 import (
 	"testing"
 
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
@@ -29,7 +30,7 @@ func TestConfigMapSuccessCheck(t *testing.T) {
 		t.Error(err)
 	}
 
-	if status != "ready" {
+	if status != interfaces.ResourceReady {
 		t.Errorf("Status should be `ready`, is `%s` instead.", status)
 	}
 }
@@ -43,7 +44,7 @@ func TestConfigMapFailCheck(t *testing.T) {
 		t.Error("Error not found, expected error")
 	}
 
-	if status != "error" {
+	if status != interfaces.ResourceError {
 		t.Errorf("Status should be `error`, is `%s` instead.", status)
 	}
 }

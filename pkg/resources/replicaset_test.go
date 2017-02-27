@@ -17,6 +17,7 @@ package resources
 import (
 	"testing"
 
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
@@ -28,7 +29,7 @@ func TestSuccessCheck(t *testing.T) {
 		t.Error(err)
 	}
 
-	if status != "ready" {
+	if status != interfaces.ResourceReady {
 		t.Errorf("Status should be `ready`, is `%s` instead.", status)
 	}
 }
@@ -41,7 +42,7 @@ func TestFailCheck(t *testing.T) {
 		t.Error(err)
 	}
 
-	if status != "not ready" {
+	if status != interfaces.ResourceNotReady {
 		t.Errorf("Status should be `not ready`, is `%s` instead.", status)
 	}
 }

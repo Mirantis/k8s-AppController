@@ -23,15 +23,15 @@ func daemonSetKey(name string) string {
 	return "daemonset/" + name
 }
 
-func daemonSetStatus(d v1beta1.DaemonSetInterface, name string) (string, error) {
+func daemonSetStatus(d v1beta1.DaemonSetInterface, name string) (interfaces.ResourceStatus, error) {
 	daemonSet, err := d.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 	if daemonSet.Status.CurrentNumberScheduled == daemonSet.Status.DesiredNumberScheduled {
-		return "ready", nil
+		return interfaces.ResourceReady, nil
 	}
-	return "not ready", nil
+	return interfaces.ResourceNotReady, nil
 }
 
 // Key return DaemonSet key
@@ -39,8 +39,8 @@ func (d DaemonSet) Key() string {
 	return daemonSetKey(d.DaemonSet.Name)
 }
 
-// Status returns DaemonSet status as a string "ready" means that its dependencies can be created
-func (d DaemonSet) Status(meta map[string]string) (string, error) {
+// Status returns DaemonSet status interfaces.ResourceReady means that its dependencies can be created
+func (d DaemonSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return daemonSetStatus(d.Client, d.DaemonSet.Name)
 }
 
@@ -92,8 +92,8 @@ func (d ExistingDaemonSet) Key() string {
 	return daemonSetKey(d.Name)
 }
 
-// Status returns DaemonSet status as a string "ready" means that its dependencies can be created
-func (d ExistingDaemonSet) Status(meta map[string]string) (string, error) {
+// Status returns DaemonSet interfaces.ResourceReady means that its dependencies can be created
+func (d ExistingDaemonSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return daemonSetStatus(d.Client, d.Name)
 }
 

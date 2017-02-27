@@ -33,11 +33,11 @@ type StatefulSet struct {
 	APIClient   client.Interface
 }
 
-func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (string, error) {
+func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
 	// Use label from statefulset spec to get needed pods
 	ps, err := p.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 	return podsStateFromLabels(apiClient, ps.Spec.Template.ObjectMeta.Labels)
 }
@@ -66,8 +66,8 @@ func (p StatefulSet) Delete() error {
 	return p.Client.Delete(p.StatefulSet.Name, nil)
 }
 
-// Status returns StatefulSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p StatefulSet) Status(meta map[string]string) (string, error) {
+// Status returns StatefulSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
+func (p StatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return statefulsetStatus(p.Client, p.StatefulSet.Name, p.APIClient)
 }
 
@@ -110,8 +110,8 @@ func (p ExistingStatefulSet) Create() error {
 	return createExistingResource(p)
 }
 
-// Status returns StatefulSet status as a string. "ready" is regarded as sufficient for it's dependencies to be created.
-func (p ExistingStatefulSet) Status(meta map[string]string) (string, error) {
+// Status returns StatefulSet status as a string. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
+func (p ExistingStatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return statefulsetStatus(p.Client, p.Name, p.APIClient)
 }
 

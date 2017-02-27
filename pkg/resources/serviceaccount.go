@@ -45,16 +45,16 @@ func (c ServiceAccount) Key() string {
 	return serviceAccountKey(c.ServiceAccount.Name)
 }
 
-func serviceAccountStatus(c corev1.ServiceAccountInterface, name string) (string, error) {
+func serviceAccountStatus(c corev1.ServiceAccountInterface, name string) (interfaces.ResourceStatus, error) {
 	_, err := c.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
-	return "ready", nil
+	return interfaces.ResourceReady, nil
 }
 
-func (c ServiceAccount) Status(meta map[string]string) (string, error) {
+func (c ServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceAccountStatus(c.Client, c.ServiceAccount.Name)
 }
 
@@ -97,7 +97,7 @@ func (c ExistingServiceAccount) Key() string {
 	return serviceAccountKey(c.Name)
 }
 
-func (c ExistingServiceAccount) Status(meta map[string]string) (string, error) {
+func (c ExistingServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceAccountStatus(c.Client, c.Name)
 }
 
