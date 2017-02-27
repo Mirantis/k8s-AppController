@@ -72,6 +72,7 @@ func (s DeploymentStatus) String() string {
 // CheckInterval is an interval between rechecking the tree for updates
 const (
 	CheckInterval = time.Millisecond * 1000
+	WaitTimeout   = time.Second * 600
 )
 
 // ScheduledResource is a wrapper for Resource with attached relationship data
@@ -107,35 +108,48 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 		toCreate <- sr
 		return true
 	}
-
 	return false
 }
 
 // Wait periodically checks resource status and returns if the resource processing is finished,
 // regardless successfull or not. The actual result of processing could be obtained from returned error.
-func (sr *ScheduledResource) Wait(checkInterval time.Duration) error {
-	for {
-		status, err := sr.Status(nil)
-		if err != nil {
-			return err
-		}
+func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration) error {
+	ch := make(chan error, 1)
+	go func(ch chan error) {
+		for {
+			status, err := sr.Status(nil)
+			if err != nil {
+				ch <- err
+			}
 
-		if status == "ready" {
-			return nil
-		}
+			if status == "ready" {
+				ch <- nil
+			}
 
-		time.Sleep(checkInterval)
+			time.Sleep(checkInterval)
+		}
+	}(ch)
+
+	select {
+	case err := <-ch:
+		return err
+	case <-time.After(timeout):
+		e := fmt.Errorf("timeout waiting for resource %s", sr.Key())
+		sr.Lock()
+		defer sr.Unlock()
+		sr.Error = e
+		return e
 	}
 }
 
 // Status either returns cached copy of resource's status or retrieves it via Resource.Status
 // depending on presense of cached copy and resource's settings
 func (sr *ScheduledResource) Status(meta map[string]string) (string, error) {
+	sr.Lock()
+	defer sr.Unlock()
 	if (sr.status == "ready" || sr.Error != nil) && sr.Resource.StatusIsCacheable(meta) {
 		return sr.status, sr.Error
 	}
-	sr.Lock()
-	defer sr.Unlock()
 	status, err := sr.Resource.Status(meta)
 	sr.Error = err
 	if sr.Resource.StatusIsCacheable(meta) {
@@ -329,6 +343,12 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 			ccLimiter <- struct{}{}
 
 			attempts := resources.GetIntMeta(r.Resource, "retry", 1)
+			timeoutInSeconds := resources.GetIntMeta(r.Resource, "timeout", -1)
+
+			waitTimeout := WaitTimeout
+			if timeoutInSeconds > 0 {
+				waitTimeout = time.Second * time.Duration(timeoutInSeconds)
+			}
 
 			for attemptNo := 1; attemptNo <= attempts; attemptNo++ {
 
@@ -370,7 +390,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 
 				log.Printf("Checking status for %s", r.Key())
 
-				err = r.Wait(CheckInterval)
+				err = r.Wait(CheckInterval, waitTimeout)
 
 				if err == nil {
 					log.Printf("Resource %s created", r.Key())
