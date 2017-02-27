@@ -388,6 +388,15 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 
 				}
 
+				r.RLock()
+				ignored := r.Ignored
+				r.RUnlock()
+
+				if ignored {
+					log.Printf("Skipping creation of resource %s as being ignored", r.Key())
+					break
+				}
+
 				log.Printf("Creating resource %s, attempt %d of %d", r.Key(), attemptNo, attempts)
 				err = r.Create()
 				if err != nil {
@@ -412,6 +421,8 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 						r.Ignored = true
 						log.Printf("Resource %s failure ignored -- prooceeding as normal", r.Key())
 						r.Unlock()
+					} else if onError == "ignore-all" {
+						ignoreAll(r)
 					}
 				}
 			}
@@ -419,6 +430,18 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 			// Release semaphor
 			<-ccLimiter
 		}(r, finished, ccLimiter)
+	}
+}
+
+func ignoreAll(top *ScheduledResource) {
+	top.Lock()
+	top.Ignored = true
+	top.Unlock()
+
+	log.Printf("Marking resource %s as ignored", top.Key())
+
+	for _, child := range top.RequiredBy {
+		ignoreAll(child)
 	}
 }
 

@@ -164,6 +164,31 @@ var _ = Describe("Basic Suite", func() {
 			})
 		})
 	})
+
+	Describe("Failure handling - ignore-all", func() {
+		var parentPod *v1.Pod
+		var childPod *v1.Pod
+		var grandChildPod *v1.Pod
+
+		BeforeEach(func() {
+			parentPod = DelayedPod("parent-pod", 15)
+			childPod = PodPause("child-pod")
+			grandChildPod = PodPause("grand-child-pod")
+		})
+
+		Context("If failed parent is marked on-error:ignore-all", func() {
+			It("all children including transitive must not be created", func() {
+				parentResDef := framework.WrapWithMetaAndCreate(parentPod, map[string]interface{}{"timeout": 5, "on-error": "ignore-all"})
+				childResDef := framework.WrapAndCreate(childPod)
+				grandChildResDef := framework.WrapAndCreate(grandChildPod)
+				framework.Connect(parentResDef, childResDef)
+				framework.Connect(childResDef, grandChildResDef)
+				framework.Run()
+				testutils.WaitForPodNotToBeCreated(framework.Clientset, framework.Namespace.Name, childPod.Name)
+				testutils.WaitForPodNotToBeCreated(framework.Clientset, framework.Namespace.Name, grandChildPod.Name)
+			})
+		})
+	})
 })
 
 func getKind(resdef *client.ResourceDefinition) string {
