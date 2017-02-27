@@ -37,16 +37,16 @@ func deploymentKey(name string) string {
 	return "deployment/" + name
 }
 
-func deploymentStatus(d v1beta1.DeploymentInterface, name string) (string, error) {
+func deploymentStatus(d v1beta1.DeploymentInterface, name string) (interfaces.ResourceStatus, error) {
 	deployment, err := d.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
 	if deployment.Status.UpdatedReplicas >= *deployment.Spec.Replicas && deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
-		return "ready", nil
+		return interfaces.ResourceReady, nil
 	}
-	return "not ready", nil
+	return interfaces.ResourceNotReady, nil
 }
 
 // Key return Deployment key
@@ -54,8 +54,8 @@ func (d Deployment) Key() string {
 	return deploymentKey(d.Deployment.Name)
 }
 
-// Status returns Deployment status as a string "ready" means that its dependencies can be created
-func (d Deployment) Status(meta map[string]string) (string, error) {
+// Status returns Deployment status. interfaces.ResourceReady means that its dependencies can be created
+func (d Deployment) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return deploymentStatus(d.Client, d.Deployment.Name)
 }
 
@@ -116,8 +116,8 @@ func (d ExistingDeployment) Key() string {
 	return deploymentKey(d.Name)
 }
 
-// Status returns Deployment status as a string "ready" means that its dependencies can be created
-func (d ExistingDeployment) Status(meta map[string]string) (string, error) {
+// Status returns Deployment status. interfaces.ResourceReady means that its dependencies can be created
+func (d ExistingDeployment) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return deploymentStatus(d.Client, d.Name)
 }
 

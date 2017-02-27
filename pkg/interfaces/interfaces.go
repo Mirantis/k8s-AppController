@@ -16,11 +16,19 @@ package interfaces
 
 import "github.com/Mirantis/k8s-AppController/pkg/client"
 
+type ResourceStatus string
+
+const (
+	ResourceReady    ResourceStatus = "ready"
+	ResourceNotReady ResourceStatus = "not ready"
+	ResourceError    ResourceStatus = "error"
+)
+
 // BaseResource is an interface for AppController supported resources
 type BaseResource interface {
 	Key() string
 	// Ensure that Status() supports nil as meta
-	Status(meta map[string]string) (string, error)
+	Status(meta map[string]string) (ResourceStatus, error)
 	Create() error
 	Delete() error
 	Meta(string) interface{}

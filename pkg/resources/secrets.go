@@ -49,16 +49,17 @@ func (s ExistingSecret) Key() string {
 	return secretKey(s.Name)
 }
 
-func secretStatus(s corev1.SecretInterface, name string) (string, error) {
+func secretStatus(s corev1.SecretInterface, name string) (interfaces.ResourceStatus, error) {
 	_, err := s.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
-	return "ready", nil
+	return interfaces.ResourceReady, nil
 }
 
-func (s Secret) Status(meta map[string]string) (string, error) {
+// Status returns interfaces.ResourceReady if the secret is available in cluster
+func (s Secret) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return secretStatus(s.Client, s.Secret.Name)
 }
 
@@ -95,7 +96,8 @@ func (s Secret) NewExisting(name string, ci client.Interface) interfaces.Resourc
 	return NewExistingSecret(name, ci.Secrets())
 }
 
-func (s ExistingSecret) Status(meta map[string]string) (string, error) {
+// Status returns interfaces.ResourceReady if the secret is available in cluster
+func (s ExistingSecret) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return secretStatus(s.Client, s.Name)
 }
 
