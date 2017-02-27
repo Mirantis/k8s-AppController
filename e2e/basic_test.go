@@ -145,6 +145,25 @@ var _ = Describe("Basic Suite", func() {
 			})
 		})
 	})
+
+	Describe("Failure handling - ignore", func() {
+		var parentPod *v1.Pod
+		var childPod *v1.Pod
+
+		BeforeEach(func() {
+			parentPod = DelayedPod("parent-pod", 15)
+			childPod = PodPause("child-pod")
+		})
+
+		Context("If failed parent is marked on-error:ignore", func() {
+			It("dependency must be followed", func() {
+				parentResDef := framework.WrapWithMetaAndCreate(parentPod, map[string]interface{}{"timeout": 5, "on-error": "ignore"})
+				framework.Connect(parentResDef, framework.WrapAndCreate(childPod))
+				framework.Run()
+				testutils.WaitForPod(framework.Clientset, framework.Namespace.Name, childPod.Name, v1.PodRunning)
+			})
+		})
+	})
 })
 
 func getKind(resdef *client.ResourceDefinition) string {

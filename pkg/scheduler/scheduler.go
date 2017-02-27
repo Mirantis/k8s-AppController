@@ -80,6 +80,7 @@ type ScheduledResource struct {
 	Requires   []*ScheduledResource
 	RequiredBy []*ScheduledResource
 	Started    bool
+	Ignored    bool
 	Error      error
 	status     string
 	interfaces.Resource
@@ -167,7 +168,11 @@ func (sr *ScheduledResource) IsBlocked() bool {
 
 		status, err := req.Status(meta)
 
-		if err != nil && !onErrorSet {
+		req.RLock()
+		ignored := req.Ignored
+		req.RUnlock()
+
+		if err != nil && !onErrorSet && !ignored {
 			return true
 		} else if status == "ready" && onErrorSet {
 			return true
@@ -222,6 +227,7 @@ func NewScheduledResource(kind string, name string,
 func NewScheduledResourceFor(r interfaces.Resource) *ScheduledResource {
 	return &ScheduledResource{
 		Started:  false,
+		Ignored:  false,
 		Error:    nil,
 		Resource: r,
 		Meta:     map[string]map[string]string{},
@@ -344,6 +350,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 
 			attempts := resources.GetIntMeta(r.Resource, "retry", 1)
 			timeoutInSeconds := resources.GetIntMeta(r.Resource, "timeout", -1)
+			onError := resources.GetStringMeta(r.Resource, "on-error", "")
 
 			waitTimeout := WaitTimeout
 			if timeoutInSeconds > 0 {
@@ -398,6 +405,15 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 				}
 
 				log.Printf("Resource %s was not created: %v", r.Key(), err)
+
+				if attemptNo >= attempts {
+					if onError == "ignore" {
+						r.Lock()
+						r.Ignored = true
+						log.Printf("Resource %s failure ignored -- prooceeding as normal", r.Key())
+						r.Unlock()
+					}
+				}
 			}
 			finished <- r.Key()
 			// Release semaphor
