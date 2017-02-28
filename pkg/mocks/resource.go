@@ -24,6 +24,7 @@ import (
 type Resource struct {
 	key    string
 	status string
+	meta   map[string]interface{}
 }
 
 // Key returns a key of the Resource
@@ -47,8 +48,8 @@ func (c *Resource) Delete() error {
 }
 
 // Meta returns empty string
-func (c *Resource) Meta(string) interface{} {
-	return nil
+func (c *Resource) Meta(key string) interface{} {
+	return c.meta[key]
 }
 
 // NameMatches returns true
@@ -73,8 +74,14 @@ func (c *Resource) StatusIsCacheable(meta map[string]string) bool {
 
 // NewResource creates new instance of Resource
 func NewResource(key string, status string) *Resource {
+	return NewResourceWithMeta(key, status, nil)
+}
+
+// NewResourceWithMeta creates new instance of Resource
+func NewResourceWithMeta(key string, status string, meta map[string]interface{}) *Resource {
 	return &Resource{
 		key:    key,
 		status: status,
+		meta:   meta,
 	}
 }

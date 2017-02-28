@@ -170,13 +170,19 @@ func GetIntMeta(r interfaces.BaseResource, paramName string, defaultValue int) i
 		return defaultValue
 	}
 
-	intVal, ok := value.(float64)
+	intVal, ok := value.(int)
+	if ok {
+		return intVal
+	}
+
+	floatVal, ok := value.(float64)
+
 	if !ok {
 		log.Printf("Metadata parameter '%s' for resource '%s' is set to '%v' but it does not seem to be a number, using default value %d", paramName, r.Key(), value, defaultValue)
 		return defaultValue
 	}
 
-	return int(intVal)
+	return int(floatVal)
 }
 
 // GetStringMeta returns metadata value for parameter 'paramName', or 'defaultValue'
