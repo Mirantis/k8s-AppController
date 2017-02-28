@@ -19,6 +19,7 @@ import (
 
 	"fmt"
 
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
@@ -31,7 +32,7 @@ func TestCheckServiceStatusReady(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	if status != "ready" {
+	if status != interfaces.ResourceReady {
 		t.Errorf("service should be `ready`, is `%s` instead", status)
 	}
 }
@@ -52,7 +53,7 @@ func TestCheckServiceStatusPodNotReady(t *testing.T) {
 		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
 
-	if status != "not ready" {
+	if status != interfaces.ResourceNotReady {
 		t.Errorf("service should be `not ready`, is `%s` instead", status)
 	}
 }
@@ -74,7 +75,7 @@ func TestCheckServiceStatusJobNotReady(t *testing.T) {
 		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
 
-	if status != "not ready" {
+	if status != interfaces.ResourceNotReady {
 		t.Errorf("service should be `not ready`, is `%s` instead", status)
 	}
 }
@@ -96,7 +97,7 @@ func TestCheckServiceStatusReplicaSetNotReady(t *testing.T) {
 		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
 
-	if status != "not ready" {
+	if status != interfaces.ResourceNotReady {
 		t.Errorf("service should be `not ready`, is `%s` instead", status)
 	}
 }

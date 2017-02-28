@@ -39,17 +39,17 @@ func (p PersistentVolumeClaim) Key() string {
 	return persistentVolumeClaimKey(p.PersistentVolumeClaim.Name)
 }
 
-func persistentVolumeClaimStatus(p corev1.PersistentVolumeClaimInterface, name string) (string, error) {
+func persistentVolumeClaimStatus(p corev1.PersistentVolumeClaimInterface, name string) (interfaces.ResourceStatus, error) {
 	persistentVolumeClaim, err := p.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
 	if persistentVolumeClaim.Status.Phase == v1.ClaimBound {
-		return "ready", nil
+		return interfaces.ResourceReady, nil
 	}
 
-	return "not ready", nil
+	return interfaces.ResourceNotReady, nil
 }
 
 func (p PersistentVolumeClaim) Create() error {
@@ -66,7 +66,8 @@ func (p PersistentVolumeClaim) Delete() error {
 	return p.Client.Delete(p.PersistentVolumeClaim.Name, &v1.DeleteOptions{})
 }
 
-func (p PersistentVolumeClaim) Status(meta map[string]string) (string, error) {
+// Status returns PVC status.
+func (p PersistentVolumeClaim) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return persistentVolumeClaimStatus(p.Client, p.PersistentVolumeClaim.Name)
 }
 
@@ -104,7 +105,8 @@ func (p ExistingPersistentVolumeClaim) Create() error {
 	return createExistingResource(p)
 }
 
-func (p ExistingPersistentVolumeClaim) Status(meta map[string]string) (string, error) {
+// Status returns PVC status.
+func (p ExistingPersistentVolumeClaim) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return persistentVolumeClaimStatus(p.Client, p.Name)
 }
 

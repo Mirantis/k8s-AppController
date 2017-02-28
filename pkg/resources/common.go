@@ -82,18 +82,18 @@ func getKeys(m map[string]interfaces.ResourceTemplate) (keys []string) {
 	return keys
 }
 
-func resourceListReady(resources []interfaces.BaseResource) (string, error) {
+func resourceListStatus(resources []interfaces.BaseResource) (interfaces.ResourceStatus, error) {
 	for _, r := range resources {
 		log.Printf("Checking status for resource %s", r.Key())
 		status, err := r.Status(nil)
 		if err != nil {
-			return "error", err
+			return interfaces.ResourceError, err
 		}
-		if status != "ready" {
-			return "not ready", fmt.Errorf("Resource %s is not ready", r.Key())
+		if status != interfaces.ResourceReady {
+			return interfaces.ResourceNotReady, fmt.Errorf("Resource %s is not ready", r.Key())
 		}
 	}
-	return "ready", nil
+	return interfaces.ResourceReady, nil
 }
 
 func getPercentage(factorName string, meta map[string]string) (int32, error) {
@@ -132,7 +132,7 @@ func createExistingResource(r interfaces.BaseResource) error {
 	return nil
 }
 
-func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string) (string, error) {
+func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string) (interfaces.ResourceStatus, error) {
 	var labelSelectors []string
 	for k, v := range objLabels {
 		labelSelectors = append(labelSelectors, fmt.Sprintf("%s=%s", k, v))
@@ -140,13 +140,13 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 	stringSelector := strings.Join(labelSelectors, ",")
 	selector, err := labels.Parse(stringSelector)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 	options := v1.ListOptions{LabelSelector: selector.String()}
 
 	pods, err := apiClient.Pods().List(options)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
@@ -154,12 +154,12 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 		resources = append(resources, NewPod(&p, apiClient.Pods(), nil))
 	}
 
-	status, err := resourceListReady(resources)
-	if status != "ready" || err != nil {
+	status, err := resourceListStatus(resources)
+	if status != interfaces.ResourceReady || err != nil {
 		return status, err
 	}
 
-	return "ready", nil
+	return interfaces.ResourceReady, nil
 }
 
 // GetIntMeta returns metadata value for parameter 'paramName', or 'defaultValue'

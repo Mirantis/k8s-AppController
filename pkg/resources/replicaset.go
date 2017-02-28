@@ -34,22 +34,22 @@ type ReplicaSet struct {
 	Client     v1beta1.ReplicaSetInterface
 }
 
-func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) (string, error) {
+func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) (interfaces.ResourceStatus, error) {
 	rs, err := r.Get(name)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
 	successFactor, err := getPercentage(SuccessFactorKey, meta)
 	if err != nil {
-		return "error", err
+		return interfaces.ResourceError, err
 	}
 
 	if rs.Status.Replicas*100 < *rs.Spec.Replicas*successFactor {
-		return "not ready", nil
+		return interfaces.ResourceNotReady, nil
 	}
 
-	return "ready", nil
+	return interfaces.ResourceReady, nil
 }
 
 func replicaSetReport(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) interfaces.DependencyReport {
@@ -109,7 +109,8 @@ func (r ReplicaSet) Delete() error {
 	return r.Client.Delete(r.ReplicaSet.Name, nil)
 }
 
-func (r ReplicaSet) Status(meta map[string]string) (string, error) {
+// Status returns ReplicaSet status based on provided meta.
+func (r ReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
 }
 
@@ -158,7 +159,8 @@ func (r ExistingReplicaSet) Create() error {
 	return createExistingResource(r)
 }
 
-func (r ExistingReplicaSet) Status(meta map[string]string) (string, error) {
+// Status returns ReplicaSet status based on provided meta.
+func (r ExistingReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return replicaSetStatus(r.Client, r.Name, meta)
 }
 
