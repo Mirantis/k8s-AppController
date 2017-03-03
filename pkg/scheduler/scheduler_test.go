@@ -315,8 +315,8 @@ func TestLimitConcurrency(t *testing.T) {
 			sr := NewScheduledResourceFor(r)
 			depGraph[sr.Key()] = sr
 		}
-
-		Create(depGraph, concurrency)
+		stopChan := make(chan struct{})
+		Create(depGraph, concurrency, stopChan)
 
 		// Concurrency = 0, means 'disabled' i.e. equal to depGraph size
 		if concurrency == 0 {
@@ -325,6 +325,21 @@ func TestLimitConcurrency(t *testing.T) {
 		if counter.Max() != concurrency {
 			t.Errorf("Expected max concurrency counter %d, but got %d", concurrency, counter.Max())
 		}
+	}
+}
+
+func TestStopBeforeDeploymentStarted(t *testing.T) {
+	depGraph := DependencyGraph{}
+	sr := &ScheduledResource{
+		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
+		Status:   Init,
+	}
+	depGraph[sr.Key()] = sr
+	stopChan := make(chan struct{})
+	close(stopChan)
+	Create(depGraph, 0, stopChan)
+	if sr.Status != Creating {
+		t.Errorf("Expected that resources %v will be in Init status, but got %v", sr.Key(), sr.Status)
 	}
 }
 
