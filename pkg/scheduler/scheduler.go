@@ -118,24 +118,36 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 	return false
 }
 
+func statusWaiter(sr *ScheduledResource, ch chan error) bool {
+	status, err := sr.Resource.Status(nil)
+	if err != nil {
+		ch <- err
+		return true
+	}
+	if status == interfaces.ResourceReady {
+		ch <- nil
+		return true
+	}
+	return false
+}
+
 // Wait periodically checks resource status and returns if the resource processing is finished,
 // regardless successfull or not. The actual result of processing could be obtained from returned error.
 func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration, stopChan <-chan struct{}) error {
 	ch := make(chan error, 1)
 	go func(ch chan error) {
 		log.Printf("Waiting for %v to be created", sr.Key())
+		if statusWaiter(sr, ch) {
+			return
+		}
 		ticker := time.NewTicker(checkInterval)
 		for {
 			select {
 			case <-stopChan:
-				ch <- InterruptError{}
+				return
 			case <-ticker.C:
-				status, err := sr.Resource.Status(nil)
-				if err != nil {
-					ch <- err
-				}
-				if status == interfaces.ResourceReady {
-					ch <- nil
+				if statusWaiter(sr, ch) {
+					return
 				}
 			}
 		}
@@ -143,6 +155,8 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 	}(ch)
 
 	select {
+	case <-stopChan:
+		return InterruptError{}
 	case err := <-ch:
 		return err
 	case <-time.After(timeout):

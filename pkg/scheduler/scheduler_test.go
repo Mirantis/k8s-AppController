@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
@@ -332,14 +333,14 @@ func TestStopBeforeDeploymentStarted(t *testing.T) {
 	depGraph := DependencyGraph{}
 	sr := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
-		Status:   Init,
 	}
 	depGraph[sr.Key()] = sr
 	stopChan := make(chan struct{})
 	close(stopChan)
 	Create(depGraph, 0, stopChan)
-	if sr.Status != Creating {
-		t.Errorf("Expected that resources %v will be in Init status, but got %v", sr.Key(), sr.Status)
+	status, _ := sr.Resource.Status(nil)
+	if status == interfaces.ResourceReady {
+		t.Errorf("Expected that resource %v wont be in ready status, but got %v", sr.Key(), status)
 	}
 }
 
