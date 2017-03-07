@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
@@ -315,8 +316,8 @@ func TestLimitConcurrency(t *testing.T) {
 			sr := NewScheduledResourceFor(r)
 			depGraph[sr.Key()] = sr
 		}
-
-		Create(depGraph, concurrency)
+		stopChan := make(chan struct{})
+		Create(depGraph, concurrency, stopChan)
 
 		// Concurrency = 0, means 'disabled' i.e. equal to depGraph size
 		if concurrency == 0 {
@@ -325,6 +326,21 @@ func TestLimitConcurrency(t *testing.T) {
 		if counter.Max() != concurrency {
 			t.Errorf("Expected max concurrency counter %d, but got %d", concurrency, counter.Max())
 		}
+	}
+}
+
+func TestStopBeforeDeploymentStarted(t *testing.T) {
+	depGraph := DependencyGraph{}
+	sr := &ScheduledResource{
+		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
+	}
+	depGraph[sr.Key()] = sr
+	stopChan := make(chan struct{})
+	close(stopChan)
+	Create(depGraph, 0, stopChan)
+	status, _ := sr.Resource.Status(nil)
+	if status == interfaces.ResourceReady {
+		t.Errorf("Expected that resource %v wont be in ready status, but got %v", sr.Key(), status)
 	}
 }
 

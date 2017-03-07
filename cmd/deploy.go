@@ -84,8 +84,8 @@ func deploy(cmd *cobra.Command, args []string) {
 	} else {
 		log.Println("No cycles detected.")
 	}
-
-	scheduler.Create(depGraph, concurrency)
+	stopChan := make(chan struct{})
+	scheduler.Create(depGraph, concurrency, stopChan)
 
 	log.Println("Done")
 

@@ -112,34 +112,53 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 	return false
 }
 
+func isResourceFinished(sr *ScheduledResource, ch chan error) bool {
+	status, err := sr.Resource.Status(nil)
+	if err != nil {
+		ch <- err
+		return true
+	}
+	if status == interfaces.ResourceReady {
+		ch <- nil
+		return true
+	}
+	return false
+}
+
 // Wait periodically checks resource status and returns if the resource processing is finished,
 // regardless successfull or not. The actual result of processing could be obtained from returned error.
-func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration) error {
+func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration, stopChan <-chan struct{}) (bool, error) {
 	ch := make(chan error, 1)
 	go func(ch chan error) {
-		for {
-			status, err := sr.Status(nil)
-			if err != nil {
-				ch <- err
-			}
-
-			if status == interfaces.ResourceReady {
-				ch <- nil
-			}
-
-			time.Sleep(checkInterval)
+		log.Printf("Waiting for %v to be created", sr.Key())
+		if isResourceFinished(sr, ch) {
+			return
 		}
+		ticker := time.NewTicker(checkInterval)
+		for {
+			select {
+			case <-stopChan:
+				return
+			case <-ticker.C:
+				if isResourceFinished(sr, ch) {
+					return
+				}
+			}
+		}
+
 	}(ch)
 
 	select {
+	case <-stopChan:
+		return true, nil
 	case err := <-ch:
-		return err
+		return false, err
 	case <-time.After(timeout):
 		e := fmt.Errorf("timeout waiting for resource %s", sr.Key())
 		sr.Lock()
 		defer sr.Unlock()
 		sr.Error = e
-		return e
+		return false, e
 	}
 }
 
@@ -341,12 +360,22 @@ func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGr
 	return depGraph, nil
 }
 
-func createResources(toCreate chan *ScheduledResource, finished chan string, ccLimiter chan struct{}) {
-
+func createResources(toCreate chan *ScheduledResource, finished chan string, ccLimiter chan struct{}, stopChan <-chan struct{}) {
 	for r := range toCreate {
+		log.Printf("Requesting creation of %v", r.Key())
+		select {
+		case <-stopChan:
+			log.Printf("Terminating creation of resources")
+			return
+		default:
+			log.Println("Deployment is not stopped, keep creating")
+		}
 		go func(r *ScheduledResource, finished chan string, ccLimiter chan struct{}) {
 			// Acquire sepmaphor
 			ccLimiter <- struct{}{}
+			defer func() {
+				<-ccLimiter
+			}()
 
 			attempts := resources.GetIntMeta(r.Resource, "retry", 1)
 			timeoutInSeconds := resources.GetIntMeta(r.Resource, "timeout", -1)
@@ -369,10 +398,17 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 				if attemptNo == 1 {
 					for _, req := range r.RequiredBy {
 						go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
+							ticker := time.NewTicker(CheckInterval)
+							log.Printf("Requesting creation of dependency %v", req.Key())
 							for {
-								time.Sleep(CheckInterval)
-								if req.RequestCreation(toCreate) {
-									break
+								select {
+								case <-stopChan:
+									log.Println("Terminating creation of dependencies")
+									return
+								case <-ticker.C:
+									if req.RequestCreation(toCreate) {
+										return
+									}
 								}
 							}
 						}(req, toCreate)
@@ -406,7 +442,12 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 
 				log.Printf("Checking status for %s", r.Key())
 
-				err = r.Wait(CheckInterval, waitTimeout)
+				stoped, err := r.Wait(CheckInterval, waitTimeout, stopChan)
+
+				if stoped {
+					log.Printf("Received interrupt while waiting for %v. Exiting", r.Key())
+					return
+				}
 
 				if err == nil {
 					log.Printf("Resource %s created", r.Key())
@@ -427,8 +468,6 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 				}
 			}
 			finished <- r.Key()
-			// Release semaphor
-			<-ccLimiter
 		}(r, finished, ccLimiter)
 	}
 }
@@ -446,7 +485,7 @@ func ignoreAll(top *ScheduledResource) {
 }
 
 // Create starts the deployment of a DependencyGraph
-func Create(depGraph DependencyGraph, concurrency int) {
+func Create(depGraph DependencyGraph, concurrency int, stopChan <-chan struct{}) {
 
 	depCount := len(depGraph)
 
@@ -458,8 +497,12 @@ func Create(depGraph DependencyGraph, concurrency int) {
 	ccLimiter := make(chan struct{}, concurrencyLimiterLen)
 	toCreate := make(chan *ScheduledResource, depCount)
 	created := make(chan string, depCount)
+	defer func() {
+		close(toCreate)
+		close(created)
+	}()
 
-	go createResources(toCreate, created, ccLimiter)
+	go createResources(toCreate, created, ccLimiter, stopChan)
 
 	for _, r := range depGraph {
 		if len(r.Requires) == 0 {
@@ -468,12 +511,20 @@ func Create(depGraph DependencyGraph, concurrency int) {
 	}
 
 	log.Printf("Wait for %d deps to create\n", depCount)
-	for i := 0; i < depCount; i++ {
-		<-created
+	var i int
+	for {
+		select {
+		case <-stopChan:
+			fmt.Println("Deployment is stopped")
+			return
+		case <-created:
+			i++
+			fmt.Printf("%v out of %v were created", i, depCount)
+			if depCount == i {
+				return
+			}
+		}
 	}
-	close(toCreate)
-	close(created)
-
 	// TODO Make sure every KO gets created eventually
 }
 
