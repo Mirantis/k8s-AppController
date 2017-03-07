@@ -53,12 +53,6 @@ const (
 	TimedOut
 )
 
-type InterruptError struct{}
-
-func (e InterruptError) Error() string {
-	return "Workflow stopped"
-}
-
 func (s DeploymentStatus) String() string {
 	switch s {
 	case Empty:
@@ -118,7 +112,7 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 	return false
 }
 
-func statusWaiter(sr *ScheduledResource, ch chan error) bool {
+func isResourceFinished(sr *ScheduledResource, ch chan error) bool {
 	status, err := sr.Resource.Status(nil)
 	if err != nil {
 		ch <- err
@@ -133,11 +127,11 @@ func statusWaiter(sr *ScheduledResource, ch chan error) bool {
 
 // Wait periodically checks resource status and returns if the resource processing is finished,
 // regardless successfull or not. The actual result of processing could be obtained from returned error.
-func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration, stopChan <-chan struct{}) error {
+func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration, stopChan <-chan struct{}) (bool, error) {
 	ch := make(chan error, 1)
 	go func(ch chan error) {
 		log.Printf("Waiting for %v to be created", sr.Key())
-		if statusWaiter(sr, ch) {
+		if isResourceFinished(sr, ch) {
 			return
 		}
 		ticker := time.NewTicker(checkInterval)
@@ -146,7 +140,7 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 			case <-stopChan:
 				return
 			case <-ticker.C:
-				if statusWaiter(sr, ch) {
+				if isResourceFinished(sr, ch) {
 					return
 				}
 			}
@@ -156,15 +150,15 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 
 	select {
 	case <-stopChan:
-		return InterruptError{}
+		return true, nil
 	case err := <-ch:
-		return err
+		return false, err
 	case <-time.After(timeout):
 		e := fmt.Errorf("timeout waiting for resource %s", sr.Key())
 		sr.Lock()
 		defer sr.Unlock()
 		sr.Error = e
-		return e
+		return false, e
 	}
 }
 
@@ -448,16 +442,16 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 
 				log.Printf("Checking status for %s", r.Key())
 
-				err = r.Wait(CheckInterval, waitTimeout, stopChan)
+				stoped, err := r.Wait(CheckInterval, waitTimeout, stopChan)
+
+				if stoped {
+					log.Printf("Received interrupt while waiting for %v. Exiting", r.Key())
+					return
+				}
 
 				if err == nil {
 					log.Printf("Resource %s created", r.Key())
 					break
-				}
-
-				if _, ok := err.(InterruptError); ok {
-					log.Printf("Received interrupt while waiting for %v. Exiting", r.Key())
-					return
 				}
 
 				log.Printf("Resource %s was not created: %v", r.Key(), err)
