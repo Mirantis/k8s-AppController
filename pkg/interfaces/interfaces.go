@@ -14,7 +14,11 @@
 
 package interfaces
 
-import "github.com/Mirantis/k8s-AppController/pkg/client"
+import (
+	"fmt"
+
+	"github.com/Mirantis/k8s-AppController/pkg/client"
+)
 
 type ResourceStatus string
 
@@ -23,6 +27,8 @@ const (
 	ResourceNotReady ResourceStatus = "not ready"
 	ResourceError    ResourceStatus = "error"
 )
+
+const DefaultFlowName = "DEFAULT"
 
 // BaseResource is an interface for AppController supported resources
 type BaseResource interface {
@@ -52,7 +58,27 @@ type Resource interface {
 
 // ResourceTemplate is an interface for AppController supported resource templates
 type ResourceTemplate interface {
-	NameMatches(client.ResourceDefinition, string) bool
-	New(client.ResourceDefinition, client.Interface) Resource
-	NewExisting(string, client.Interface) Resource
+	Kind() string
+	ShortName(client.ResourceDefinition) string
+	New(client.ResourceDefinition, client.Interface, GraphContext) Resource
+	NewExisting(string, client.Interface, GraphContext) Resource
+}
+
+type DeploymentReport interface {
+	AsText(int) []string
+}
+
+type DependencyGraph interface {
+	GetStatus() (fmt.Stringer, DeploymentReport)
+	Deploy(<-chan struct{})
+}
+
+type GraphContext interface {
+	Scheduler() Scheduler
+	Args() map[string]string
+	Graph() DependencyGraph
+}
+
+type Scheduler interface {
+	BuildDependencyGraph(flowName string, args map[string]string) (DependencyGraph, error)
 }

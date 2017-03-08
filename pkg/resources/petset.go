@@ -32,6 +32,29 @@ type PetSet struct {
 	APIClient client.Interface
 }
 
+type petSetTemplateFactory struct{}
+
+func (petSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.PetSet == nil {
+		return ""
+	}
+	return definition.PetSet.Name
+}
+
+func (petSetTemplateFactory) Kind() string {
+	return "petset"
+}
+
+// New returns new PetSet based on resource definition
+func (petSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewPetSet(def.PetSet, c.PetSets(), c, def.Meta)
+}
+
+// NewExisting returns new ExistingPetSet based on resource definition
+func (petSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingPetSet(name, c.PetSets(), c)
+}
+
 func petsetStatus(p v1alpha1.PetSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
 	// Use label from petset spec to get needed pods
 	ps, err := p.Get(name)
@@ -53,7 +76,7 @@ func (p PetSet) Key() string {
 // Create looks for a PetSet in Kubernetes cluster and creates it if it's not there
 func (p PetSet) Create() error {
 	if err := checkExistence(p); err != nil {
-		log.Println("Creating ", p.Key())
+		log.Println("Creating", p.Key())
 		_, err = p.Client.Create(p.PetSet)
 		return err
 	}
@@ -68,22 +91,6 @@ func (p PetSet) Delete() error {
 // Status returns PetSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
 func (p PetSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return petsetStatus(p.Client, p.PetSet.Name, p.APIClient)
-}
-
-// NameMatches gets resource definition and a name and checks if
-// the PetSet part of resource definition has matching name.
-func (p PetSet) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.PetSet != nil && def.PetSet.Name == name
-}
-
-// New returns new PetSet based on resource definition
-func (p PetSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewPetSet(def.PetSet, c.PetSets(), c, def.Meta)
-}
-
-// NewExisting returns new ExistingPetSet based on resource definition
-func (p PetSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingPetSet(name, c.PetSets(), c)
 }
 
 // NewPetSet is a constructor
