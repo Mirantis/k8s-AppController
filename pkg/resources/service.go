@@ -36,6 +36,30 @@ type Service struct {
 	APIClient client.Interface
 }
 
+type serviceTemplateFactory struct {}
+
+func (serviceTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.Service == nil {
+		return ""
+	} else {
+		return definition.Service.Name
+	}
+}
+
+func (serviceTemplateFactory) Kind() string {
+	return "service"
+}
+
+// New returns new Service based on resource definition
+func (serviceTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewService(def.Service, c.Services(), c, def.Meta)
+}
+
+// NewExisting returns new ExistingService based on resource definition
+func (serviceTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingService(name, c.Services())
+}
+
 func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
 	service, err := s.Get(name)
 
@@ -112,7 +136,7 @@ func (s Service) Key() string {
 
 func (s Service) Create() error {
 	if err := checkExistence(s); err != nil {
-		log.Println("Creating ", s.Key())
+		log.Println("Creating", s.Key())
 		s.Service, err = s.Client.Create(s.Service)
 		return err
 	}
@@ -129,21 +153,6 @@ func (s Service) Status(meta map[string]string) (interfaces.ResourceStatus, erro
 	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
 }
 
-// NameMatches gets resource definition and a name and checks if
-// the Service part of resource definition has matching name.
-func (s Service) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.Service != nil && def.Service.Name == name
-}
-
-// New returns new Service based on resource definition
-func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewService(def.Service, c.Services(), c, def.Meta)
-}
-
-// NewExisting returns new ExistingService based on resource definition
-func (s Service) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingService(name, c.Services())
-}
 
 // NewService is Service constructor. Needs apiClient for service status checks
 func NewService(service *v1.Service, client corev1.ServiceInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {

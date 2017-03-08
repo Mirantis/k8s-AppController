@@ -29,11 +29,11 @@ func newClient(objects ...runtime.Object) *client.Client {
 	fakeClientset := fake.NewSimpleClientset(objects...)
 	apps := &alphafake.FakeApps{&fakeClientset.Fake}
 	return &client.Client{
-		Clientset: fakeClientset,
-		AlphaApps: apps,
+		clientset: fakeClientset,
+		alphaApps: apps,
 		Deps:      NewDependencyClient(),
-		ResDefs:   NewResourceDefinitionClient(),
-		Namespace: "testing",
+		resDefs:   NewResourceDefinitionClient(),
+		namespace: "testing",
 	}
 }
 
@@ -51,12 +51,12 @@ func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupLis
 
 func NewClient(objects ...runtime.Object) *client.Client {
 	c := newClient(objects...)
-	c.APIVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
+	c.apiVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
 	return c
 }
 
 func NewClient1_4(objects ...runtime.Object) *client.Client {
 	c := newClient(objects...)
-	c.APIVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
+	c.apiVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
 	return c
 }

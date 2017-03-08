@@ -35,6 +35,30 @@ func jobKey(name string) string {
 	return "job/" + name
 }
 
+type jobTemplateFactory struct {}
+
+func (jobTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.Job == nil {
+		return ""
+	} else {
+		return definition.Job.Name
+	}
+}
+
+func (jobTemplateFactory) Kind() string {
+	return "job"
+}
+
+// New returns new Job on resource definition
+func (jobTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewJob(def.Job, c.Jobs(), def.Meta)
+}
+
+// NewExisting returns new ExistingJob based on resource definition
+func (jobTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingJob(name, c.Jobs())
+}
+
 func jobStatus(j batchv1.JobInterface, name string) (interfaces.ResourceStatus, error) {
 	job, err := j.Get(name)
 	if err != nil {
@@ -63,7 +87,7 @@ func (j Job) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 // Create creates k8s job object
 func (j Job) Create() error {
 	if err := checkExistence(j); err != nil {
-		log.Println("Creating ", j.Key())
+		log.Println("Creating", j.Key())
 		j.Job, err = j.Client.Create(j.Job)
 		return err
 	}
@@ -77,19 +101,10 @@ func (j Job) Delete() error {
 
 // NameMatches gets resource definition and a name and checks if
 // the Job part of resource definition has matching name.
-func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.Job != nil && def.Job.Name == name
-}
+//func (j Job) NameMatches(def client.ResourceDefinition, name string) bool {
+//	return def.Job != nil && def.Job.Name == name
+//}
 
-// New returns new Job on resource definition
-func (j Job) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewJob(def.Job, c.Jobs(), def.Meta)
-}
-
-// NewExisting returns new ExistingJob based on resource definition
-func (j Job) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingJob(name, c.Jobs())
-}
 
 func NewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Job{Base: Base{meta}, Job: job, Client: client}}

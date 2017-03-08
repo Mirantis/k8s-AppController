@@ -37,6 +37,28 @@ type ExistingSecret struct {
 	Client corev1.SecretInterface
 }
 
+type secretTemplateFactory struct {}
+
+func (secretTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.Secret == nil {
+		return ""
+	} else {
+		return definition.Secret.Name
+	}
+}
+
+func (secretTemplateFactory) Kind() string {
+	return "secret"
+}
+
+func (secretTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewSecret(def.Secret, ci.Secrets(), def.Meta)
+}
+
+func (secretTemplateFactory) NewExisting(name string, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingSecret(name, ci.Secrets())
+}
+
 func secretKey(name string) string {
 	return "secret/" + name
 }
@@ -65,7 +87,7 @@ func (s Secret) Status(meta map[string]string) (interfaces.ResourceStatus, error
 
 func (s Secret) Create() error {
 	if err := checkExistence(s); err != nil {
-		log.Println("Creating ", s.Key())
+		log.Println("Creating", s.Key())
 		s.Secret, err = s.Client.Create(s.Secret)
 		return err
 	}
@@ -76,24 +98,12 @@ func (s Secret) Delete() error {
 	return s.Client.Delete(s.Secret.Name, nil)
 }
 
-func (s Secret) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.Secret != nil && def.Secret.Name == name
-}
-
 func NewSecret(s *v1.Secret, client corev1.SecretInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Secret{Base: Base{meta}, Secret: s, Client: client}}
 }
 
 func NewExistingSecret(name string, client corev1.SecretInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingSecret{Name: name, Client: client}}
-}
-
-func (s Secret) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewSecret(def.Secret, ci.Secrets(), def.Meta)
-}
-
-func (s Secret) NewExisting(name string, ci client.Interface) interfaces.Resource {
-	return NewExistingSecret(name, ci.Secrets())
 }
 
 // Status returns interfaces.ResourceReady if the secret is available in cluster

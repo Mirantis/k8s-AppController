@@ -1,7 +1,7 @@
 // Copyright 2016 Mirantis
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
+// you may not use f file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //   http://www.apache.org/licenses/LICENSE-2.0
@@ -54,6 +54,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		SchemeGroupVersion,
 		&Dependency{},
 	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&Flow{},
+	)
 	return nil
 }
 
@@ -89,95 +93,102 @@ type Interface interface {
 
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
+	Flows() FlowsInterface
 
 	IsEnabled(version unversioned.GroupVersion) bool
 }
 
 type Client struct {
-	Clientset   kubernetes.Interface
-	AlphaApps   v1alpha1.AppsInterface
-	Deps        DependenciesInterface
-	ResDefs     ResourceDefinitionsInterface
-	Namespace   string
-	APIVersions *unversioned.APIGroupList
+	clientset           kubernetes.Interface
+	alphaApps           v1alpha1.AppsInterface
+	dependencies        DependenciesInterface
+	resourceDefinitions ResourceDefinitionsInterface
+	flows               FlowsInterface
+	namespace           string
+	apiVersions         *unversioned.APIGroupList
 }
 
 var _ Interface = &Client{}
 
 // Dependencies returns dependency client for ThirdPartyResource created by AppController
 func (c Client) Dependencies() DependenciesInterface {
-	return c.Deps
+	return c.dependencies
 }
 
 // ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
 func (c Client) ResourceDefinitions() ResourceDefinitionsInterface {
-	return c.ResDefs
+	return c.resourceDefinitions
+}
+
+// Flows returns flow client for ThirdPartyResource created by AppController
+func (c Client) Flows() FlowsInterface {
+	return c.flows
 }
 
 // ConfigMaps returns K8s ConfigMaps client for ac namespace
 func (c Client) ConfigMaps() corev1.ConfigMapInterface {
-	return c.Clientset.Core().ConfigMaps(c.Namespace)
+	return c.clientset.Core().ConfigMaps(c.namespace)
 }
 
 // Secrets returns K8s Secrets client for ac namespace
 func (c Client) Secrets() corev1.SecretInterface {
-	return c.Clientset.Core().Secrets(c.Namespace)
+	return c.clientset.Core().Secrets(c.namespace)
 }
 
 // Pods returns K8s Pod client for ac namespace
 func (c Client) Pods() corev1.PodInterface {
-	return c.Clientset.Core().Pods(c.Namespace)
+	return c.clientset.Core().Pods(c.namespace)
 }
 
 // Jobs returns K8s Job client for ac namespace
 func (c Client) Jobs() batchv1.JobInterface {
-	return c.Clientset.Batch().Jobs(c.Namespace)
+	return c.clientset.Batch().Jobs(c.namespace)
 }
 
 // Services returns K8s Service client for ac namespace
 func (c Client) Services() corev1.ServiceInterface {
-	return c.Clientset.Core().Services(c.Namespace)
+	return c.clientset.Core().Services(c.namespace)
 }
 
 // ServiceAccounts returns K8s ServiceAccount client for ac namespace
 func (c Client) ServiceAccounts() corev1.ServiceAccountInterface {
-	return c.Clientset.Core().ServiceAccounts(c.Namespace)
+	return c.clientset.Core().ServiceAccounts(c.namespace)
 }
 
 // ReplicaSets returns K8s ReplicaSet client for ac namespace
 func (c Client) ReplicaSets() v1beta1.ReplicaSetInterface {
-	return c.Clientset.Extensions().ReplicaSets(c.Namespace)
+	return c.clientset.Extensions().ReplicaSets(c.namespace)
 }
 
 // StatefulSets returns K8s StatefulSet client for ac namespace
 func (c Client) StatefulSets() appsbeta1.StatefulSetInterface {
-	return c.Clientset.Apps().StatefulSets(c.Namespace)
+	return c.clientset.Apps().StatefulSets(c.namespace)
 }
 
 func (c Client) PetSets() v1alpha1.PetSetInterface {
-	return c.AlphaApps.PetSets(c.Namespace)
+	return c.alphaApps.PetSets(c.namespace)
 }
 
 // DaemonSets return K8s DaemonSet client for ac namespace
 func (c Client) DaemonSets() v1beta1.DaemonSetInterface {
-	return c.Clientset.Extensions().DaemonSets(c.Namespace)
+	return c.clientset.Extensions().DaemonSets(c.namespace)
 }
 
 // Deployments return K8s Deployment client for ac namespace
 func (c Client) Deployments() v1beta1.DeploymentInterface {
-	return c.Clientset.Extensions().Deployments(c.Namespace)
+	return c.clientset.Extensions().Deployments(c.namespace)
 }
 
 // PersistentVolumeClaims return K8s PVC client for ac namespace
 func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
-	return c.Clientset.Core().PersistentVolumeClaims(c.Namespace)
+	return c.clientset.Core().PersistentVolumeClaims(c.namespace)
 }
 
 // IsEnabled verifies that required group name and group version is registered in API
 // particularly we need it to support both pet sets and stateful sets using same application
 func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
-	for i := range c.APIVersions.Groups {
-		group := c.APIVersions.Groups[i]
+	for i := range c.apiVersions.Groups {
+		group := c.apiVersions.Groups[i]
 		if group.Name != version.Group {
 			continue
 		}
@@ -200,6 +211,10 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+	flows, err := newFlows(c, namespace)
+	if err != nil {
+		return nil, err
+	}
 	cl, err := kubernetes.NewForConfig(&c)
 	if err != nil {
 		return nil, err
@@ -214,12 +229,13 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 	}
 
 	return &Client{
-		Clientset:   cl,
-		AlphaApps:   apps,
-		Deps:        deps,
-		ResDefs:     resdefs,
-		Namespace:   namespace,
-		APIVersions: versions,
+		clientset:           cl,
+		alphaApps:           apps,
+		dependencies:        deps,
+		resourceDefinitions: resdefs,
+		namespace:           namespace,
+		apiVersions:         versions,
+		flows:               flows,
 	}, nil
 }
 

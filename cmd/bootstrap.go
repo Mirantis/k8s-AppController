@@ -102,9 +102,6 @@ func checkVersion(c kubernetes.Interface) {
 func bootstrap(cmd *cobra.Command, args []string) {
 	thirdPartyResourcesPath := os.Args[2]
 
-	dependencyTPR := getDependencyFromPath(thirdPartyResourcesPath + "/dependencies.json")
-	definitionTPR := getDependencyFromPath(thirdPartyResourcesPath + "/resdefs.json")
-
 	url := os.Getenv("KUBERNETES_CLUSTER_URL")
 	config, err := client.GetConfig(url)
 	if err != nil {
@@ -118,8 +115,12 @@ func bootstrap(cmd *cobra.Command, args []string) {
 
 	checkVersion(c)
 
-	createTPRIfNotExists(dependencyTPR, c)
-	createTPRIfNotExists(definitionTPR, c)
+	manifests := [...]string {"dependencies.json", "resdefs.json", "flows.json"}
+
+	for _, manifest:= range manifests {
+		dependency := getDependencyFromPath(thirdPartyResourcesPath + "/" + manifest)
+		createTPRIfNotExists(dependency, c)
+	}
 }
 
 // Bootstrap is cobra command for bootstrapping AppController, meant to be run in an init container

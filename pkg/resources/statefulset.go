@@ -33,6 +33,30 @@ type StatefulSet struct {
 	APIClient   client.Interface
 }
 
+type statefulSetTemplateFactory struct {}
+
+func (statefulSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.StatefulSet == nil {
+		return ""
+	} else {
+		return definition.StatefulSet.Name
+	}
+}
+
+func (statefulSetTemplateFactory) Kind() string {
+	return "statefulSet"
+}
+
+// New returns new StatefulSet based on resource definition
+func (statefulSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewStatefulSet(def.StatefulSet, c.StatefulSets(), c, def.Meta)
+}
+
+// NewExisting returns new ExistingStatefulSet based on resource definition
+func (statefulSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingStatefulSet(name, c.StatefulSets(), c)
+}
+
 func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
 	// Use label from statefulset spec to get needed pods
 	ps, err := p.Get(name)
@@ -54,7 +78,7 @@ func (p StatefulSet) Key() string {
 // Create looks for a StatefulSet in Kubernetes cluster and creates it if it's not there
 func (p StatefulSet) Create() error {
 	if err := checkExistence(p); err != nil {
-		log.Println("Creating ", p.Key())
+		log.Println("Creating", p.Key())
 		_, err = p.Client.Create(p.StatefulSet)
 		return err
 	}
@@ -69,22 +93,6 @@ func (p StatefulSet) Delete() error {
 // Status returns StatefulSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
 func (p StatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return statefulsetStatus(p.Client, p.StatefulSet.Name, p.APIClient)
-}
-
-// NameMatches gets resource definition and a name and checks if
-// the StatefulSet part of resource definition has matching name.
-func (p StatefulSet) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.StatefulSet != nil && def.StatefulSet.Name == name
-}
-
-// New returns new StatefulSet based on resource definition
-func (p StatefulSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewStatefulSet(def.StatefulSet, c.StatefulSets(), c, def.Meta)
-}
-
-// NewExisting returns new ExistingStatefulSet based on resource definition
-func (p StatefulSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingStatefulSet(name, c.StatefulSets(), c)
 }
 
 // NewStatefulSet is a constructor

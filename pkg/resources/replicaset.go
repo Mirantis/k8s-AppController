@@ -34,6 +34,32 @@ type ReplicaSet struct {
 	Client     v1beta1.ReplicaSetInterface
 }
 
+type replicaSetTemplateFactory struct {}
+
+func (replicaSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.ReplicaSet == nil {
+		return ""
+	} else {
+		return definition.ReplicaSet.Name
+	}
+}
+
+func (replicaSetTemplateFactory) Kind() string {
+	return "replicaset"
+}
+
+// New returns new ReplicaSet based on resource definition
+func (replicaSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets(), def.Meta)
+}
+
+// NewExisting returns new ExistingReplicaSet based on resource definition
+func (replicaSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingReplicaSet(name, c.ReplicaSets())
+}
+
+
+
 func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) (interfaces.ResourceStatus, error) {
 	rs, err := r.Get(name)
 	if err != nil {
@@ -97,7 +123,7 @@ func (r ReplicaSet) Key() string {
 
 func (r ReplicaSet) Create() error {
 	if err := checkExistence(r); err != nil {
-		log.Println("Creating ", r.Key())
+		log.Println("Creating", r.Key())
 		r.ReplicaSet, err = r.Client.Create(r.ReplicaSet)
 		return err
 	}
@@ -112,22 +138,6 @@ func (r ReplicaSet) Delete() error {
 // Status returns ReplicaSet status based on provided meta.
 func (r ReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
-}
-
-// NameMatches gets resource definition and a name and checks if
-// the ReplicaSet part of resource definition has matching name.
-func (r ReplicaSet) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.ReplicaSet != nil && def.ReplicaSet.Name == name
-}
-
-// New returns new ReplicaSet based on resource definition
-func (r ReplicaSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets(), def.Meta)
-}
-
-// NewExisting returns new ExistingReplicaSet based on resource definition
-func (r ReplicaSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingReplicaSet(name, c.ReplicaSets())
 }
 
 // GetDependencyReport returns a DependencyReport for this replicaset

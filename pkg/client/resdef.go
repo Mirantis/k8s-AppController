@@ -28,6 +28,7 @@ import (
 	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
+//	"fmt"
 )
 
 type ResourceDefinition struct {
@@ -51,6 +52,7 @@ type ResourceDefinition struct {
 	Secret                *v1.Secret                `json:"secret,omitempty"`
 	Deployment            *v1beta1.Deployment       `json:"deployment, omitempty"`
 	PersistentVolumeClaim *v1.PersistentVolumeClaim `json:"persistentvolumeclaim, omitempty"`
+	Flow                  *Flow                     `json:"flow, omitempty"`
 }
 
 type ResourceDefinitionList struct {
@@ -66,6 +68,7 @@ type ResourceDefinitionsInterface interface {
 	Create(*ResourceDefinition) (*ResourceDefinition, error)
 	List(opts api.ListOptions) (*ResourceDefinitionList, error)
 	Delete(name string, opts *api.DeleteOptions) error
+	Get(name string) *ResourceDefinition
 }
 
 type resourceDefinitions struct {
@@ -129,4 +132,16 @@ func (c *resourceDefinitions) Delete(name string, opts *api.DeleteOptions) error
 		Body(opts).
 		Do().
 		Error()
+}
+
+func (c *resourceDefinitions) Get(name string) (result *ResourceDefinition){
+	result = &ResourceDefinition{TypeMeta: unversioned.TypeMeta{Kind: "Definition", APIVersion: "v1alpha1"}}
+	d, _ := c.rc.Get().
+		Resource("definitions").
+		Namespace(c.namespace).
+		Name(name).
+		Do().Raw()
+	json.Unmarshal(d, result)
+	//fmt.Println("&&&", x, err)
+	return
 }
