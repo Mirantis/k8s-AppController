@@ -43,50 +43,59 @@ func singleObjectOpts() v1.ListOptions {
 	}
 }
 
-func NewDeploymentController(appc client.Interface) cache.ControllerInterface {
-	opts := singleObjectOpts()
+type CreateFunc func(depGraph DependencyGraph, concurrency int, stopChan <-chan struct{})
+
+func newDeploymentController(appc client.Interface, source cache.ListerWatcher, create CreateFunc) cache.ControllerInterface {
 	var stopChan chan struct{}
 	_, cfgController := cache.NewInformer(
-		&cache.ListWatch{
-			ListFunc: func(options api.ListOptions) (runtime.Object, error) {
-				return appc.ConfigMaps().List(opts)
-			},
-			WatchFunc: func(options api.ListOptions) (watch.Interface, error) {
-				return appc.ConfigMaps().Watch(opts)
-			},
-		},
-		&api.ConfigMap{},
+		source,
+		&v1.ConfigMap{},
 		0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				cfg := obj.(*api.ConfigMap)
+				log.Println("Received required configmap. Starting deployment workflow.")
+				cfg := obj.(*v1.ConfigMap)
 				stopChan = make(chan struct{})
 				var concurrency int
 				concurrencyVal, ok := cfg.Data[concurrencyKey]
 				if !ok {
-					concurrency = 1
+					concurrency = 0
 				} else {
 					var err error
 					concurrency, err = strconv.Atoi(concurrencyVal)
 					if err != nil {
-						fmt.Println(err)
+						log.Println(err)
+						return
 					}
-					return
 				}
 				labelSelector, ok := cfg.Data[selector]
 				if !ok {
 					labelSelector = ""
 				}
 				depGraph := initializeDependencyGraph(appc, labelSelector)
-				fmt.Println("Running deployment with labels ", labelSelector)
-				go Create(depGraph, concurrency, stopChan)
+				log.Println("Running deployment with labels ", labelSelector)
+				go create(depGraph, concurrency, stopChan)
 			},
 			DeleteFunc: func(_ interface{}) {
+				log.Println("Stopping deployment workflow")
 				close(stopChan)
 			},
 		},
 	)
 	return cfgController
+}
+
+func NewDeploymentController(appc client.Interface) cache.ControllerInterface {
+	opts := singleObjectOpts()
+	source := &cache.ListWatch{
+		ListFunc: func(options api.ListOptions) (runtime.Object, error) {
+			return appc.ConfigMaps().List(opts)
+		},
+		WatchFunc: func(options api.ListOptions) (watch.Interface, error) {
+			return appc.ConfigMaps().Watch(opts)
+		},
+	}
+	return newDeploymentController(appc, source, Create)
 }
 
 func initializeDependencyGraph(c client.Interface, labelSelector string) DependencyGraph {
