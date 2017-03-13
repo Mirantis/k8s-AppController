@@ -18,12 +18,12 @@ import (
 	"errors"
 	"log"
 
-	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
+
+	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // Deployment is wrapper for K8s Deployment object
@@ -31,6 +31,31 @@ type Deployment struct {
 	Base
 	Deployment *extbeta1.Deployment
 	Client     v1beta1.DeploymentInterface
+}
+
+type deploymentTemplateFactory struct{}
+
+// Returns wrapped resource name if it was a deployment
+func (deploymentTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.Deployment == nil {
+		return ""
+	}
+	return definition.Deployment.Name
+}
+
+// k8s resource kind that this fabric supports
+func (deploymentTemplateFactory) Kind() string {
+	return "deployment"
+}
+
+// New returns new Deployment based on resource definition
+func (deploymentTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewDeployment(def.Deployment, c.Deployments(), def.Meta)
+}
+
+// NewExisting returns new ExistingDeployment based on resource definition
+func (deploymentTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingDeployment(name, c.Deployments())
 }
 
 func deploymentKey(name string) string {
@@ -76,22 +101,6 @@ func (d Deployment) Create() error {
 // Delete deletes Deployment from the cluster
 func (d Deployment) Delete() error {
 	return d.Client.Delete(d.Deployment.Name, nil)
-}
-
-// NameMatches gets resource definition and a name and checks if
-// the Deployment part of resource definition has matching name.
-func (d Deployment) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.Deployment != nil && def.Deployment.Name == name
-}
-
-// New returns new Deployment based on resource definition
-func (d Deployment) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewDeployment(def.Deployment, c.Deployments(), def.Meta)
-}
-
-// NewExisting returns new ExistingDeployment based on resource definition
-func (d Deployment) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingDeployment(name, c.Deployments())
 }
 
 // NewDeployment is a constructor

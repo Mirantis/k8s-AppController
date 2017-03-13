@@ -17,12 +17,12 @@ package resources
 import (
 	"log"
 
-	"k8s.io/client-go/kubernetes/typed/apps/v1beta1"
-	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
+
+	"k8s.io/client-go/kubernetes/typed/apps/v1beta1"
+	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
 // StatefulSet is a wrapper for K8s StatefulSet object
@@ -31,6 +31,31 @@ type StatefulSet struct {
 	StatefulSet *appsbeta1.StatefulSet
 	Client      v1beta1.StatefulSetInterface
 	APIClient   client.Interface
+}
+
+type statefulSetTemplateFactory struct{}
+
+// Returns wrapped resource name if it was a statefulset
+func (statefulSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.StatefulSet == nil {
+		return ""
+	}
+	return definition.StatefulSet.Name
+}
+
+// k8s resource kind that this fabric supports
+func (statefulSetTemplateFactory) Kind() string {
+	return "statefulset"
+}
+
+// New returns new StatefulSet based on resource definition
+func (statefulSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewStatefulSet(def.StatefulSet, c.StatefulSets(), c, def.Meta)
+}
+
+// NewExisting returns new ExistingStatefulSet based on resource definition
+func (statefulSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingStatefulSet(name, c.StatefulSets(), c)
 }
 
 func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
@@ -54,7 +79,7 @@ func (p StatefulSet) Key() string {
 // Create looks for a StatefulSet in Kubernetes cluster and creates it if it's not there
 func (p StatefulSet) Create() error {
 	if err := checkExistence(p); err != nil {
-		log.Println("Creating ", p.Key())
+		log.Println("Creating", p.Key())
 		_, err = p.Client.Create(p.StatefulSet)
 		return err
 	}
@@ -69,22 +94,6 @@ func (p StatefulSet) Delete() error {
 // Status returns StatefulSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
 func (p StatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return statefulsetStatus(p.Client, p.StatefulSet.Name, p.APIClient)
-}
-
-// NameMatches gets resource definition and a name and checks if
-// the StatefulSet part of resource definition has matching name.
-func (p StatefulSet) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.StatefulSet != nil && def.StatefulSet.Name == name
-}
-
-// New returns new StatefulSet based on resource definition
-func (p StatefulSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewStatefulSet(def.StatefulSet, c.StatefulSets(), c, def.Meta)
-}
-
-// NewExisting returns new ExistingStatefulSet based on resource definition
-func (p StatefulSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingStatefulSet(name, c.StatefulSets(), c)
 }
 
 // NewStatefulSet is a constructor
