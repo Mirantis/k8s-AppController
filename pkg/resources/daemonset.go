@@ -33,6 +33,31 @@ type DaemonSet struct {
 	Client    v1beta1.DaemonSetInterface
 }
 
+type daemonSetTemplateFactory struct{}
+
+// Returns wrapped resource name if it was a daemonset
+func (daemonSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.DaemonSet == nil {
+		return ""
+	}
+	return definition.DaemonSet.Name
+}
+
+// k8s resource kind that this fabric supports
+func (daemonSetTemplateFactory) Kind() string {
+	return "daemonset"
+}
+
+// New returns new DaemonSet based on resource definition
+func (d daemonSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewDaemonSet(def.DaemonSet, c.DaemonSets(), def.Meta)
+}
+
+// NewExisting returns new ExistingDaemonSet based on resource definition
+func (d daemonSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingDaemonSet(name, c.DaemonSets())
+}
+
 func daemonSetKey(name string) string {
 	return "daemonset/" + name
 }
@@ -61,7 +86,7 @@ func (d DaemonSet) Status(meta map[string]string) (interfaces.ResourceStatus, er
 // Create looks for DaemonSet in K8s and creates it if not present
 func (d DaemonSet) Create() error {
 	if err := checkExistence(d); err != nil {
-		log.Println("Creating ", d.Key())
+		log.Println("Creating", d.Key())
 		d.DaemonSet, err = d.Client.Create(d.DaemonSet)
 		return err
 	}
@@ -71,22 +96,6 @@ func (d DaemonSet) Create() error {
 // Delete deletes DaemonSet from the cluster
 func (d DaemonSet) Delete() error {
 	return d.Client.Delete(d.DaemonSet.Name, &v1.DeleteOptions{})
-}
-
-// NameMatches gets resource definition and a name and checks if
-// the DaemonSet part of resource definition has matching name.
-func (d DaemonSet) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.DaemonSet != nil && def.DaemonSet.Name == name
-}
-
-// New returns new DaemonSet based on resource definition
-func (d DaemonSet) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewDaemonSet(def.DaemonSet, c.DaemonSets(), def.Meta)
-}
-
-// NewExisting returns new ExistingDaemonSet based on resource definition
-func (d DaemonSet) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingDaemonSet(name, c.DaemonSets())
 }
 
 // NewDaemonSet is a constructor

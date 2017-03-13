@@ -23,12 +23,11 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-
-	"github.com/Mirantis/k8s-AppController/pkg/client"
 )
 
 // KubernetesRequiredMajorVersion is minimal required major version of Kubernetes cluster
@@ -102,9 +101,6 @@ func checkVersion(c kubernetes.Interface) {
 func bootstrap(cmd *cobra.Command, args []string) {
 	thirdPartyResourcesPath := os.Args[2]
 
-	dependencyTPR := getDependencyFromPath(thirdPartyResourcesPath + "/dependencies.json")
-	definitionTPR := getDependencyFromPath(thirdPartyResourcesPath + "/resdefs.json")
-
 	url := os.Getenv("KUBERNETES_CLUSTER_URL")
 	config, err := client.GetConfig(url)
 	if err != nil {
@@ -118,8 +114,12 @@ func bootstrap(cmd *cobra.Command, args []string) {
 
 	checkVersion(c)
 
-	createTPRIfNotExists(dependencyTPR, c)
-	createTPRIfNotExists(definitionTPR, c)
+	manifests := [...]string{"dependencies.json", "resdefs.json"}
+
+	for _, manifest := range manifests {
+		dependency := getDependencyFromPath(thirdPartyResourcesPath + "/" + manifest)
+		createTPRIfNotExists(dependency, c)
+	}
 }
 
 // Bootstrap is cobra command for bootstrapping AppController, meant to be run in an init container

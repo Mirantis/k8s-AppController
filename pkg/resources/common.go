@@ -21,12 +21,32 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/labels"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
+
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/labels"
 )
+
+func init() {
+	factories := [...]interfaces.ResourceTemplate{
+		configMapTemplateFactory{},
+		daemonSetTemplateFactory{},
+		deploymentTemplateFactory{},
+		jobTemplateFactory{},
+		persistentVolumeClaimTemplateFactory{},
+		petSetTemplateFactory{},
+		podTemplateFactory{},
+		replicaSetTemplateFactory{},
+		secretTemplateFactory{},
+		serviceTemplateFactory{},
+		serviceAccountTemplateFactory{},
+		statefulSetTemplateFactory{},
+	}
+	for _, factory := range factories {
+		KindToResourceTemplate[factory.Kind()] = factory
+	}
+}
 
 // Base is a base struct that contains data common for all resources
 type Base struct {
@@ -56,20 +76,7 @@ func (b Base) StatusIsCacheable(meta map[string]string) bool {
 
 // KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
 // structs implement interfaces.ResourceTemplate
-var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{
-	"daemonset":             DaemonSet{},
-	"job":                   Job{},
-	"statefulset":           StatefulSet{},
-	"petset":                PetSet{},
-	"pod":                   Pod{},
-	"replicaset":            ReplicaSet{},
-	"service":               Service{},
-	"configmap":             ConfigMap{},
-	"secret":                Secret{},
-	"deployment":            Deployment{},
-	"persistentvolumeclaim": PersistentVolumeClaim{},
-	"serviceaccount":        ServiceAccount{},
-}
+var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{}
 
 // Kinds is slice of keys from KindToResourceTemplate
 var Kinds = getKeys(KindToResourceTemplate)
@@ -113,7 +120,7 @@ func getPercentage(factorName string, meta map[string]string) (int32, error) {
 }
 
 func checkExistence(r interfaces.BaseResource) error {
-	log.Println("Looking for ", r.Key())
+	log.Println("Looking for", r.Key())
 	status, err := r.Status(nil)
 
 	if err == nil {

@@ -15,9 +15,8 @@
 package resources
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
