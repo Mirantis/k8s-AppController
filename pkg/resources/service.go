@@ -18,15 +18,15 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
+	"github.com/Mirantis/k8s-AppController/pkg/report"
+
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/labels"
-
-	"github.com/Mirantis/k8s-AppController/pkg/client"
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
 type Service struct {
@@ -34,6 +34,31 @@ type Service struct {
 	Service   *v1.Service
 	Client    corev1.ServiceInterface
 	APIClient client.Interface
+}
+
+type serviceTemplateFactory struct{}
+
+// Returns wrapped resource name if it was a service
+func (serviceTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.Service == nil {
+		return ""
+	}
+	return definition.Service.Name
+}
+
+// k8s resource kind that this fabric supports
+func (serviceTemplateFactory) Kind() string {
+	return "service"
+}
+
+// New returns new Service based on resource definition
+func (serviceTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewService(def.Service, c.Services(), c, def.Meta)
+}
+
+// NewExisting returns new ExistingService based on resource definition
+func (serviceTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingService(name, c.Services())
 }
 
 func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
@@ -112,7 +137,7 @@ func (s Service) Key() string {
 
 func (s Service) Create() error {
 	if err := checkExistence(s); err != nil {
-		log.Println("Creating ", s.Key())
+		log.Println("Creating", s.Key())
 		s.Service, err = s.Client.Create(s.Service)
 		return err
 	}
@@ -127,22 +152,6 @@ func (s Service) Delete() error {
 // Status returns Service Status. It is based on the status of all objects which match the service selector. If all of them are ready, the Service is considered ready.
 func (s Service) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
-}
-
-// NameMatches gets resource definition and a name and checks if
-// the Service part of resource definition has matching name.
-func (s Service) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.Service != nil && def.Service.Name == name
-}
-
-// New returns new Service based on resource definition
-func (s Service) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewService(def.Service, c.Services(), c, def.Meta)
-}
-
-// NewExisting returns new ExistingService based on resource definition
-func (s Service) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingService(name, c.Services())
 }
 
 // NewService is Service constructor. Needs apiClient for service status checks

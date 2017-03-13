@@ -15,9 +15,8 @@
 package resources
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
@@ -46,11 +45,11 @@ func TestCheckServiceStatusPodNotReady(t *testing.T) {
 	status, err := serviceStatus(c.Services(), "failedpod", c)
 
 	if err == nil {
-		t.Fatal("Error should be returned, got nil")
+		t.Fatal("error should be returned, got nil")
 	}
-	expectedError := fmt.Sprintf("Resource pod/%v is not ready", pod.Name)
+	expectedError := fmt.Sprintf("resource pod/%v is not ready", pod.Name)
 	if err.Error() != expectedError {
-		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
+		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
 
 	if status != interfaces.ResourceNotReady {
@@ -67,12 +66,12 @@ func TestCheckServiceStatusJobNotReady(t *testing.T) {
 	status, err := serviceStatus(c.Services(), "failedjob", c)
 
 	if err == nil {
-		t.Error("Error should be returned, got nil")
+		t.Error("error should be returned, got nil")
 	}
 
-	expectedError := fmt.Sprintf("Resource job/%v is not ready", job.Name)
+	expectedError := fmt.Sprintf("resource job/%v is not ready", job.Name)
 	if err.Error() != expectedError {
-		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
+		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
 
 	if status != interfaces.ResourceNotReady {
@@ -89,12 +88,12 @@ func TestCheckServiceStatusReplicaSetNotReady(t *testing.T) {
 	status, err := serviceStatus(c.Services(), "failedrc", c)
 
 	if err == nil {
-		t.Error("Error should be returned, got nil")
+		t.Error("error should be returned, got nil")
 	}
 
-	expectedError := fmt.Sprintf("Resource replicaset/%v is not ready", rc.Name)
+	expectedError := fmt.Sprintf("resource replicaset/%v is not ready", rc.Name)
 	if err.Error() != expectedError {
-		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
+		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
 
 	if status != interfaces.ResourceNotReady {

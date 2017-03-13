@@ -31,7 +31,7 @@ func TestConfigMapSuccessCheck(t *testing.T) {
 	}
 
 	if status != interfaces.ResourceReady {
-		t.Errorf("Status should be `ready`, is `%s` instead.", status)
+		t.Errorf("status should be `ready`, is `%s` instead.", status)
 	}
 }
 
@@ -41,10 +41,10 @@ func TestConfigMapFailCheck(t *testing.T) {
 	status, err := configMapStatus(c.ConfigMaps(), "fail")
 
 	if err == nil {
-		t.Error("Error not found, expected error")
+		t.Error("error not found, expected error")
 	}
 
 	if status != interfaces.ResourceError {
-		t.Errorf("Status should be `error`, is `%s` instead.", status)
+		t.Errorf("status should be `error`, is `%s` instead.", status)
 	}
 }
