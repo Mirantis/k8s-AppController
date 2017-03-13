@@ -18,68 +18,46 @@ import (
 	"log"
 	"strings"
 
-	"k8s.io/client-go/pkg/api"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"k8s.io/client-go/pkg/api"
 )
 
-type resDefClient struct {
-	Names []string
-}
-
-func (r *resDefClient) List(opts api.ListOptions) (*client.ResourceDefinitionList, error) {
-	list := &client.ResourceDefinitionList{}
-
-	for _, name := range r.Names {
-		rd := client.ResourceDefinition{}
-
-		splitted := strings.Split(name, "/")
-		objectType := splitted[0]
-		n := strings.Join(splitted[1:], "/")
-
-		switch objectType {
-		case "pod":
-			rd.Pod = MakePod(n)
-		case "job":
-			rd.Job = MakeJob(n)
-		case "service":
-			rd.Service = MakeService(n)
-		case "replicaset":
-			rd.ReplicaSet = MakeReplicaSet(n)
-		case "statefulset":
-			rd.StatefulSet = MakeStatefulSet(n)
-		case "petset":
-			rd.PetSet = MakePetSet(n)
-		case "daemonset":
-			rd.DaemonSet = MakeDaemonSet(n)
-		case "configmap":
-			rd.ConfigMap = MakeConfigMap(n)
-		case "secret":
-			rd.Secret = MakeSecret(n)
-		case "deployment":
-			rd.Deployment = MakeDeployment(n)
-		case "persistentvolumeclaim":
-			rd.PersistentVolumeClaim = MakePersistentVolumeClaim(n)
-		case "serviceaccount":
-			rd.ServiceAccount = MakeServiceAccount(n)
-		default:
-			log.Fatal("Unrecognized resource type for name ", objectType)
-		}
-
-		list.Items = append(list.Items, rd)
+func MakeResourceDefinition(name string) *client.ResourceDefinition {
+	rd := &client.ResourceDefinition{
+		ObjectMeta: api.ObjectMeta{Name: strings.Replace(name, "/", "-", 1), Namespace: "testing"},
 	}
 
-	return list, nil
-}
+	splitted := strings.Split(name, "/")
+	objectType := splitted[0]
+	n := strings.Join(splitted[1:], "/")
 
-func (r *resDefClient) Create(_ *client.ResourceDefinition) (*client.ResourceDefinition, error) {
-	panic("Not implemented")
-}
-
-func (r *resDefClient) Delete(_ string, _ *api.DeleteOptions) error {
-	panic("Not implemented")
-}
-
-func NewResourceDefinitionClient(names ...string) client.ResourceDefinitionsInterface {
-	return &resDefClient{names}
+	switch objectType {
+	case "pod":
+		rd.Pod = MakePod(n)
+	case "job":
+		rd.Job = MakeJob(n)
+	case "service":
+		rd.Service = MakeService(n)
+	case "replicaset":
+		rd.ReplicaSet = MakeReplicaSet(n)
+	case "statefulset":
+		rd.StatefulSet = MakeStatefulSet(n)
+	case "petset":
+		rd.PetSet = MakePetSet(n)
+	case "daemonset":
+		rd.DaemonSet = MakeDaemonSet(n)
+	case "configmap":
+		rd.ConfigMap = MakeConfigMap(n)
+	case "secret":
+		rd.Secret = MakeSecret(n)
+	case "deployment":
+		rd.Deployment = MakeDeployment(n)
+	case "persistentvolumeclaim":
+		rd.PersistentVolumeClaim = MakePersistentVolumeClaim(n)
+	case "serviceaccount":
+		rd.ServiceAccount = MakeServiceAccount(n)
+	default:
+		log.Fatal("Unrecognized resource type for name ", objectType)
+	}
+	return rd
 }

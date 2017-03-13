@@ -17,18 +17,42 @@ package resources
 import (
 	"log"
 
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api/v1"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 type Pod struct {
 	Base
 	Pod    *v1.Pod
 	Client corev1.PodInterface
+}
+
+type podTemplateFactory struct{}
+
+// Returns wrapped resource name if it was a pod
+func (podTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.Pod == nil {
+		return ""
+	}
+	return definition.Pod.Name
+}
+
+// k8s resource kind that this fabric supports
+func (podTemplateFactory) Kind() string {
+	return "pod"
+}
+
+// New returns new Pod based on resource definition
+func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewPod(def.Pod, c.Pods(), def.Meta)
+}
+
+// NewExisting returns new ExistingPod based on resource definition
+func (podTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingPod(name, c.Pods())
 }
 
 func podKey(name string) string {
@@ -68,7 +92,7 @@ func isReady(pod *v1.Pod) bool {
 
 func (p Pod) Create() error {
 	if err := checkExistence(p); err != nil {
-		log.Println("Creating ", p.Key())
+		log.Println("Creating", p.Key())
 		p.Pod, err = p.Client.Create(p.Pod)
 		return err
 	}
@@ -89,16 +113,6 @@ func (p Pod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 // the Pod part of resource definition has matching name.
 func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
 	return def.Pod != nil && def.Pod.Name == name
-}
-
-// New returns new Pod based on resource definition
-func (p Pod) New(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
-	return NewPod(def.Pod, c.Pods(), def.Meta)
-}
-
-// NewExisting returns new ExistingPod based on resource definition
-func (p Pod) NewExisting(name string, c client.Interface) interfaces.Resource {
-	return NewExistingPod(name, c.Pods())
 }
 
 func NewPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {

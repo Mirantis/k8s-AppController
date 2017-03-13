@@ -18,15 +18,14 @@ import (
 	"fmt"
 	"time"
 
+	testutils "github.com/Mirantis/k8s-AppController/e2e/utils"
+	"github.com/Mirantis/k8s-AppController/pkg/client"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/util/intstr"
-
-	testutils "github.com/Mirantis/k8s-AppController/e2e/utils"
-	"github.com/Mirantis/k8s-AppController/pkg/client"
 )
 
 var _ = Describe("Basic Suite", func() {

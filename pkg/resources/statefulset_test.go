@@ -17,10 +17,9 @@ package resources
 import (
 	"testing"
 
-	"k8s.io/client-go/pkg/apis/apps/v1beta1"
-
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
+	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
 // TestStatefulSetSuccessCheck checks status of ready StatefulSet

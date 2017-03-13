@@ -21,21 +21,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
 func TestBuildDependencyGraph(t *testing.T) {
-	c := mocks.NewClient(mocks.MakePod("ready-1"), mocks.MakePod("ready-2"))
-	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"})
+	c := mocks.NewClient(
+		mocks.MakePod("ready-1"),
+		mocks.MakePod("ready-2"),
+		mocks.MakeResourceDefinition("pod/ready-1"),
+		mocks.MakeResourceDefinition("pod/ready-2"),
+		mocks.MakeDependency("pod/ready-1", "pod/ready-2"),
+	)
 
-	depGraph, err := BuildDependencyGraph(c, nil)
+	sched := New(c, nil, 0)
+
+	dg, err := sched.BuildDependencyGraph()
 	if err != nil {
 		t.Error(err)
+		return
 	}
+
+	depGraph := dg.(*DependencyGraph).graph
 
 	if len(depGraph) != 2 {
 		t.Errorf("Wrong length of dependency graph, expected %d, actual %d",
@@ -66,12 +75,14 @@ func TestBuildDependencyGraph(t *testing.T) {
 	if sr.RequiredBy[0].Key() != "pod/ready-2" {
 		t.Errorf("Wrong value of 'RequiredBy' for scheduled resource '%s', expected '%s', actual '%s'",
 			sr.Key(), "pod/ready-2", sr.RequiredBy[0].Key())
+		return
 	}
 
 	sr, ok = (depGraph)["pod/ready-2"]
 
 	if !ok {
 		t.Errorf("Dependency for '%s' not found in dependency graph", "pod/ready-2")
+		return
 	}
 
 	if sr.Key() != "pod/ready-2" {
@@ -163,14 +174,11 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 }
 
 func TestDetectCyclesAcyclic(t *testing.T) {
-	c := mocks.NewClient(mocks.MakePod("ready-1"), mocks.MakePod("ready-2"))
-	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"})
+	dependencies := []client.Dependency{
+		*mocks.MakeDependency("pod/ready-1", "pod/ready-2"),
+	}
 
-	depGraph, _ := BuildDependencyGraph(c, nil)
-
-	cycles := DetectCycles(depGraph)
+	cycles := detectCycles(dependencies)
 
 	if len(cycles) != 0 {
 		t.Errorf("Cycles detected in an acyclic graph: %v", cycles)
@@ -178,15 +186,12 @@ func TestDetectCyclesAcyclic(t *testing.T) {
 }
 
 func TestDetectCyclesSimpleCycle(t *testing.T) {
-	c := mocks.NewClient(mocks.MakePod("ready-1"), mocks.MakePod("ready-2"))
-	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1", "pod/ready-2")
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-2"},
-		mocks.Dependency{Parent: "pod/ready-2", Child: "pod/ready-1"})
+	dependencies := []client.Dependency{
+		*mocks.MakeDependency("pod/ready-1", "pod/ready-2"),
+		*mocks.MakeDependency("pod/ready-2", "pod/ready-1"),
+	}
 
-	depGraph, _ := BuildDependencyGraph(c, nil)
-
-	cycles := DetectCycles(depGraph)
+	cycles := detectCycles(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -195,14 +200,11 @@ func TestDetectCyclesSimpleCycle(t *testing.T) {
 }
 
 func TestDetectCyclesSelf(t *testing.T) {
-	c := mocks.NewClient(mocks.MakePod("ready-1"))
-	c.ResDefs = mocks.NewResourceDefinitionClient("pod/ready-1")
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/ready-1", Child: "pod/ready-1"})
+	dependencies := []client.Dependency{
+		*mocks.MakeDependency("pod/ready-1", "pod/ready-1"),
+	}
 
-	depGraph, _ := BuildDependencyGraph(c, nil)
-
-	cycles := DetectCycles(depGraph)
+	cycles := detectCycles(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -213,27 +215,23 @@ func TestDetectCyclesSelf(t *testing.T) {
 		t.Errorf("Expected cycle length to be %d, got %d", 2, len(cycles[0]))
 	}
 
-	if cycles[0][0].Key() != "pod/ready-1" {
-		t.Errorf("Expected cycle node key to be %s, got %s", "pod/ready-1", cycles[0][0].Key())
+	if cycles[0][0] != "pod/ready-1" {
+		t.Errorf("Expected cycle node key to be %s, got %s", "pod/ready-1", cycles[0][0])
 	}
-	if cycles[0][1].Key() != "pod/ready-1" {
-		t.Errorf("Expected cycle node key to be %s, got %s", "pod/ready-1", cycles[0][0].Key())
+	if cycles[0][1] != "pod/ready-1" {
+		t.Errorf("Expected cycle node key to be %s, got %s", "pod/ready-1", cycles[0][0])
 	}
 }
 
 func TestDetectCyclesLongCycle(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResDefs = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4")
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
-		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
-		mocks.Dependency{Parent: "pod/3", Child: "pod/4"},
-		mocks.Dependency{Parent: "pod/4", Child: "pod/1"},
-	)
+	dependencies := []client.Dependency{
+		*mocks.MakeDependency("pod/1", "pod/2"),
+		*mocks.MakeDependency("pod/2", "pod/3"),
+		*mocks.MakeDependency("pod/3", "pod/4"),
+		*mocks.MakeDependency("pod/4", "pod/1"),
+	}
 
-	depGraph, _ := BuildDependencyGraph(c, nil)
-
-	cycles := DetectCycles(depGraph)
+	cycles := detectCycles(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -246,20 +244,16 @@ func TestDetectCyclesLongCycle(t *testing.T) {
 }
 
 func TestDetectCyclesComplex(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResDefs = mocks.NewResourceDefinitionClient("pod/1", "pod/2", "pod/3", "pod/4", "pod/5")
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
-		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
-		mocks.Dependency{Parent: "pod/3", Child: "pod/1"},
-		mocks.Dependency{Parent: "pod/4", Child: "pod/1"},
-		mocks.Dependency{Parent: "pod/1", Child: "pod/5"},
-		mocks.Dependency{Parent: "pod/5", Child: "pod/4"},
-	)
+	dependencies := []client.Dependency{
+		*mocks.MakeDependency("pod/1", "pod/2"),
+		*mocks.MakeDependency("pod/2", "pod/3"),
+		*mocks.MakeDependency("pod/3", "pod/1"),
+		*mocks.MakeDependency("pod/4", "pod/1"),
+		*mocks.MakeDependency("pod/1", "pod/5"),
+		*mocks.MakeDependency("pod/5", "pod/4"),
+	}
 
-	depGraph, _ := BuildDependencyGraph(c, nil)
-
-	cycles := DetectCycles(depGraph)
+	cycles := detectCycles(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("Expected %d cycles, got %d", 1, len(cycles))
@@ -272,23 +266,18 @@ func TestDetectCyclesComplex(t *testing.T) {
 }
 
 func TestDetectCyclesMultiple(t *testing.T) {
-	c := mocks.NewClient()
-	c.ResDefs = mocks.NewResourceDefinitionClient(
-		"pod/1", "pod/2", "pod/3", "pod/4", "pod/5", "pod/6", "pod/7")
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/1", Child: "pod/2"},
-		mocks.Dependency{Parent: "pod/2", Child: "pod/3"},
-		mocks.Dependency{Parent: "pod/3", Child: "pod/4"},
-		mocks.Dependency{Parent: "pod/4", Child: "pod/2"},
-		mocks.Dependency{Parent: "pod/1", Child: "pod/5"},
-		mocks.Dependency{Parent: "pod/5", Child: "pod/6"},
-		mocks.Dependency{Parent: "pod/6", Child: "pod/7"},
-		mocks.Dependency{Parent: "pod/7", Child: "pod/5"},
-	)
+	dependencies := []client.Dependency{
+		*mocks.MakeDependency("pod/1", "pod/2"),
+		*mocks.MakeDependency("pod/2", "pod/3"),
+		*mocks.MakeDependency("pod/3", "pod/4"),
+		*mocks.MakeDependency("pod/4", "pod/2"),
+		*mocks.MakeDependency("pod/1", "pod/5"),
+		*mocks.MakeDependency("pod/5", "pod/6"),
+		*mocks.MakeDependency("pod/6", "pod/7"),
+		*mocks.MakeDependency("pod/7", "pod/5"),
+	}
 
-	depGraph, _ := BuildDependencyGraph(c, nil)
-
-	cycles := DetectCycles(depGraph)
+	cycles := detectCycles(dependencies)
 
 	if len(cycles) != 2 {
 		t.Errorf("Expected %d cycles, got %d", 2, len(cycles))
@@ -308,20 +297,21 @@ func TestLimitConcurrency(t *testing.T) {
 	for concurrency := range [...]int{0, 3, 5, 10} {
 		counter := mocks.NewCounterWithMemo()
 
-		depGraph := DependencyGraph{}
+		sched := &Scheduler{concurrency: concurrency}
+		depGraph := NewDependencyGraph(sched)
 
 		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
-			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second*2)}
-			sr := NewScheduledResourceFor(r)
-			depGraph[sr.Key()] = sr
+			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second/4)}
+			sr := newScheduledResourceFor(r)
+			depGraph.graph[sr.Key()] = sr
 		}
 		stopChan := make(chan struct{})
-		Create(depGraph, concurrency, stopChan)
+		depGraph.Deploy(stopChan)
 
 		// Concurrency = 0, means 'disabled' i.e. equal to depGraph size
 		if concurrency == 0 {
-			concurrency = len(depGraph)
+			concurrency = len(depGraph.graph)
 		}
 		if counter.Max() != concurrency {
 			t.Errorf("Expected max concurrency counter %d, but got %d", concurrency, counter.Max())
@@ -330,14 +320,14 @@ func TestLimitConcurrency(t *testing.T) {
 }
 
 func TestStopBeforeDeploymentStarted(t *testing.T) {
-	depGraph := DependencyGraph{}
+	depGraph := NewDependencyGraph(&Scheduler{})
 	sr := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 	}
-	depGraph[sr.Key()] = sr
+	depGraph.graph[sr.Key()] = sr
 	stopChan := make(chan struct{})
 	close(stopChan)
-	Create(depGraph, 0, stopChan)
+	depGraph.Deploy(stopChan)
 	status, _ := sr.Resource.Status(nil)
 	if status == interfaces.ResourceReady {
 		t.Errorf("Expected that resource %v wont be in ready status, but got %v", sr.Key(), status)
@@ -356,58 +346,58 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		mocks.MakeConfigMap("cfg-1"),
 		mocks.MakeDeployment("ready-7"),
 		mocks.MakePersistentVolumeClaim("pvc-1"),
+
+		mocks.MakeResourceDefinition("pod/ready-1"),
+		mocks.MakeResourceDefinition("job/ready-2"),
+		mocks.MakeResourceDefinition("replicaset/ready-3"),
+		mocks.MakeResourceDefinition("service/ready-4"),
+		mocks.MakeResourceDefinition("statefulset/ready-5"),
+		mocks.MakeResourceDefinition("daemonset/ready-6"),
+		mocks.MakeResourceDefinition("configmap/cfg-1"),
+		mocks.MakeResourceDefinition("secret/secret-1"),
+		mocks.MakeResourceDefinition("deployment/ready-7"),
+		mocks.MakeResourceDefinition("persistentvolumeclaim/pvc-1"),
+		mocks.MakeResourceDefinition("serviceaccount/sa-1"),
+
+		mocks.MakeDependency("pod/ready-1", "job/ready-2"),
+		mocks.MakeDependency("job/ready-2", "replicaset/ready-3"),
+		mocks.MakeDependency("replicaset/ready-3", "service/ready-4"),
+		mocks.MakeDependency("service/ready-4", "statefulset/ready-5"),
+		mocks.MakeDependency("statefulset/ready-5", "daemonset/ready-6"),
+		mocks.MakeDependency("job/ready-2", "configmap/cfg-1"),
+		mocks.MakeDependency("job/ready-2", "secret/secret-1"),
+		mocks.MakeDependency("statefulset/ready-5", "deployment/ready-7"),
+		mocks.MakeDependency("deployment/ready-7", "persistentvolumeclaim/pvc-1"),
+		mocks.MakeDependency("pod/ready-1", "serviceaccount/sa-1"),
 	)
-	c.ResDefs = mocks.NewResourceDefinitionClient(
-		"pod/ready-1",
-		"job/ready-2",
-		"replicaset/ready-3",
-		"service/ready-4",
-		"statefulset/ready-5",
-		"daemonset/ready-6",
-		"configmap/cfg-1",
-		"secret/secret-1",
-		"deployment/ready-7",
-		"persistentvolumeclaim/pvc-1",
-		"serviceaccount/sa-1")
 
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "pod/ready-1", Child: "job/ready-2"},
-		mocks.Dependency{Parent: "job/ready-2", Child: "replicaset/ready-3"},
-		mocks.Dependency{Parent: "replicaset/ready-3", Child: "service/ready-4"},
-		mocks.Dependency{Parent: "service/ready-4", Child: "statefulset/ready-5"},
-		mocks.Dependency{Parent: "statefulset/ready-5", Child: "daemonset/ready-6"},
-		mocks.Dependency{Parent: "job/ready-2", Child: "configmap/cfg-1"},
-		mocks.Dependency{Parent: "job/ready-2", Child: "secret/secret-1"},
-		mocks.Dependency{Parent: "statefulset/ready-5", Child: "deployment/ready-7"},
-		mocks.Dependency{Parent: "deployment/ready-7", Child: "persistentvolumeclaim/pvc-1"},
-		mocks.Dependency{Parent: "pod/ready-1", Child: "serviceaccount/sa-1"})
-
-	depGraph, err := BuildDependencyGraph(c, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph()
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	graph := depGraph.(*DependencyGraph).graph
+
 	expectedLenght := 11
-	if len(depGraph) != expectedLenght {
-		ks := make([]string, 0, len(depGraph))
-		for key := range depGraph {
+	if len(graph) != expectedLenght {
+		ks := make([]string, 0, len(graph))
+		for key := range graph {
 			ks = append(ks, key)
 		}
 		keys := strings.Join(ks, ", ")
 		t.Errorf("Wrong length of dependency graph, expected %d, actual %d. Keys are: %s",
-			expectedLenght, len(depGraph), keys)
+			expectedLenght, len(graph), keys)
 	}
 }
 
 func TestEmptyStatus(t *testing.T) {
 	c := mocks.NewClient()
-	c.ResDefs = mocks.NewResourceDefinitionClient()
-	depGraph, err := BuildDependencyGraph(c, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph()
 	if err != nil {
 		t.Fatal(err)
 	}
 	status, _ := depGraph.GetStatus()
-	if status != Empty {
+	if status != interfaces.Empty {
 		t.Errorf("Expected status to be Empty, but got %s", status)
 	}
 }
@@ -416,20 +406,18 @@ func TestPreparedStatus(t *testing.T) {
 	c := mocks.NewClient(
 		mocks.MakeJob("1"),
 		mocks.MakeJob("2"),
+
+		mocks.MakeResourceDefinition("job/1"),
+		mocks.MakeResourceDefinition("job/2"),
+
+		mocks.MakeDependency("job/1", "job/2"),
 	)
-	c.ResDefs = mocks.NewResourceDefinitionClient(
-		"job/1",
-		"job/2",
-	)
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "job/1", Child: "job/2"},
-	)
-	depGraph, err := BuildDependencyGraph(c, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph()
 	if err != nil {
 		t.Fatal(err)
 	}
 	status, _ := depGraph.GetStatus()
-	if status != Prepared {
+	if status != interfaces.Prepared {
 		t.Errorf("Expected status to be Prepared, but got %s", status)
 	}
 }
@@ -438,20 +426,18 @@ func TestRunningStatus(t *testing.T) {
 	c := mocks.NewClient(
 		mocks.MakeJob("ready-1"),
 		mocks.MakeJob("2"),
+
+		mocks.MakeResourceDefinition("job/ready-1"),
+		mocks.MakeResourceDefinition("job/2"),
+
+		mocks.MakeDependency("job/ready-1", "job/2"),
 	)
-	c.ResDefs = mocks.NewResourceDefinitionClient(
-		"job/ready-1",
-		"job/2",
-	)
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "job/ready-1", Child: "job/2"},
-	)
-	depGraph, err := BuildDependencyGraph(c, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph()
 	if err != nil {
 		t.Fatal(err)
 	}
 	status, _ := depGraph.GetStatus()
-	if status != Running {
+	if status != interfaces.Running {
 		t.Errorf("Expected status to be Running, but got %s", status)
 	}
 }
@@ -460,20 +446,18 @@ func TestFinishedStatus(t *testing.T) {
 	c := mocks.NewClient(
 		mocks.MakeJob("ready-1"),
 		mocks.MakeJob("ready-2"),
+
+		mocks.MakeResourceDefinition("job/ready-1"),
+		mocks.MakeResourceDefinition("job/ready-2"),
+
+		mocks.MakeDependency("job/ready-1", "job/ready-2"),
 	)
-	c.ResDefs = mocks.NewResourceDefinitionClient(
-		"job/ready-1",
-		"job/ready-2",
-	)
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "job/ready-1", Child: "job/ready-2"},
-	)
-	depGraph, err := BuildDependencyGraph(c, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph()
 	if err != nil {
 		t.Fatal(err)
 	}
 	status, _ := depGraph.GetStatus()
-	if status != Finished {
+	if status != interfaces.Finished {
 		t.Errorf("Expected status to be Finished, but got %s", status)
 	}
 }
@@ -484,28 +468,29 @@ func TestGraph(t *testing.T) {
 		mocks.MakeJob("1"),
 		mocks.MakeJob("ready-2"),
 		mocks.MakeJob("3"),
+
+		mocks.MakeResourceDefinition("job/1"),
+		mocks.MakeResourceDefinition("job/ready-2"),
+		mocks.MakeResourceDefinition("job/3"),
+
+		mocks.MakeDependency("job/ready-2", "job/1"),
+		mocks.MakeDependency("job/3", "job/1"),
 	)
-	c.ResDefs = mocks.NewResourceDefinitionClient(
-		"job/1",
-		"job/ready-2",
-		"job/3",
-	)
-	c.Deps = mocks.NewDependencyClient(
-		mocks.Dependency{Parent: "job/ready-2", Child: "job/1"},
-		mocks.Dependency{Parent: "job/3", Child: "job/1"},
-	)
-	depGraph, err := BuildDependencyGraph(c, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph()
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, report := depGraph.GetStatus()
-	if status != Running {
+	status, rep := depGraph.GetStatus()
+	if status != interfaces.Running {
 		t.Errorf("Expected status to be Running, but got %s", status)
 	}
-	if len(report) != 3 {
-		t.Errorf("Wrong length of a graph 3 != %d", len(report))
+
+	deploymentReport := rep.(report.DeploymentReport)
+
+	if len(deploymentReport) != 3 {
+		t.Errorf("Wrong length of a graph 3 != %d", len(deploymentReport))
 	}
-	for _, nodeReport := range report {
+	for _, nodeReport := range deploymentReport {
 		if nodeReport.Dependent == "job/1" {
 			if len(nodeReport.Dependencies) != 2 {
 				t.Errorf("Wrong length of dependencies 2 != %d", len(nodeReport.Dependencies))

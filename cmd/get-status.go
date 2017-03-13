@@ -22,7 +22,6 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
-
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/labels"
 )
@@ -61,7 +60,8 @@ func getStatus(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	graph, err := scheduler.BuildDependencyGraph(c, sel)
+	sched := scheduler.New(c, sel, 0)
+	graph, err := sched.BuildDependencyGraph()
 	if err != nil {
 		log.Fatal(err)
 	}

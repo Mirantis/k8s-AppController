@@ -1,4 +1,4 @@
-// Copyright 2016 Mirantis
+// Copyright 2017 Mirantis
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mocks
+package scheduler
 
 import (
-	"strings"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
-	"k8s.io/client-go/pkg/api"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
+	"k8s.io/client-go/pkg/labels"
 )
 
-func MakeDependency(parent, child string) *client.Dependency {
-	return &client.Dependency{
-		ObjectMeta: api.ObjectMeta{
-			Name:      strings.Replace(parent+"-"+child, "/", "-", -1),
-			Namespace: "testing"},
-		Parent: parent,
-		Child:  child,
+type Scheduler struct {
+	client      client.Interface
+	selector    labels.Selector
+	concurrency int
+}
+
+func New(client client.Interface, selector labels.Selector, concurrency int) interfaces.Scheduler {
+	return &Scheduler{
+		client:      client,
+		selector:    selector,
+		concurrency: concurrency,
 	}
 }

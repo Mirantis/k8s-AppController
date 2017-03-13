@@ -21,9 +21,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/Mirantis/k8s-AppController/cmd/format"
+	"github.com/spf13/cobra"
 )
 
 func getInput(stream *os.File, indent int) string {

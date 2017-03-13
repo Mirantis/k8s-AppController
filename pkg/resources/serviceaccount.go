@@ -17,12 +17,11 @@ package resources
 import (
 	"log"
 
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api/v1"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 type ServiceAccount struct {
@@ -35,6 +34,31 @@ type ExistingServiceAccount struct {
 	Base
 	Name   string
 	Client corev1.ServiceAccountInterface
+}
+
+type serviceAccountTemplateFactory struct{}
+
+// Returns wrapped resource name if it was a serviceaccount
+func (serviceAccountTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.ServiceAccount == nil {
+		return ""
+	}
+	return definition.ServiceAccount.Name
+}
+
+// k8s resource kind that this fabric supports
+func (serviceAccountTemplateFactory) Kind() string {
+	return "serviceaccount"
+}
+
+// New returns a new object wrapped as Resource
+func (serviceAccountTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewServiceAccount(def.ServiceAccount, ci.ServiceAccounts(), def.Meta)
+}
+
+// NewExisting returns a new object based on existing one wrapped as Resource
+func (serviceAccountTemplateFactory) NewExisting(name string, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingServiceAccount(name, ci.ServiceAccounts())
 }
 
 func serviceAccountKey(name string) string {
@@ -60,7 +84,7 @@ func (c ServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatu
 
 func (c ServiceAccount) Create() error {
 	if err := checkExistence(c); err != nil {
-		log.Println("Creating ", c.Key())
+		log.Println("Creating", c.Key())
 		c.ServiceAccount, err = c.Client.Create(c.ServiceAccount)
 		return err
 	}
@@ -71,26 +95,12 @@ func (c ServiceAccount) Delete() error {
 	return c.Client.Delete(c.ServiceAccount.Name, &v1.DeleteOptions{})
 }
 
-func (c ServiceAccount) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.ServiceAccount != nil && def.ServiceAccount.Name == name
-}
-
 func NewServiceAccount(c *v1.ServiceAccount, client corev1.ServiceAccountInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ServiceAccount{Base: Base{meta}, ServiceAccount: c, Client: client}}
 }
 
 func NewExistingServiceAccount(name string, client corev1.ServiceAccountInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingServiceAccount{Name: name, Client: client}}
-}
-
-// New returns a new object wrapped as Resource
-func (c ServiceAccount) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewServiceAccount(def.ServiceAccount, ci.ServiceAccounts(), def.Meta)
-}
-
-// NewExisting returns a new object based on existing one wrapped as Resource
-func (c ServiceAccount) NewExisting(name string, ci client.Interface) interfaces.Resource {
-	return NewExistingServiceAccount(name, ci.ServiceAccounts())
 }
 
 func (c ExistingServiceAccount) Key() string {

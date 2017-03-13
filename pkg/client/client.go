@@ -18,10 +18,8 @@ import (
 	"log"
 	"os"
 
-	// install v1alpha1 petset api
 	_ "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/install"
 	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
-
 	"k8s.io/client-go/kubernetes"
 	appsbeta1 "k8s.io/client-go/kubernetes/typed/apps/v1beta1"
 	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
@@ -50,9 +48,15 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		definitionGVK,
 		&ResourceDefinition{},
 	)
+	definitionListGVK := SchemeGroupVersion.WithKind("DefinitionList")
+	scheme.AddKnownTypeWithName(
+		definitionListGVK,
+		&ResourceDefinitionList{},
+	)
 	scheme.AddKnownTypes(
 		SchemeGroupVersion,
 		&Dependency{},
+		&DependencyList{},
 	)
 	return nil
 }
@@ -60,9 +64,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 func init() {
 	if err := announced.NewGroupMetaFactory(
 		&announced.GroupMetaFactoryArgs{
-			GroupName:                  GroupName,
-			VersionPreferenceOrder:     []string{SchemeGroupVersion.Version},
-			AddInternalObjectsToScheme: SchemeBuilder.AddToScheme,
+			GroupName:              GroupName,
+			VersionPreferenceOrder: []string{SchemeGroupVersion.Version},
 		},
 		announced.VersionToSchemeFunc{
 			SchemeGroupVersion.Version: SchemeBuilder.AddToScheme,
@@ -94,90 +97,90 @@ type Interface interface {
 }
 
 type Client struct {
-	Clientset   kubernetes.Interface
-	AlphaApps   v1alpha1.AppsInterface
-	Deps        DependenciesInterface
-	ResDefs     ResourceDefinitionsInterface
-	Namespace   string
-	APIVersions *unversioned.APIGroupList
+	clientset           kubernetes.Interface
+	alphaApps           v1alpha1.AppsInterface
+	dependencies        DependenciesInterface
+	resourceDefinitions ResourceDefinitionsInterface
+	namespace           string
+	apiVersions         *unversioned.APIGroupList
 }
 
 var _ Interface = &Client{}
 
 // Dependencies returns dependency client for ThirdPartyResource created by AppController
 func (c Client) Dependencies() DependenciesInterface {
-	return c.Deps
+	return c.dependencies
 }
 
 // ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
 func (c Client) ResourceDefinitions() ResourceDefinitionsInterface {
-	return c.ResDefs
+	return c.resourceDefinitions
 }
 
 // ConfigMaps returns K8s ConfigMaps client for ac namespace
 func (c Client) ConfigMaps() corev1.ConfigMapInterface {
-	return c.Clientset.Core().ConfigMaps(c.Namespace)
+	return c.clientset.Core().ConfigMaps(c.namespace)
 }
 
 // Secrets returns K8s Secrets client for ac namespace
 func (c Client) Secrets() corev1.SecretInterface {
-	return c.Clientset.Core().Secrets(c.Namespace)
+	return c.clientset.Core().Secrets(c.namespace)
 }
 
 // Pods returns K8s Pod client for ac namespace
 func (c Client) Pods() corev1.PodInterface {
-	return c.Clientset.Core().Pods(c.Namespace)
+	return c.clientset.Core().Pods(c.namespace)
 }
 
 // Jobs returns K8s Job client for ac namespace
 func (c Client) Jobs() batchv1.JobInterface {
-	return c.Clientset.Batch().Jobs(c.Namespace)
+	return c.clientset.Batch().Jobs(c.namespace)
 }
 
 // Services returns K8s Service client for ac namespace
 func (c Client) Services() corev1.ServiceInterface {
-	return c.Clientset.Core().Services(c.Namespace)
+	return c.clientset.Core().Services(c.namespace)
 }
 
 // ServiceAccounts returns K8s ServiceAccount client for ac namespace
 func (c Client) ServiceAccounts() corev1.ServiceAccountInterface {
-	return c.Clientset.Core().ServiceAccounts(c.Namespace)
+	return c.clientset.Core().ServiceAccounts(c.namespace)
 }
 
 // ReplicaSets returns K8s ReplicaSet client for ac namespace
 func (c Client) ReplicaSets() v1beta1.ReplicaSetInterface {
-	return c.Clientset.Extensions().ReplicaSets(c.Namespace)
+	return c.clientset.Extensions().ReplicaSets(c.namespace)
 }
 
 // StatefulSets returns K8s StatefulSet client for ac namespace
 func (c Client) StatefulSets() appsbeta1.StatefulSetInterface {
-	return c.Clientset.Apps().StatefulSets(c.Namespace)
+	return c.clientset.Apps().StatefulSets(c.namespace)
 }
 
 func (c Client) PetSets() v1alpha1.PetSetInterface {
-	return c.AlphaApps.PetSets(c.Namespace)
+	return c.alphaApps.PetSets(c.namespace)
 }
 
 // DaemonSets return K8s DaemonSet client for ac namespace
 func (c Client) DaemonSets() v1beta1.DaemonSetInterface {
-	return c.Clientset.Extensions().DaemonSets(c.Namespace)
+	return c.clientset.Extensions().DaemonSets(c.namespace)
 }
 
 // Deployments return K8s Deployment client for ac namespace
 func (c Client) Deployments() v1beta1.DeploymentInterface {
-	return c.Clientset.Extensions().Deployments(c.Namespace)
+	return c.clientset.Extensions().Deployments(c.namespace)
 }
 
 // PersistentVolumeClaims return K8s PVC client for ac namespace
 func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
-	return c.Clientset.Core().PersistentVolumeClaims(c.Namespace)
+	return c.clientset.Core().PersistentVolumeClaims(c.namespace)
 }
 
 // IsEnabled verifies that required group name and group version is registered in API
 // particularly we need it to support both pet sets and stateful sets using same application
 func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
-	for i := range c.APIVersions.Groups {
-		group := c.APIVersions.Groups[i]
+	for i := range c.apiVersions.Groups {
+		group := c.apiVersions.Groups[i]
 		if group.Name != version.Group {
 			continue
 		}
@@ -213,14 +216,26 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 		return nil, err
 	}
 
+	return NewClient(cl, apps, deps, resdefs, namespace, versions), nil
+}
+
+// Client class constructor
+func NewClient(
+	clientset kubernetes.Interface,
+	alphaApps v1alpha1.AppsInterface,
+	dependencies DependenciesInterface,
+	resourceDefinitions ResourceDefinitionsInterface,
+	namespace string,
+	apiVersions *unversioned.APIGroupList) Interface {
+
 	return &Client{
-		Clientset:   cl,
-		AlphaApps:   apps,
-		Deps:        deps,
-		ResDefs:     resdefs,
-		Namespace:   namespace,
-		APIVersions: versions,
-	}, nil
+		clientset:           clientset,
+		alphaApps:           alphaApps,
+		dependencies:        dependencies,
+		resourceDefinitions: resourceDefinitions,
+		namespace:           namespace,
+		apiVersions:         apiVersions,
+	}
 }
 
 func thirdPartyResourceRESTClient(c *rest.Config) (*rest.RESTClient, error) {
