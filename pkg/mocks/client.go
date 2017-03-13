@@ -1,4 +1,4 @@
-// Copyright 2016 Mirantis
+// Copyright 2017 Mirantis
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,47 +16,43 @@ package mocks
 
 import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
-	alphafake "github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1/fake"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
+
+	alphafake "github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1/fake"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 )
 
-func newClient(objects ...runtime.Object) *client.Client {
+func newClient(apiVersions *unversioned.APIGroupList, objects ...runtime.Object) client.Interface {
+	ns := "testing"
 	fakeClientset := fake.NewSimpleClientset(objects...)
 	apps := &alphafake.FakeApps{&fakeClientset.Fake}
-	return &client.Client{
-		Clientset: fakeClientset,
-		AlphaApps: apps,
-		Deps:      NewDependencyClient(),
-		ResDefs:   NewResourceDefinitionClient(),
-		Namespace: "testing",
-	}
+	deps := &FakeDeps{fake: &fakeClientset.Fake, ns: ns}
+	resDefs := &FakeResDef{fake: &fakeClientset.Fake, ns: ns}
+	return client.NewClient(
+		fakeClientset,
+		apps,
+		deps,
+		resDefs,
+		ns,
+		apiVersions)
 }
 
 func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupList {
 	return &unversioned.APIGroupList{Groups: []unversioned.APIGroup{
 		{
-			Name: version.Group,
-			Versions: []unversioned.GroupVersionForDiscovery{
-				{
-					Version: version.Version},
-			},
+			Name:     version.Group,
+			Versions: []unversioned.GroupVersionForDiscovery{{Version: version.Version}},
 		},
 	}}
 }
 
-func NewClient(objects ...runtime.Object) *client.Client {
-	c := newClient(objects...)
-	c.APIVersions = makeVersionsList(v1beta1.SchemeGroupVersion)
-	return c
+func NewClient(objects ...runtime.Object) client.Interface {
+	return newClient(makeVersionsList(v1beta1.SchemeGroupVersion), objects...)
 }
 
-func NewClient1_4(objects ...runtime.Object) *client.Client {
-	c := newClient(objects...)
-	c.APIVersions = makeVersionsList(v1alpha1.SchemeGroupVersion)
-	return c
+func NewClient1_4(objects ...runtime.Object) client.Interface {
+	return newClient(makeVersionsList(v1alpha1.SchemeGroupVersion), objects...)
 }
