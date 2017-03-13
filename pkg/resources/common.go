@@ -32,6 +32,7 @@ func init() {
 		configMapTemplateFactory{},
 		daemonSetTemplateFactory{},
 		deploymentTemplateFactory{},
+		flowTemplateFactory{},
 		jobTemplateFactory{},
 		persistentVolumeClaimTemplateFactory{},
 		petSetTemplateFactory{},

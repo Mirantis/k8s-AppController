@@ -18,6 +18,7 @@ import (
 	"log"
 	"os"
 
+	// install v1alpha1 petset api
 	_ "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/install"
 	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
 	"k8s.io/client-go/kubernetes"
@@ -58,6 +59,11 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&Dependency{},
 		&DependencyList{},
 	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&Flow{},
+		&FlowList{},
+	)
 	return nil
 }
 
@@ -92,6 +98,7 @@ type Interface interface {
 
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
+	Flows() FlowsInterface
 
 	IsEnabled(version unversioned.GroupVersion) bool
 }
@@ -101,6 +108,7 @@ type Client struct {
 	alphaApps           v1alpha1.AppsInterface
 	dependencies        DependenciesInterface
 	resourceDefinitions ResourceDefinitionsInterface
+	flows               FlowsInterface
 	namespace           string
 	apiVersions         *unversioned.APIGroupList
 }
@@ -115,6 +123,11 @@ func (c Client) Dependencies() DependenciesInterface {
 // ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
 func (c Client) ResourceDefinitions() ResourceDefinitionsInterface {
 	return c.resourceDefinitions
+}
+
+// Flows returns flow client for ThirdPartyResource created by AppController
+func (c Client) Flows() FlowsInterface {
+	return c.flows
 }
 
 // ConfigMaps returns K8s ConfigMaps client for ac namespace
@@ -203,6 +216,10 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+	flows, err := newFlows(c, namespace)
+	if err != nil {
+		return nil, err
+	}
 	cl, err := kubernetes.NewForConfig(&c)
 	if err != nil {
 		return nil, err
@@ -216,7 +233,7 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 		return nil, err
 	}
 
-	return NewClient(cl, apps, deps, resdefs, namespace, versions), nil
+	return NewClient(cl, apps, deps, resdefs, flows, namespace, versions), nil
 }
 
 // Client class constructor
@@ -225,6 +242,7 @@ func NewClient(
 	alphaApps v1alpha1.AppsInterface,
 	dependencies DependenciesInterface,
 	resourceDefinitions ResourceDefinitionsInterface,
+	flows FlowsInterface,
 	namespace string,
 	apiVersions *unversioned.APIGroupList) Interface {
 
@@ -233,6 +251,7 @@ func NewClient(
 		alphaApps:           alphaApps,
 		dependencies:        dependencies,
 		resourceDefinitions: resourceDefinitions,
+		flows:               flows,
 		namespace:           namespace,
 		apiVersions:         apiVersions,
 	}

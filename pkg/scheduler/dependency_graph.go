@@ -24,6 +24,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/resources"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/errors"
 )
 
 // DependencyGraph is a full deployment depGraph as a mapping from job keys to
@@ -42,6 +43,11 @@ type GraphContext struct {
 // Returns the Scheduler that was used to create the dependency graph
 func (gc GraphContext) Scheduler() interfaces.Scheduler {
 	return gc.scheduler
+}
+
+// Returns argument values available in the current graph graph
+func (gc GraphContext) Args() map[string]string {
+	return gc.args
 }
 
 // Returns the currently running dependency graph
@@ -77,21 +83,24 @@ func groupDependencies(dependencies []client.Dependency,
 		isDependant[dependency.Child] = true
 	}
 
-	rootDependencies := []client.Dependency{}
-	addResource := func(name string) {
-		if !isDependant[name] {
-			rootDependencies = append(rootDependencies, client.Dependency{Parent: "", Child: name})
-			isDependant[name] = true
+	defaultFlowName := "flow/" + interfaces.DefaultFlowName
+	if defaultFlow := result[defaultFlowName]; defaultFlow == nil {
+		defaultFlow = []client.Dependency{}
+		addResource := func(name string) {
+			if !strings.HasPrefix(name, "flow/") && !isDependant[name] {
+				defaultFlow = append(defaultFlow, client.Dependency{Parent: defaultFlowName, Child: name})
+				isDependant[name] = true
+			}
 		}
-	}
 
-	for parent := range result {
-		addResource(parent)
+		for parent := range result {
+			addResource(parent)
+		}
+		for resDef := range resDefs {
+			addResource(resDef)
+		}
+		result[defaultFlowName] = defaultFlow
 	}
-	for resDef := range resDefs {
-		addResource(resDef)
-	}
-	result[""] = rootDependencies
 	return result
 }
 
@@ -118,6 +127,34 @@ func (sched *Scheduler) getResourceDefinitions() (map[string]client.ResourceDefi
 		result[kind+"/"+name] = resDef
 	}
 	return result, nil
+}
+
+func makeDefaultFlow() *client.Flow {
+	return &client.Flow{}
+}
+
+func filterDependencies(dependencies map[string][]client.Dependency, parent string,
+	flow *client.Flow) []client.Dependency {
+
+	children := dependencies[parent]
+	var result []client.Dependency
+	for _, dep := range children {
+		matches := true
+		if len(flow.Construction) == 0 {
+			matches = len(dep.Labels) == 0
+		} else {
+			for k, v := range flow.Construction {
+				if dep.Labels[k] != v {
+					matches = false
+					break
+				}
+			}
+		}
+		if matches {
+			result = append(result, dep)
+		}
+	}
+	return result
 }
 
 // newScheduledResource is a constructor for ScheduledResource
@@ -173,7 +210,26 @@ func NewDependencyGraph(sched *Scheduler) *DependencyGraph {
 }
 
 // BuildDependencyGraph loads dependencies data and creates the DependencyGraph
-func (sched *Scheduler) BuildDependencyGraph() (interfaces.DependencyGraph, error) {
+func (sched *Scheduler) BuildDependencyGraph(flowName string,
+	args map[string]string) (interfaces.DependencyGraph, error) {
+
+	log.Println("Looking for the flow", flowName)
+	flow, err := sched.client.Flows().Get(flowName)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			if flowName == interfaces.DefaultFlowName {
+				flow = makeDefaultFlow()
+			} else {
+				return nil, fmt.Errorf("Flow %s is not found", flowName)
+			}
+		} else {
+			return nil, err
+		}
+	} else {
+		log.Println("Found ", flowName, flow.Name, flow.Construction)
+	}
+	fullFlowName := "flow/" + flowName
 
 	log.Println("Getting resource definitions")
 	resDefs, err := sched.getResourceDefinitions()
@@ -196,21 +252,26 @@ func (sched *Scheduler) BuildDependencyGraph() (interfaces.DependencyGraph, erro
 
 	depGraph := NewDependencyGraph(sched)
 
+	if _, ok := dependencies[fullFlowName]; !ok {
+		log.Println("Flow depGraph is empty")
+		return depGraph, nil
+	}
+
 	queue := list.New()
-	queue.PushFront("")
+	queue.PushFront(fullFlowName)
 	context := GraphContext{scheduler: sched, graph: depGraph}
 
 	for e := queue.Front(); e != nil; e = e.Next() {
 		el := e.Value.(string)
 
-		deps := dependencies[el]
+		deps := filterDependencies(dependencies, el, flow)
 		parent := depGraph.graph[el]
 
 		for _, dep := range deps {
 			sr := depGraph.graph[dep.Child]
 			if sr == nil {
 				kind, name, err := keyParts(dep.Child)
-				log.Printf("Adding resource %s to the graph", dep.Child)
+				log.Printf("Adding resource %s to the flow depGraph %s", dep.Child, flowName)
 
 				sr, err = sched.newScheduledResource(kind, name, resDefs, context)
 				if err != nil {

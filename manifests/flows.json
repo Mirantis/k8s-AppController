@@ -1,0 +1,13 @@
+{
+	"metadata": {
+		"name": "flow.appcontroller.k8s"
+	},
+	"apiVersion": "extensions/v1beta1",
+	"kind": "ThirdPartyResource",
+	"description": "App Controller resource graph flow",
+	"versions": [
+		{
+			"name": "v1alpha1"
+		}
+	]
+}
