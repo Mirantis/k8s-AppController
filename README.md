@@ -140,7 +140,7 @@ Here is the brief list of our mid term Roadmap:
 * Joining Kubernetes Incubator
 * Cooperation with [Helm](https://github.com/kubernetes/helm) project
 * [Failure handling](https://github.com/Mirantis/k8s-AppController/blob/master/docs/research/failure-handling.md)
-* Implementation of [AppController Mysql Multi Slave research](https://github.com/Mirantis/k8s-AppController/blob/master/docs/research/lcm.md)
-* Real life examples
+* [Flows](https://github.com/Mirantis/k8s-AppController/pull/212) implementation
 * HA for AppController Pod
+* Real life examples
 * Documentation improvements
