@@ -15,7 +15,6 @@
 package utils
 
 import (
-	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -25,6 +24,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+)
+
+const (
+	controlName    = "AppcontrollerDeployment"
+	concurrencyKey = "concurrency"
+	selector       = "selector"
 )
 
 type AppControllerManager struct {
@@ -37,27 +42,15 @@ type AppControllerManager struct {
 }
 
 func (a *AppControllerManager) Run() {
-	cmd := exec.Command(
-		"kubectl",
-		"--namespace",
-		a.Namespace.Name,
-		"exec",
-		"k8s-appcontroller",
-		"--",
-		"ac-run",
-		"-l",
-		"ns:"+a.Namespace.Name,
-	)
-	out, err := cmd.Output()
-	if err != nil {
-		switch err.(type) {
-		case *exec.ExitError:
-			exErr := err.(*exec.ExitError)
-			Fail(string(out) + string(exErr.Stderr))
-		default:
-			Expect(err).NotTo(HaveOccurred())
-		}
+	cfg := &v1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{Name: controlName},
+		Data: map[string]string{
+			concurrencyKey: "0",
+			selector:       "",
+		},
 	}
+	_, err := a.Client.ConfigMaps().Create(cfg)
+	Expect(err).NotTo(HaveOccurred())
 }
 
 func (a *AppControllerManager) Prepare() {
@@ -74,7 +67,7 @@ func (a *AppControllerManager) Prepare() {
 				{
 					Name:            "kubeac",
 					Image:           "mirantis/k8s-appcontroller",
-					Command:         []string{"/usr/bin/run_runit"},
+					Command:         []string{"kubeac", "run"},
 					ImagePullPolicy: v1.PullNever,
 					Env: []v1.EnvVar{
 						{
