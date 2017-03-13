@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	controlName    = "AppcontrollerDeployment"
+	controlName    = "appcontrollerdeployment"
 	concurrencyKey = "concurrency"
 	selector       = "selector"
 )
