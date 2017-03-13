@@ -17,12 +17,12 @@ package resources
 import (
 	"log"
 
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api/v1"
-
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
+
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 type ConfigMap struct {
@@ -35,6 +35,31 @@ type ExistingConfigMap struct {
 	Base
 	Name   string
 	Client corev1.ConfigMapInterface
+}
+
+type configMapTemplateFactory struct{}
+
+// Returns wrapped resource name if it was a configmap
+func (configMapTemplateFactory) ShortName(definition client.ResourceDefinition) string {
+	if definition.ConfigMap == nil {
+		return ""
+	}
+	return definition.ConfigMap.Name
+}
+
+// k8s resource kind that this fabric supports
+func (configMapTemplateFactory) Kind() string {
+	return "configmap"
+}
+
+// New returns a new object wrapped as Resource
+func (configMapTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewConfigMap(def.ConfigMap, ci.ConfigMaps(), def.Meta)
+}
+
+// NewExisting returns a new object based on existing one wrapped as Resource
+func (configMapTemplateFactory) NewExisting(name string, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return NewExistingConfigMap(name, ci.ConfigMaps())
 }
 
 func configMapKey(name string) string {
@@ -61,7 +86,7 @@ func (c ConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, er
 
 func (c ConfigMap) Create() error {
 	if err := checkExistence(c); err != nil {
-		log.Println("Creating ", c.Key())
+		log.Println("Creating", c.Key())
 		c.ConfigMap, err = c.Client.Create(c.ConfigMap)
 		return err
 	}
@@ -72,26 +97,12 @@ func (c ConfigMap) Delete() error {
 	return c.Client.Delete(c.ConfigMap.Name, &v1.DeleteOptions{})
 }
 
-func (c ConfigMap) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.ConfigMap != nil && def.ConfigMap.Name == name
-}
-
 func NewConfigMap(c *v1.ConfigMap, client corev1.ConfigMapInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ConfigMap{Base: Base{meta}, ConfigMap: c, Client: client}}
 }
 
 func NewExistingConfigMap(name string, client corev1.ConfigMapInterface) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: ExistingConfigMap{Name: name, Client: client}}
-}
-
-// New returns a new object wrapped as Resource
-func (c ConfigMap) New(def client.ResourceDefinition, ci client.Interface) interfaces.Resource {
-	return NewConfigMap(def.ConfigMap, ci.ConfigMaps(), def.Meta)
-}
-
-// NewExisting returns a new object based on existing one wrapped as Resource
-func (c ConfigMap) NewExisting(name string, ci client.Interface) interfaces.Resource {
-	return NewExistingConfigMap(name, ci.ConfigMaps())
 }
 
 func (c ExistingConfigMap) Key() string {

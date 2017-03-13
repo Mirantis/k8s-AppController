@@ -24,6 +24,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/cmd/format"
 	"github.com/Mirantis/k8s-AppController/e2e/utils"
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
 
@@ -102,19 +103,20 @@ func (f *ExamplesFramework) handleListCreation(ustList *runtime.UnstructuredList
 }
 
 func (f *ExamplesFramework) VerifyStatus() {
-	var report report.DeploymentReport
+	var depReport report.DeploymentReport
 	Eventually(
 		func() bool {
-			depGraph, err := scheduler.BuildDependencyGraph(f.Client, nil)
+			depGraph, err := scheduler.New(f.Client, nil, 0).BuildDependencyGraph()
 			if err != nil {
 				return false
 			}
-			var status scheduler.DeploymentStatus
-			status, report = depGraph.GetStatus()
+			var status interfaces.DeploymentStatus
+			status, r := depGraph.GetStatus()
+			depReport = r.(report.DeploymentReport)
 			utils.Logf("STATUS: %s\n", status)
-			return status == scheduler.Finished
+			return status == interfaces.Finished
 		},
-		240*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(report.AsText(0), "\n"))
+		240*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(depReport.AsText(0), "\n"))
 }
 
 func (f *ExamplesFramework) CreateRunAndVerify(exampleName string) {

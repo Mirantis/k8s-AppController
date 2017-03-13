@@ -41,7 +41,7 @@ spec:
 	}
 
 	if kind.Kind != "job" {
-		t.Errorf("Extracted kind should be \"job\", is %s", kind)
+		t.Errorf("extracted kind should be \"job\", is %s", kind)
 	}
 }
 
@@ -87,7 +87,7 @@ job:
           command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
         restartPolicy: Never`
 	if wrapped != expected {
-		t.Errorf("Wrapped doesn't match expected output\nExpected:\n%s\nAactual:\n%s", expected, wrapped)
+		t.Errorf("wrapped doesn't match expected output\nExpected:\n%s\nAactual:\n%s", expected, wrapped)
 	}
 }
 
@@ -162,6 +162,6 @@ job:
       lolo: lo`
 
 	if wrapped != expected {
-		t.Errorf("Wrapped doesn't match expected output\nExpected:\n%s\nactual:\n%s", expected, wrapped)
+		t.Errorf("wrapped doesn't match expected output\nExpected:\n%s\nactual:\n%s", expected, wrapped)
 	}
 }

@@ -30,7 +30,7 @@ func TestSuccessCheck(t *testing.T) {
 	}
 
 	if status != interfaces.ResourceReady {
-		t.Errorf("Status should be `ready`, is `%s` instead.", status)
+		t.Errorf("status should be `ready`, is `%s` instead.", status)
 	}
 }
 
@@ -43,6 +43,6 @@ func TestFailCheck(t *testing.T) {
 	}
 
 	if status != interfaces.ResourceNotReady {
-		t.Errorf("Status should be `not ready`, is `%s` instead.", status)
+		t.Errorf("status should be `not ready`, is `%s` instead.", status)
 	}
 }
