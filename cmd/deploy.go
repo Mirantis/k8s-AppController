@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/labels"
@@ -61,7 +62,7 @@ func deploy(cmd *cobra.Command, args []string) {
 	log.Println("Using label selector:", labelSelector)
 
 	sched := scheduler.New(c, sel, concurrency)
-	depGraph, err := sched.BuildDependencyGraph()
+	depGraph, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, make(map[string]string))
 	if err != nil {
 		log.Fatal(err)
 	}

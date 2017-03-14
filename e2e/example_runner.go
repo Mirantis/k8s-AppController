@@ -105,7 +105,8 @@ func (f *ExamplesFramework) VerifyStatus() {
 	var depReport report.DeploymentReport
 	Eventually(
 		func() bool {
-			depGraph, err := scheduler.New(f.Client, nil, 0).BuildDependencyGraph()
+			depGraph, err := scheduler.New(f.Client, nil, 0).BuildDependencyGraph(
+				interfaces.DefaultFlowName, nil)
 			if err != nil {
 				return false
 			}
