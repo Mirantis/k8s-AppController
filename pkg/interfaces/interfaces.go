@@ -26,6 +26,8 @@ const (
 	ResourceError    ResourceStatus = "error"
 )
 
+const DefaultFlowName = "DEFAULT"
+
 // BaseResource is an interface for AppController supported resources
 type BaseResource interface {
 	Key() string
@@ -71,9 +73,10 @@ type DependencyGraph interface {
 
 type GraphContext interface {
 	Scheduler() Scheduler
+	Args() map[string]string
 	Graph() DependencyGraph
 }
 
 type Scheduler interface {
-	BuildDependencyGraph() (DependencyGraph, error)
+	BuildDependencyGraph(flowName string, args map[string]string) (DependencyGraph, error)
 }

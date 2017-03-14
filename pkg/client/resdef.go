@@ -51,6 +51,7 @@ type ResourceDefinition struct {
 	Secret                *v1.Secret                `json:"secret,omitempty"`
 	Deployment            *v1beta1.Deployment       `json:"deployment, omitempty"`
 	PersistentVolumeClaim *v1.PersistentVolumeClaim `json:"persistentvolumeclaim, omitempty"`
+	Flow                  *Flow                     `json:"flow, omitempty"`
 }
 
 type ResourceDefinitionList struct {
