@@ -23,13 +23,15 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
-	controlName    = "appcontrollerdeployment"
-	concurrencyKey = "concurrency"
-	selector       = "selector"
+	controlName      = "appcontrollerdeployment"
+	concurrencyKey   = "concurrency"
+	selector         = "selector"
+	appcontrollerPod = "k8s-appcontroller"
 )
 
 type AppControllerManager struct {
@@ -53,10 +55,20 @@ func (a *AppControllerManager) Run() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+func (a *AppControllerManager) DeletePod() {
+	By("Removing pod " + appcontrollerPod)
+	err := a.Client.Pods().Delete(appcontrollerPod, nil)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(func() bool {
+		_, err := a.Client.Pods().Get(appcontrollerPod)
+		return errors.IsNotFound(err)
+	}, 20*time.Second, 1*time.Second).Should(BeTrue(), "Appcontroller pod wasn't removed in time")
+}
+
 func (a *AppControllerManager) Prepare() {
 	appControllerObj := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
-			Name: "k8s-appcontroller",
+			Name: appcontrollerPod,
 			Annotations: map[string]string{
 				"pod.alpha.kubernetes.io/init-containers": `[{"name": "kubeac-bootstrap", "image": "mirantis/k8s-appcontroller", "imagePullPolicy": "Never", "command": ["kubeac", "bootstrap", "/opt/kubeac/manifests"]}]`,
 			},
