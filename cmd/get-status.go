@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
 	"github.com/spf13/cobra"
 
@@ -62,7 +63,7 @@ func getStatus(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 	sched := scheduler.New(c, sel, 0)
-	graph, err := sched.BuildDependencyGraph()
+	graph, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, make(map[string]string))
 	if err != nil {
 		log.Fatal(err)
 	}
