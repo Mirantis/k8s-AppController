@@ -38,7 +38,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 	sched := New(c, nil, 0)
 
-	dg, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	dg, err := sched.BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Error(err)
 		return
@@ -298,7 +298,7 @@ func TestLimitConcurrency(t *testing.T) {
 		counter := mocks.NewCounterWithMemo()
 
 		sched := &Scheduler{concurrency: concurrency}
-		depGraph := NewDependencyGraph(sched)
+		depGraph := NewDependencyGraph(sched, interfaces.DependencyGraphOptions{})
 
 		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
@@ -320,7 +320,7 @@ func TestLimitConcurrency(t *testing.T) {
 }
 
 func TestStopBeforeDeploymentStarted(t *testing.T) {
-	depGraph := NewDependencyGraph(&Scheduler{})
+	depGraph := NewDependencyGraph(&Scheduler{}, interfaces.DependencyGraphOptions{})
 	sr := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 	}
@@ -371,7 +371,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		mocks.MakeDependency("pod/ready-1", "serviceaccount/sa-1"),
 	)
 
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -392,7 +392,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 
 func TestEmptyStatus(t *testing.T) {
 	c := mocks.NewClient()
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -412,7 +412,7 @@ func TestPreparedStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/1", "job/2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -432,7 +432,7 @@ func TestRunningStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/ready-1", "job/2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +452,7 @@ func TestFinishedStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/ready-1", "job/ready-2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,7 +476,7 @@ func TestGraph(t *testing.T) {
 		mocks.MakeDependency("job/ready-2", "job/1"),
 		mocks.MakeDependency("job/3", "job/1"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
