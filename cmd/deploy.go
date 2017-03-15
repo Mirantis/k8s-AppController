@@ -18,6 +18,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -43,11 +44,27 @@ func deploy(cmd *cobra.Command, args []string) {
 	log.Println("Using concurrency:", concurrency)
 
 	var url string
-	if len(args) > 0 {
-		url = args[0]
+	flowName := ""
+
+	for _, arg := range args {
+		if strings.HasPrefix(strings.ToLower(arg), "http://") ||
+			strings.HasPrefix(strings.ToLower(arg), "https://") {
+			if url != "" {
+				log.Fatal("Cluster URL specified more than once")
+			}
+			url = arg
+		} else {
+			if flowName != "" {
+				log.Fatal("Flow name specified more than once")
+			}
+			flowName = arg
+		}
 	}
 	if url == "" {
 		url = os.Getenv("KUBERNETES_CLUSTER_URL")
+	}
+	if flowName == "" {
+		flowName = interfaces.DefaultFlowName
 	}
 
 	c, err := client.New(url)
@@ -63,7 +80,12 @@ func deploy(cmd *cobra.Command, args []string) {
 	log.Println("Using label selector:", labelSelector)
 
 	sched := scheduler.New(c, sel, concurrency)
-	depGraph, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, make(map[string]string))
+	options := interfaces.DependencyGraphOptions{
+		FlowName:     flowName,
+		ExportedOnly: true,
+	}
+	log.Println("Going to deploy flow:", flowName)
+	depGraph, err := sched.BuildDependencyGraph(options)
 	if err != nil {
 		log.Fatal(err)
 	}
