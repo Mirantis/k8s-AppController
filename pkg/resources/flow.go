@@ -69,7 +69,10 @@ func (f Flow) Key() string {
 
 // Triggers the flow deployment like it was the resource creation
 func (f *Flow) Create() error {
-	graph, err := f.scheduler.BuildDependencyGraph(f.flow.Name, map[string]string{})
+	options := interfaces.DependencyGraphOptions{
+		FlowName: f.flow.Name,
+	}
+	graph, err := f.scheduler.BuildDependencyGraph(options)
 	if err != nil {
 		return err
 	}
