@@ -62,7 +62,7 @@ func getStatus(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 	sched := scheduler.New(c, sel, 0)
-	graph, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, make(map[string]string))
+	graph, err := sched.BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}

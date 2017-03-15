@@ -26,4 +26,5 @@ type Flow struct {
 	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Construction map[string]string `json:"construction,omitempty"`
+	Exported     bool              `json:"exported,omitempty"`
 }
