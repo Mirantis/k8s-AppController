@@ -35,19 +35,23 @@ func deploy(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	url, err := cmd.Flags().GetString("url")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	labelSelector, err := getLabelSelector(cmd)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Using concurrency:", concurrency)
+	flowName := interfaces.DefaultFlowName
 
-	var url string
-	if len(args) > 0 {
-		url = args[0]
+	if len(args) > 1 {
+		log.Fatal("Too many command line arguments")
 	}
-	if url == "" {
-		url = os.Getenv("KUBERNETES_CLUSTER_URL")
+	if len(args) == 1 {
+		flowName = args[0]
 	}
 
 	c, err := client.New(url)
@@ -60,10 +64,16 @@ func deploy(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	log.Println("Using concurrency:", concurrency)
 	log.Println("Using label selector:", labelSelector)
 
 	sched := scheduler.New(c, sel, concurrency)
-	depGraph, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, make(map[string]string))
+	options := interfaces.DependencyGraphOptions{
+		FlowName:     flowName,
+		ExportedOnly: true,
+	}
+	log.Println("Going to deploy flow:", flowName)
+	depGraph, err := sched.BuildDependencyGraph(options)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -108,5 +118,9 @@ func InitRunCommand() (*cobra.Command, error) {
 	}
 	var concurrency int
 	run.Flags().IntVarP(&concurrency, "concurrency", "c", concurrencyDefault, "concurrency")
+
+	var clusterUrl string
+	run.Flags().StringVar(&clusterUrl, "url", os.Getenv("KUBERNETES_CLUSTER_URL"),
+		"URL of the Kubernetes cluster. Overrides KUBERNETES_CLUSTER_URL env variable in AppController pod.")
 	return run, err
 }
