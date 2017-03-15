@@ -31,4 +31,8 @@ type Flow struct {
 	// it would mean that creating a job is what the flow does. Otherwise it would mean that the job depends on
 	// the the flow (i.e. it won't be created before everything, the flow consists of)
 	Construction map[string]string `json:"construction,omitempty"`
+
+	// Exported flows can be triggered by the user (through the CLI) whereas those that are not
+	// can only be triggered by other flows (including DEFAULT flow which is exported by-default)
+	Exported bool `json:"exported,omitempty"`
 }

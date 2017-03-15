@@ -30,8 +30,9 @@ import (
 // DependencyGraph is a full deployment depGraph as a mapping from job keys to
 // ScheduledResource pointers
 type DependencyGraph struct {
-	graph     map[string]*ScheduledResource
-	scheduler *Scheduler
+	graph        map[string]*ScheduledResource
+	graphOptions interfaces.DependencyGraphOptions
+	scheduler    *Scheduler
 }
 
 type GraphContext struct {
@@ -53,6 +54,11 @@ func (gc GraphContext) Args() map[string]string {
 // Returns the currently running dependency graph
 func (gc GraphContext) Graph() interfaces.DependencyGraph {
 	return gc.graph
+}
+
+// Returns the currently running dependency graph
+func (gc GraphContext) GraphOptions() interfaces.DependencyGraphOptions {
+	return gc.graph.graphOptions
 }
 
 // newScheduledResourceFor returns new scheduled resource for given resource in init state
@@ -199,16 +205,20 @@ func keyParts(key string) (kind, name string, err error) {
 }
 
 // Constructor of DependencyGraph
-func NewDependencyGraph(sched *Scheduler) *DependencyGraph {
+func NewDependencyGraph(sched *Scheduler, options interfaces.DependencyGraphOptions) *DependencyGraph {
 	return &DependencyGraph{
-		graph:     make(map[string]*ScheduledResource),
-		scheduler: sched,
+		graph:        make(map[string]*ScheduledResource),
+		scheduler:    sched,
+		graphOptions: options,
 	}
 }
 
 // BuildDependencyGraph loads dependencies data and creates the DependencyGraph
-func (sched *Scheduler) BuildDependencyGraph(flowName string,
-	args map[string]string) (interfaces.DependencyGraph, error) {
+func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphOptions) (interfaces.DependencyGraph, error) {
+	flowName := options.FlowName
+	if flowName == "" {
+		flowName = interfaces.DefaultFlowName
+	}
 
 	log.Println("Getting resource definitions")
 	resDefs, err := sched.getResourceDefinitions()
@@ -220,6 +230,10 @@ func (sched *Scheduler) BuildDependencyGraph(flowName string,
 	flow, ok := resDefs[fullFlowName]
 	if !ok && flowName != interfaces.DefaultFlowName || ok && flow.Flow == nil {
 		return nil, fmt.Errorf("flow %s is not found", flowName)
+	}
+
+	if flow.Flow != nil && !flow.Flow.Exported && options.ExportedOnly {
+		return nil, fmt.Errorf("flow %s is not exported", flowName)
 	}
 
 	log.Println("Getting dependencies")
@@ -235,7 +249,7 @@ func (sched *Scheduler) BuildDependencyGraph(flowName string,
 
 	dependencies := groupDependencies(depList.Items, resDefs)
 
-	depGraph := NewDependencyGraph(sched)
+	depGraph := NewDependencyGraph(sched, options)
 
 	if _, ok := dependencies[fullFlowName]; !ok {
 		log.Println("Flow depGraph is empty")
