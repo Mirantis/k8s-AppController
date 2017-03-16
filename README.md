@@ -89,9 +89,19 @@ Load it to k8s:
 
 `kubectl create -f dependencies_file.yaml`
 
-Start appcontroller process:
+Create configmap to start appcontroller deployment workflow:
 
-`kubectl exec k8s-appcontroller ac-run`
+```
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: appcontrollerdeployment
+data:
+  # limit concurrency for appcontroller
+  concurrency: 3
+  # specify label selector
+  selector: ""
+```
 
 You can stop appcontroller process by:
 

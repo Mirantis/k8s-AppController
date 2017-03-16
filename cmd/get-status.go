@@ -27,6 +27,14 @@ import (
 	"k8s.io/client-go/pkg/labels"
 )
 
+func getLabelSelector(cmd *cobra.Command) (string, error) {
+	labelSelector, err := cmd.Flags().GetString("label")
+	if labelSelector == "" {
+		labelSelector = os.Getenv("KUBERNETES_AC_LABEL_SELECTOR")
+	}
+	return labelSelector, err
+}
+
 // GetStatus is a command that prints the deployment status
 func getStatus(cmd *cobra.Command, args []string) {
 	var err error

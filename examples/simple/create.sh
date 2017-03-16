@@ -29,6 +29,4 @@ cat pod2.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_N
 echo "cat pod3.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap pod3 | $KUBECTL_NAME create -f -"
 cat pod3.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME create -f -
 
-echo "Here we are running appcontroller binary itself. As the log will say, it retrieves dependencies and resource definitions from the k8s cluster and creates underlying objects accordingly."
-echo "$KUBECTL_NAME exec k8s-appcontroller ac-run"
-$KUBECTL_NAME exec k8s-appcontroller ac-run
+$KUBECTL_NAME create -f ../../manifests/cfg.yaml

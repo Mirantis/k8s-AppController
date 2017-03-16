@@ -40,3 +40,4 @@ cat deployment.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUB
 cat pvc.yaml | $KUBECTL_NAME exec -i k8s-appcontroller kubeac wrap | $KUBECTL_NAME delete -f -
 
 $KUBECTL_NAME delete -f ../../manifests/appcontroller.yaml
+$KUBECTL_NAME delete -f ../../manifests/cfg.yaml

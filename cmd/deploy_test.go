@@ -46,13 +46,10 @@ func TestLabelFlag(t *testing.T) {
 	cmd, _ := InitRunCommand()
 
 	val := "TEST_KEY=TEST_VALUE"
-	val2 := "TEST_OTHER_KEY=TEST_OTHER_VALUE"
 	os.Setenv("KUBERNETES_AC_LABEL_SELECTOR", val)
-	cmd.Flags().Parse([]string{"-l", val2})
-
 	label, _ := getLabelSelector(cmd)
 
-	if label != val2 {
-		t.Errorf("label selector should be equal to `%s`, is `%s` instead", val2, label)
+	if label != val {
+		t.Errorf("label selector should be equal to `%s`, is `%s` instead", val, label)
 	}
 }

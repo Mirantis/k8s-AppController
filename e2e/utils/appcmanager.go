@@ -15,7 +15,6 @@
 package utils
 
 import (
-	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -24,7 +23,15 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
+)
+
+const (
+	controlName      = "appcontrollerdeployment"
+	concurrencyKey   = "concurrency"
+	selector         = "selector"
+	appcontrollerPod = "k8s-appcontroller"
 )
 
 type AppControllerManager struct {
@@ -37,33 +44,31 @@ type AppControllerManager struct {
 }
 
 func (a *AppControllerManager) Run() {
-	cmd := exec.Command(
-		"kubectl",
-		"--namespace",
-		a.Namespace.Name,
-		"exec",
-		"k8s-appcontroller",
-		"--",
-		"ac-run",
-		"-l",
-		"ns:"+a.Namespace.Name,
-	)
-	out, err := cmd.Output()
-	if err != nil {
-		switch err.(type) {
-		case *exec.ExitError:
-			exErr := err.(*exec.ExitError)
-			Fail(string(out) + string(exErr.Stderr))
-		default:
-			Expect(err).NotTo(HaveOccurred())
-		}
+	cfg := &v1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{Name: controlName},
+		Data: map[string]string{
+			concurrencyKey: "0",
+			selector:       "",
+		},
 	}
+	_, err := a.Client.ConfigMaps().Create(cfg)
+	Expect(err).NotTo(HaveOccurred())
+}
+
+func (a *AppControllerManager) DeletePod() {
+	By("Removing pod " + appcontrollerPod)
+	err := a.Client.Pods().Delete(appcontrollerPod, nil)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(func() bool {
+		_, err := a.Client.Pods().Get(appcontrollerPod)
+		return errors.IsNotFound(err)
+	}, 20*time.Second, 1*time.Second).Should(BeTrue(), "Appcontroller pod wasn't removed in time")
 }
 
 func (a *AppControllerManager) Prepare() {
 	appControllerObj := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
-			Name: "k8s-appcontroller",
+			Name: appcontrollerPod,
 			Annotations: map[string]string{
 				"pod.alpha.kubernetes.io/init-containers": `[{"name": "kubeac-bootstrap", "image": "mirantis/k8s-appcontroller", "imagePullPolicy": "Never", "command": ["kubeac", "bootstrap", "/opt/kubeac/manifests"]}]`,
 			},
@@ -74,7 +79,7 @@ func (a *AppControllerManager) Prepare() {
 				{
 					Name:            "kubeac",
 					Image:           "mirantis/k8s-appcontroller",
-					Command:         []string{"/usr/bin/run_runit"},
+					Command:         []string{"kubeac", "run"},
 					ImagePullPolicy: v1.PullNever,
 					Env: []v1.EnvVar{
 						{
