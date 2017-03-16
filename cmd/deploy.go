@@ -15,8 +15,10 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -24,22 +26,39 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
 	"github.com/spf13/cobra"
+
 	"k8s.io/client-go/pkg/labels"
 )
 
-func deploy(cmd *cobra.Command, args []string) {
-	var err error
+var argRe, _ = regexp.Compile(`\s*(\w+)\W+(.*)`)
 
+func deploy(cmd *cobra.Command, args []string) {
 	concurrency, err := cmd.Flags().GetInt("concurrency")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	anyArgs, err := cmd.Flags().GetBool("undeclared-args")
+	if err != nil {
+		log.Fatal(err)
+	}
 	labelSelector, err := getLabelSelector(cmd)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	flowArgs, err := cmd.Flags().GetStringArray("arg")
+	if err != nil {
+		log.Fatal(err)
+	}
+	flowArgMap := map[string]string{}
+	for _, val := range flowArgs {
+		key, value, err := parseArg(val)
+		if err != nil {
+			log.Fatal(err)
+		}
+		flowArgMap[key] = value
+	}
 	log.Println("Using concurrency:", concurrency)
 
 	var url string
@@ -80,8 +99,10 @@ func deploy(cmd *cobra.Command, args []string) {
 
 	sched := scheduler.New(c, sel, concurrency)
 	options := interfaces.DependencyGraphOptions{
-		FlowName:     flowName,
-		ExportedOnly: true,
+		FlowName:            flowName,
+		ExportedOnly:        true,
+		Args:                flowArgMap,
+		AllowUndeclaredArgs: anyArgs,
 	}
 	log.Println("Going to deploy flow:", flowName)
 	depGraph, err := sched.BuildDependencyGraph(options)
@@ -93,6 +114,14 @@ func deploy(cmd *cobra.Command, args []string) {
 	depGraph.Deploy(stopChan)
 
 	log.Println("Done")
+}
+
+func parseArg(arg string) (string, string, error) {
+	res := argRe.FindStringSubmatch(arg)
+	if len(res) != 3 {
+		return "", "", fmt.Errorf("Invalid argument %s", arg)
+	}
+	return res[1], strings.TrimSpace(res[2]), nil
 }
 
 func getLabelSelector(cmd *cobra.Command) (string, error) {
@@ -115,6 +144,11 @@ func InitRunCommand() (*cobra.Command, error) {
 	var labelSelector string
 	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
 
+	run.Flags().Bool("undeclared-args", false, "Allow undeclared arguments")
+
+	var args []string
+	run.Flags().StringArrayVar(&args, "arg", []string{}, "Flow arguments (key=value)")
+
 	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 
 	var err error
@@ -128,6 +162,6 @@ func InitRunCommand() (*cobra.Command, error) {
 		}
 	}
 	var concurrency int
-	run.Flags().IntVarP(&concurrency, "concurrency", "c", concurrencyDefault, "concurrency")
+	run.Flags().IntVarP(&concurrency, "concurrency", "c", concurrencyDefault, "Concurrency")
 	return run, err
 }

@@ -38,6 +38,7 @@ type ScheduledResource struct {
 	Started    bool
 	Ignored    bool
 	Error      error
+	Context    *GraphContext
 	status     interfaces.ResourceStatus
 	interfaces.Resource
 	// parentKey -> dependencyMetadata
@@ -45,12 +46,12 @@ type ScheduledResource struct {
 	sync.RWMutex
 }
 
-// RequestCreation does not create a scheduled resource immediately, but updates status
-// and puts the scheduled resource to corresponding channel. Returns true if
-// scheduled resource creation was actually requested, false otherwise.
+// RequestCreation does not create a scheduled scheduledResource immediately, but updates status
+// and puts the scheduled scheduledResource to corresponding channel. Returns true if
+// scheduled scheduledResource creation was actually requested, false otherwise.
 func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) bool {
 	sr.RLock()
-	// somebody already requested resource creation
+	// somebody already requested scheduledResource creation
 	if sr.Started {
 		sr.RUnlock()
 		return true
@@ -81,7 +82,7 @@ func isResourceFinished(sr *ScheduledResource, ch chan error) bool {
 	return false
 }
 
-// Wait periodically checks resource status and returns if the resource processing is finished,
+// Wait periodically checks scheduledResource status and returns if the scheduledResource processing is finished,
 // regardless successfull or not. The actual result of processing could be obtained from returned error.
 func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration, stopChan <-chan struct{}) (bool, error) {
 	ch := make(chan error, 1)
@@ -110,7 +111,7 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 	case err := <-ch:
 		return false, err
 	case <-time.After(timeout):
-		e := fmt.Errorf("timeout waiting for resource %s", sr.Key())
+		e := fmt.Errorf("timeout waiting for scheduledResource %s", sr.Key())
 		sr.Lock()
 		defer sr.Unlock()
 		sr.Error = e
@@ -118,8 +119,8 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 	}
 }
 
-// Status either returns cached copy of resource's status or retrieves it via Resource.Status
-// depending on presense of cached copy and resource's settings
+// Status either returns cached copy of scheduledResource's status or retrieves it via Resource.Status
+// depending on presense of cached copy and scheduledResource's settings
 func (sr *ScheduledResource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	sr.Lock()
 	defer sr.Unlock()
@@ -134,7 +135,7 @@ func (sr *ScheduledResource) Status(meta map[string]string) (interfaces.Resource
 	return status, err
 }
 
-// IsBlocked checks whether a scheduled resource can be created. It checks status of resources
+// IsBlocked checks whether a scheduled scheduledResource can be created. It checks status of resources
 // it depends on, via API
 func (sr *ScheduledResource) IsBlocked() bool {
 	for _, req := range sr.Requires {
@@ -158,7 +159,7 @@ func (sr *ScheduledResource) IsBlocked() bool {
 	return false
 }
 
-// ResetStatus resets cached status of scheduled resource
+// ResetStatus resets cached status of scheduled scheduledResource
 func (sr *ScheduledResource) ResetStatus() {
 	sr.Lock()
 	defer sr.Unlock()
@@ -199,7 +200,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 				var err error
 
 				// NOTE(gluke77): We start goroutines for dependencies
-				// before the resource becomes ready, since dependencies
+				// before the scheduledResource becomes ready, since dependencies
 				// could have metadata defining their own readiness condition
 				if attemptNo == 1 {
 					for _, req := range r.RequiredBy {
@@ -239,10 +240,10 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 					break
 				}
 
-				log.Printf("Creating resource %s, attempt %d of %d", r.Key(), attemptNo, attempts)
+				log.Printf("Deploying resource %s, attempt %d of %d", r.Key(), attemptNo, attempts)
 				err = r.Create()
 				if err != nil {
-					log.Printf("Error creating resource %s: %v", r.Key(), err)
+					log.Printf("Error deploying resource %s: %v", r.Key(), err)
 					continue
 				}
 
@@ -283,7 +284,7 @@ func ignoreAll(top *ScheduledResource) {
 	top.Ignored = true
 	top.Unlock()
 
-	log.Printf("Marking resource %s as ignored", top.Key())
+	log.Printf("Marking scheduledResource %s as ignored", top.Key())
 
 	for _, child := range top.RequiredBy {
 		ignoreAll(child)
@@ -321,16 +322,16 @@ func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
 		}
 	}
 
-	log.Printf("Wait for %d deps to create\n", depCount)
+	log.Printf("Wait for %d deps to create", depCount)
 	var i int
 	for {
 		select {
 		case <-stopChan:
-			fmt.Println("Deployment is stopped")
+			log.Println("Deployment is stopped")
 			return
 		case <-created:
 			i++
-			fmt.Printf("%v out of %v were created", i, depCount)
+			log.Printf("%v out of %v were created", i, depCount)
 			if depCount == i {
 				return
 			}

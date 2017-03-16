@@ -58,22 +58,22 @@ func TestBuildDependencyGraph(t *testing.T) {
 	}
 
 	if sr.Key() != "pod/ready-1" {
-		t.Errorf("Wrong scheduled resource key, expected '%s', actual '%s'",
+		t.Errorf("Wrong scheduled scheduledResource key, expected '%s', actual '%s'",
 			"pod/ready-1", sr.Key())
 	}
 
 	if len(sr.Requires) != 0 {
-		t.Errorf("Wrong length of 'Requires' for scheduled resource '%s', expected %d, actual %d",
+		t.Errorf("Wrong length of 'Requires' for scheduled scheduledResource '%s', expected %d, actual %d",
 			sr.Key(), 0, len(sr.Requires))
 	}
 
 	if len(sr.RequiredBy) != 1 {
-		t.Errorf("Wrong length of 'RequiredBy' for scheduled resource '%s', expected %d, actual %d",
+		t.Errorf("Wrong length of 'RequiredBy' for scheduled scheduledResource '%s', expected %d, actual %d",
 			sr.Key(), 1, len(sr.Requires))
 	}
 
 	if sr.RequiredBy[0].Key() != "pod/ready-2" {
-		t.Errorf("Wrong value of 'RequiredBy' for scheduled resource '%s', expected '%s', actual '%s'",
+		t.Errorf("Wrong value of 'RequiredBy' for scheduled scheduledResource '%s', expected '%s', actual '%s'",
 			sr.Key(), "pod/ready-2", sr.RequiredBy[0].Key())
 		return
 	}
@@ -86,22 +86,22 @@ func TestBuildDependencyGraph(t *testing.T) {
 	}
 
 	if sr.Key() != "pod/ready-2" {
-		t.Errorf("Wrong scheduled resource key, expected '%s', actual '%s'",
+		t.Errorf("Wrong scheduled scheduledResource key, expected '%s', actual '%s'",
 			"pod/ready-2", sr.Key())
 	}
 
 	if len(sr.Requires) != 1 {
-		t.Errorf("Wrong length of 'Requires' for scheduled resource '%s', expected %d, actual %d",
+		t.Errorf("Wrong length of 'Requires' for scheduled scheduledResource '%s', expected %d, actual %d",
 			sr.Key(), 1, len(sr.Requires))
 	}
 
 	if sr.Requires[0].Key() != "pod/ready-1" {
-		t.Errorf("Wrong value of 'Requires' for scheduled resource '%s', expected '%s', actual '%s'",
+		t.Errorf("Wrong value of 'Requires' for scheduled scheduledResource '%s', expected '%s', actual '%s'",
 			sr.Key(), "pod/ready-1", sr.Requires[0].Key())
 	}
 
 	if len(sr.RequiredBy) != 0 {
-		t.Errorf("Wrong length of 'RequiredBy' for scheduled resource '%s', expected %d, actual %d",
+		t.Errorf("Wrong length of 'RequiredBy' for scheduled scheduledResource '%s', expected %d, actual %d",
 			sr.Key(), 0, len(sr.Requires))
 	}
 }
@@ -113,7 +113,7 @@ func TestIsBlocked(t *testing.T) {
 	}
 
 	if one.IsBlocked() {
-		t.Errorf("Scheduled resource is blocked but it must not")
+		t.Errorf("Scheduled scheduledResource is blocked but it must not")
 	}
 
 	two := &ScheduledResource{
@@ -124,12 +124,12 @@ func TestIsBlocked(t *testing.T) {
 	one.Requires = []*ScheduledResource{two}
 
 	if one.IsBlocked() {
-		t.Errorf("Scheduled resource is blocked but it must not")
+		t.Errorf("Scheduled scheduledResource is blocked but it must not")
 	}
 
 	two.Error = errors.New("non-nil error")
 	if !one.IsBlocked() {
-		t.Errorf("Scheduled resource is not blocked but it must be")
+		t.Errorf("Scheduled scheduledResource is not blocked but it must be")
 	}
 
 	three := &ScheduledResource{
@@ -141,7 +141,7 @@ func TestIsBlocked(t *testing.T) {
 	one.Requires = append(one.Requires, three)
 
 	if !one.IsBlocked() {
-		t.Errorf("Scheduled resource is not blocked but it must be")
+		t.Errorf("Scheduled scheduledResource is not blocked but it must be")
 	}
 }
 
@@ -152,7 +152,7 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	}
 
 	if one.IsBlocked() {
-		t.Errorf("Scheduled resource is blocked but it must be not")
+		t.Errorf("Scheduled scheduledResource is blocked but it must be not")
 	}
 
 	two := &ScheduledResource{
@@ -164,12 +164,12 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	one.Meta["fake2"] = map[string]string{"on-error": "true"}
 
 	if !one.IsBlocked() {
-		t.Errorf("Scheduled resource is not blocked but it must be")
+		t.Errorf("Scheduled scheduledResource is not blocked but it must be")
 	}
 
 	two.Error = errors.New("non-nil error")
 	if one.IsBlocked() {
-		t.Errorf("Scheduled resource is blocked but it must be not")
+		t.Errorf("Scheduled scheduledResource is blocked but it must be not")
 	}
 }
 
@@ -301,9 +301,10 @@ func TestLimitConcurrency(t *testing.T) {
 		depGraph := NewDependencyGraph(sched, interfaces.DependencyGraphOptions{})
 
 		for i := 0; i < 15; i++ {
-			key := fmt.Sprintf("resource%d", i)
+			key := fmt.Sprintf("scheduledResource%d", i)
 			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second/4)}
-			sr := newScheduledResourceFor(r)
+			context := &GraphContext{}
+			sr := newScheduledResourceFor(r, context)
 			depGraph.graph[sr.Key()] = sr
 		}
 		stopChan := make(chan struct{})
@@ -330,11 +331,11 @@ func TestStopBeforeDeploymentStarted(t *testing.T) {
 	depGraph.Deploy(stopChan)
 	status, _ := sr.Resource.Status(nil)
 	if status == interfaces.ResourceReady {
-		t.Errorf("Expected that resource %v wont be in ready status, but got %v", sr.Key(), status)
+		t.Errorf("Expected that scheduledResource %v wont be in ready status, but got %v", sr.Key(), status)
 	}
 }
 
-// TestGraphAllResourceTypes aims to test if all resource types supported by AppController are able to be part of deployment graph
+// TestGraphAllResourceTypes aims to test if all scheduledResource types supported by AppController are able to be part of deployment graph
 func TestGraphAllResourceTypes(t *testing.T) {
 	c := mocks.NewClient(
 		mocks.MakePod("ready-1"),

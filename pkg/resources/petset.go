@@ -49,7 +49,9 @@ func (petSetTemplateFactory) Kind() string {
 
 // New returns new PetSet based on resource definition
 func (petSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewPetSet(def.PetSet, c.PetSets(), c, def.Meta)
+	newPetSet := parametrizeResource(def.PetSet, gc).(*appsalpha1.PetSet)
+	newPetSet.Spec.Template.Spec.Containers = def.PetSet.Spec.Template.Spec.Containers
+	return NewPetSet(newPetSet, c.PetSets(), c, def.Meta)
 }
 
 // NewExisting returns new ExistingPetSet based on resource definition

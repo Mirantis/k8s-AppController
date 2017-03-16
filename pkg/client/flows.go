@@ -25,6 +25,12 @@ type Flow struct {
 	// Standard object metadata
 	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Construction map[string]string `json:"construction,omitempty"`
-	Exported     bool              `json:"exported,omitempty"`
+	Construction map[string]string        `json:"construction,omitempty"`
+	Exported     bool                     `json:"exported,omitempty"`
+	Parameters   map[string]FlowParameter `json:"parameters,omitempty"`
+}
+
+type FlowParameter struct {
+	Default     *string `json:"default,omitempty"`
+	Description string  `json:"description,omitempty"`
 }

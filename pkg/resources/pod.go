@@ -48,7 +48,9 @@ func (podTemplateFactory) Kind() string {
 
 // New returns new Pod based on resource definition
 func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewPod(def.Pod, c.Pods(), def.Meta)
+	newPod := parametrizeResource(def.Pod, gc).(*v1.Pod)
+	newPod.Spec.Containers = def.Pod.Spec.Containers
+	return NewPod(newPod, c.Pods(), def.Meta)
 }
 
 // NewExisting returns new ExistingPod based on resource definition
