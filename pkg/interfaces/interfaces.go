@@ -73,15 +73,15 @@ type DependencyGraph interface {
 
 type GraphContext interface {
 	Scheduler() Scheduler
-	Args() map[string]string
+	GetArg(string) string
 	Graph() DependencyGraph
-	GraphOptions() DependencyGraphOptions
 }
 
 type DependencyGraphOptions struct {
-	FlowName     string
-	Args         map[string]string
-	ExportedOnly bool
+	FlowName            string
+	Args                map[string]string
+	ExportedOnly        bool
+	AllowUndeclaredArgs bool
 }
 
 type Scheduler interface {

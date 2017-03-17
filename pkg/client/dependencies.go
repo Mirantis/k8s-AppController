@@ -32,6 +32,7 @@ type Dependency struct {
 	Parent string            `json:"parent"`
 	Child  string            `json:"child"`
 	Meta   map[string]string `json:"meta,omitempty"`
+	Args   map[string]string `json:"args,omitempty"`
 }
 
 type DependencyList struct {

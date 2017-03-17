@@ -50,7 +50,10 @@ func (daemonSetTemplateFactory) Kind() string {
 
 // New returns new DaemonSet based on resource definition
 func (d daemonSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewDaemonSet(def.DaemonSet, c.DaemonSets(), def.Meta)
+	newDaemonSet := parametrizeResource(def.DaemonSet, gc,
+		"Spec.Template.Spec.Containers.Env",
+		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.DaemonSet)
+	return NewDaemonSet(newDaemonSet, c.DaemonSets(), def.Meta)
 }
 
 // NewExisting returns new ExistingDaemonSet based on resource definition
