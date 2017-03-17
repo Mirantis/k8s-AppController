@@ -51,7 +51,9 @@ func (replicaSetTemplateFactory) Kind() string {
 
 // New returns new ReplicaSet based on resource definition
 func (replicaSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets(), def.Meta)
+	newReplicaSet := parametrizeResource(def.ReplicaSet, gc).(*extbeta1.ReplicaSet)
+	newReplicaSet.Spec.Template.Spec.Containers = def.ReplicaSet.Spec.Template.Spec.Containers
+	return NewReplicaSet(newReplicaSet, c.ReplicaSets(), def.Meta)
 }
 
 // NewExisting returns new ExistingReplicaSet based on resource definition

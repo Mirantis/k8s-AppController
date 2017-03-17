@@ -50,7 +50,9 @@ func (deploymentTemplateFactory) Kind() string {
 
 // New returns new Deployment based on resource definition
 func (deploymentTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewDeployment(def.Deployment, c.Deployments(), def.Meta)
+	newDeployment := parametrizeResource(def.Deployment, gc).(*extbeta1.Deployment)
+	newDeployment.Spec.Template.Spec.Containers = def.Deployment.Spec.Template.Spec.Containers
+	return NewDeployment(newDeployment, c.Deployments(), def.Meta)
 }
 
 // NewExisting returns new ExistingDeployment based on resource definition

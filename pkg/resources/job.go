@@ -52,7 +52,9 @@ func (jobTemplateFactory) Kind() string {
 
 // New returns new Job on resource definition
 func (jobTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewJob(def.Job, c.Jobs(), def.Meta)
+	newJob := parametrizeResource(def.Job, gc).(*v1.Job)
+	newJob.Spec.Template.Spec.Containers = def.Job.Spec.Template.Spec.Containers
+	return NewJob(newJob, c.Jobs(), def.Meta)
 }
 
 // NewExisting returns new ExistingJob based on resource definition
