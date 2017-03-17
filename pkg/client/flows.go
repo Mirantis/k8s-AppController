@@ -35,4 +35,16 @@ type Flow struct {
 	// Exported flows can be triggered by the user (through the CLI) whereas those that are not
 	// can only be triggered by other flows (including DEFAULT flow which is exported by-default)
 	Exported bool `json:"exported,omitempty"`
+
+	// Parameters that the flow can accept (i.e. valid imports for the flow)
+	Parameters map[string]FlowParameter `json:"parameters,omitempty"`
+}
+
+type FlowParameter struct {
+	// Optional default value for the parameter. If the declared parameter has nil Default then the argument for
+	// this parameter becomes mandatory (i.e. it MUST be provided)
+	Default *string `json:"default,omitempty"`
+
+	// Description of the parameter (help string)
+	Description string `json:"description,omitempty"`
 }

@@ -21,24 +21,27 @@ import (
 	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/copier"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/resources"
 
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/unversioned"
 )
 
 // DependencyGraph is a full deployment depGraph as a mapping from job keys to
 // ScheduledResource pointers
 type DependencyGraph struct {
 	graph        map[string]*ScheduledResource
-	graphOptions interfaces.DependencyGraphOptions
 	scheduler    *Scheduler
+	graphOptions interfaces.DependencyGraphOptions
 }
 
 type GraphContext struct {
 	args      map[string]string
 	graph     *DependencyGraph
 	scheduler *Scheduler
+	flow      *client.Flow
 }
 
 // Returns the Scheduler that was used to create the dependency graph
@@ -47,8 +50,20 @@ func (gc GraphContext) Scheduler() interfaces.Scheduler {
 }
 
 // Returns argument values available in the current graph context
-func (gc GraphContext) Args() map[string]string {
-	return gc.args
+func (gc GraphContext) GetArg(name string) string {
+	val, ok := gc.args[name]
+	if ok {
+		return val
+	}
+	val, ok = gc.graph.graphOptions.Args[name]
+	if ok {
+		return val
+	}
+	fp, ok := gc.flow.Parameters[name]
+	if ok && fp.Default != nil {
+		return *fp.Default
+	}
+	return ""
 }
 
 // Returns the currently running dependency graph
@@ -56,19 +71,15 @@ func (gc GraphContext) Graph() interfaces.DependencyGraph {
 	return gc.graph
 }
 
-// Returns the currently running dependency graph
-func (gc GraphContext) GraphOptions() interfaces.DependencyGraphOptions {
-	return gc.graph.graphOptions
-}
-
 // newScheduledResourceFor returns new scheduled resource for given resource in init state
-func newScheduledResourceFor(r interfaces.Resource) *ScheduledResource {
+func newScheduledResourceFor(r interfaces.Resource, context *GraphContext) *ScheduledResource {
 	return &ScheduledResource{
 		Started:  false,
 		Ignored:  false,
 		Error:    nil,
 		Resource: r,
 		Meta:     map[string]map[string]string{},
+		Context:  context,
 	}
 }
 
@@ -149,11 +160,9 @@ func filterDependencies(dependencies map[string][]client.Dependency, parent stri
 }
 
 func canDependencyBelongToFlow(dep *client.Dependency, flow *client.Flow) bool {
-	if flow != nil {
-		for k, v := range flow.Construction {
-			if dep.Labels[k] != v {
-				return false
-			}
+	for k, v := range flow.Construction {
+		if dep.Labels[k] != v {
+			return false
 		}
 	}
 	return true
@@ -161,7 +170,7 @@ func canDependencyBelongToFlow(dep *client.Dependency, flow *client.Flow) bool {
 
 // newScheduledResource is a constructor for ScheduledResource
 func (sched Scheduler) newScheduledResource(kind, name string, resDefs map[string]client.ResourceDefinition,
-	gc GraphContext) (*ScheduledResource, error) {
+	gc *GraphContext) (*ScheduledResource, error) {
 
 	var r interfaces.Resource
 
@@ -175,19 +184,19 @@ func (sched Scheduler) newScheduledResource(kind, name string, resDefs map[strin
 		return nil, err
 	}
 
-	return newScheduledResourceFor(r), nil
+	return newScheduledResourceFor(r, gc), nil
 }
 
 func (sched Scheduler) newResource(kind, name string, resDefs map[string]client.ResourceDefinition,
-	gc GraphContext, resourceTemplate interfaces.ResourceTemplate) (interfaces.Resource, error) {
+	gc *GraphContext, resourceTemplate interfaces.ResourceTemplate) (interfaces.Resource, error) {
 	rd, ok := resDefs[kind+"/"+name]
 	if ok {
 		log.Printf("Found resource definition for %s/%s", kind, name)
-		return resourceTemplate.New(rd, sched.client, gc), nil
+		return resourceTemplate.New(rd, sched.client, *gc), nil
 	}
 
 	log.Printf("Resource definition for '%s/%s' not found, so it is expected to exist already", kind, name)
-	r := resourceTemplate.NewExisting(name, sched.client, gc)
+	r := resourceTemplate.NewExisting(name, sched.client, *gc)
 	if r == nil {
 		return nil, fmt.Errorf("existing resource %s/%s cannot be reffered", kind, name)
 	}
@@ -213,11 +222,69 @@ func NewDependencyGraph(sched *Scheduler, options interfaces.DependencyGraphOpti
 	}
 }
 
+func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependency client.Dependency) *GraphContext {
+	context := &GraphContext{scheduler: sched, graph: parentContext.graph, flow: parentContext.flow}
+	context.args = make(map[string]string)
+	for key, value := range dependency.Args {
+		context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
+	}
+	return context
+}
+
+func (sched *Scheduler) updateContext(context, parentContext *GraphContext, dependency client.Dependency) {
+	for key, value := range dependency.Args {
+		context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
+	}
+}
+
+func (sched *Scheduler) newDefaultFlowObject() *client.Flow {
+	return &client.Flow{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Flow",
+			APIVersion: client.GroupName + "/" + client.Version,
+		},
+		ObjectMeta: api.ObjectMeta{
+			Name:      interfaces.DefaultFlowName,
+			Namespace: sched.client.Namespace(),
+		},
+		Exported: true,
+	}
+}
+
+func checkArgs(options interfaces.DependencyGraphOptions, flow *client.Flow) error {
+	if !options.AllowUndeclaredArgs {
+		for key := range options.Args {
+			if _, ok := flow.Parameters[key]; !ok {
+				return fmt.Errorf("unexpected argument %s", key)
+			}
+		}
+	}
+	for key, value := range flow.Parameters {
+		if value.Default == nil {
+			if _, ok := options.Args[key]; !ok {
+				return fmt.Errorf("mandatory argument %s was not provided", key)
+			}
+		}
+	}
+	return nil
+}
+
+func unique(slice []string) []string {
+	seen := map[string]bool{}
+	var result []string
+	for _, t := range slice {
+		if _, found := seen[t]; !found {
+			result = append(result, t)
+			seen[t] = true
+		}
+	}
+	return result
+}
+
 // BuildDependencyGraph loads dependencies data and creates the DependencyGraph
 func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphOptions) (interfaces.DependencyGraph, error) {
-	flowName := options.FlowName
-	if flowName == "" {
-		flowName = interfaces.DefaultFlowName
+	if options.FlowName == "" {
+		options.FlowName = interfaces.DefaultFlowName
 	}
 
 	log.Println("Getting resource definitions")
@@ -226,14 +293,24 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		return nil, err
 	}
 
-	fullFlowName := "flow/" + flowName
-	flow, ok := resDefs[fullFlowName]
-	if !ok && flowName != interfaces.DefaultFlowName || ok && flow.Flow == nil {
-		return nil, fmt.Errorf("flow %s is not found", flowName)
+	fullFlowName := "flow/" + options.FlowName
+	flowResDef, ok := resDefs[fullFlowName]
+	if !ok && options.FlowName != interfaces.DefaultFlowName || ok && flowResDef.Flow == nil {
+		return nil, fmt.Errorf("flow %s is not found", options.FlowName)
 	}
 
-	if flow.Flow != nil && !flow.Flow.Exported && options.ExportedOnly {
-		return nil, fmt.Errorf("flow %s is not exported", flowName)
+	flow := flowResDef.Flow
+	if flow == nil {
+		flow = sched.newDefaultFlowObject()
+	}
+
+	if !flow.Exported && options.ExportedOnly {
+		return nil, fmt.Errorf("flow %s is not exported", options.FlowName)
+	}
+
+	err = checkArgs(options, flow)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Println("Getting dependencies")
@@ -242,7 +319,7 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		return nil, err
 	}
 
-	log.Println("Making sure there is no cycles in the depGraph")
+	log.Println("Making sure there is no cycles in the dependency graph")
 	if err = EnsureNoCycles(depList.Items); err != nil {
 		return nil, err
 	}
@@ -250,48 +327,85 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	dependencies := groupDependencies(depList.Items, resDefs)
 
 	depGraph := NewDependencyGraph(sched, options)
+	rootContext := &GraphContext{scheduler: sched, graph: depGraph, flow: flow, args: options.Args}
 
 	if _, ok := dependencies[fullFlowName]; !ok {
-		log.Println("Flow depGraph is empty")
+		log.Printf("Flow %s is empty", options.FlowName)
 		return depGraph, nil
 	}
 
+	type Block struct {
+		dependency        client.Dependency
+		scheduledResource *ScheduledResource
+		parentContext     *GraphContext
+	}
+	blocks := map[string][]*Block{}
+
 	queue := list.New()
-	queue.PushFront(fullFlowName)
-	context := GraphContext{scheduler: sched, graph: depGraph}
+	queue.PushFront(&Block{dependency: client.Dependency{Child: fullFlowName}})
 
 	for e := queue.Front(); e != nil; e = e.Next() {
-		el := e.Value.(string)
+		parent := e.Value.(*Block)
 
-		deps := filterDependencies(dependencies, el, flow.Flow)
-		parent := depGraph.graph[el]
+		deps := filterDependencies(dependencies, parent.dependency.Child, flow)
 
 		for _, dep := range deps {
-			if parent != nil && strings.HasPrefix(parent.Key(), "flow/") {
-				parentFlow := resDefs[parent.Key()]
+			if parent.scheduledResource != nil && strings.HasPrefix(parent.scheduledResource.Key(), "flow/") {
+				parentFlow := resDefs[parent.scheduledResource.Key()]
 				if parentFlow.Flow != nil && canDependencyBelongToFlow(&dep, parentFlow.Flow) {
 					continue
 				}
 			}
-			sr := depGraph.graph[dep.Child]
-			if sr == nil {
-				kind, name, err := keyParts(dep.Child)
-				log.Printf("Adding resource %s to the flow dependency graph %s", dep.Child, flowName)
-
-				sr, err = sched.newScheduledResource(kind, name, resDefs, context)
-				if err != nil {
-					return nil, err
-				}
-				depGraph.graph[dep.Child] = sr
+			parentContext := rootContext
+			if parent.scheduledResource != nil {
+				parentContext = parent.scheduledResource.Context
 			}
 
-			if parent != nil {
-				sr.Requires = append(sr.Requires, parent)
-				parent.RequiredBy = append(parent.RequiredBy, sr)
-				sr.Meta[el] = dep.Meta
+			kind, name, err := keyParts(dep.Child)
+
+			context := sched.prepareContext(parentContext, dep)
+			sr, err := sched.newScheduledResource(kind, name, resDefs, context)
+			if err != nil {
+				return nil, err
 			}
-			queue.PushBack(dep.Child)
+
+			block := &Block{
+				scheduledResource: sr,
+				dependency:        dep,
+				parentContext:     parentContext,
+			}
+
+			blocks[dep.Child] = append(blocks[dep.Child], block)
+
+			if parent.scheduledResource != nil {
+				sr.Requires = append(sr.Requires, parent.scheduledResource.Key())
+				parent.scheduledResource.RequiredBy = append(parent.scheduledResource.RequiredBy, sr.Key())
+				sr.Meta[parent.dependency.Child] = dep.Meta
+			}
+			queue.PushBack(block)
 		}
+	}
+	for _, block := range blocks {
+		for _, entry := range block {
+			key := entry.scheduledResource.Key()
+			existingSr := depGraph.graph[key]
+			if existingSr == nil {
+				log.Printf("Adding resource %s to the dependency graph flow %s", key, options.FlowName)
+				depGraph.graph[key] = entry.scheduledResource
+			} else {
+				sched.updateContext(existingSr.Context, entry.parentContext, entry.dependency)
+				existingSr.Requires = append(existingSr.Requires, entry.scheduledResource.Requires...)
+				existingSr.RequiredBy = append(existingSr.RequiredBy, entry.scheduledResource.RequiredBy...)
+				for metaKey, metaValue := range entry.scheduledResource.Meta {
+					existingSr.Meta[metaKey] = metaValue
+				}
+			}
+		}
+	}
+
+	for _, value := range depGraph.graph {
+		value.RequiredBy = unique(value.RequiredBy)
+		value.Requires = unique(value.Requires)
 	}
 
 	return depGraph, nil

@@ -25,9 +25,9 @@ import (
 
 type Flow struct {
 	Base
-	flow      *client.Flow
-	scheduler interfaces.Scheduler
-	status    interfaces.ResourceStatus
+	flow    *client.Flow
+	context interfaces.GraphContext
+	status  interfaces.ResourceStatus
 }
 
 type flowTemplateFactory struct{}
@@ -49,10 +49,10 @@ func (flowTemplateFactory) Kind() string {
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	return report.SimpleReporter{
 		BaseResource: &Flow{
-			Base:      Base{def.Meta},
-			flow:      def.Flow,
-			scheduler: gc.Scheduler(),
-			status:    interfaces.ResourceNotReady,
+			Base:    Base{def.Meta},
+			flow:    def.Flow,
+			context: gc,
+			status:  interfaces.ResourceNotReady,
 		}}
 }
 
@@ -69,10 +69,18 @@ func (f Flow) Key() string {
 
 // Triggers the flow deployment like it was the resource creation
 func (f *Flow) Create() error {
+	args := map[string]string{}
+	for arg := range f.flow.Parameters {
+		val := f.context.GetArg(arg)
+		if val != "" {
+			args[arg] = val
+		}
+	}
 	options := interfaces.DependencyGraphOptions{
 		FlowName: f.flow.Name,
+		Args:     args,
 	}
-	graph, err := f.scheduler.BuildDependencyGraph(options)
+	graph, err := f.context.Scheduler().BuildDependencyGraph(options)
 	if err != nil {
 		return err
 	}
