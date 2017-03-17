@@ -50,7 +50,10 @@ func (statefulSetTemplateFactory) Kind() string {
 
 // New returns new StatefulSet based on resource definition
 func (statefulSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewStatefulSet(def.StatefulSet, c.StatefulSets(), c, def.Meta)
+	newStatefulSet := parametrizeResource(def.StatefulSet, gc,
+	"Spec.Template.Spec.Containers.Env",
+		"Spec.Template.Spec.InitContainers.Env").(*appsbeta1.StatefulSet)
+	return NewStatefulSet(newStatefulSet, c.StatefulSets(), c, def.Meta)
 }
 
 // NewExisting returns new ExistingStatefulSet based on resource definition

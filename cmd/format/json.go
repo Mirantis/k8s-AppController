@@ -39,7 +39,7 @@ func (f JSON) Wrap(k8sObject string) (string, error) {
     "apiVersion": "appcontroller.k8s/v1alpha1",
     "kind": "Definition",
     "metadata": {
-        "name": "` + data.Kind + "-" + data.Metadata.Name + `"
+        "name": "` + normalizeName(data.Kind+"-"+data.Metadata.Name) + `"
     },` + "\n"
 
 	if err != nil {

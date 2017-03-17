@@ -96,6 +96,7 @@ type Interface interface {
 	ResourceDefinitions() ResourceDefinitionsInterface
 
 	IsEnabled(version unversioned.GroupVersion) bool
+	Namespace() string
 }
 
 type Client struct {
@@ -176,6 +177,11 @@ func (c Client) Deployments() v1beta1.DeploymentInterface {
 // PersistentVolumeClaims return K8s PVC client for ac namespace
 func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 	return c.clientset.Core().PersistentVolumeClaims(c.namespace)
+}
+
+// Namespace returns current namespace for the client
+func (c Client) Namespace() string {
+	return c.namespace
 }
 
 // IsEnabled verifies that required group name and group version is registered in API
