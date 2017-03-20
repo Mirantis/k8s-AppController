@@ -1,0 +1,13 @@
+{
+	"metadata": {
+		"name": "replica.appcontroller.k8s"
+	},
+	"apiVersion": "extensions/v1beta1",
+	"kind": "ThirdPartyResource",
+	"description": "AppController flow replica",
+	"versions": [
+		{
+			"name": "v1alpha1"
+		}
+	]
+}
