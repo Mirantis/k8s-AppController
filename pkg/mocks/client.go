@@ -30,12 +30,14 @@ func newClient(apiVersions *unversioned.APIGroupList, objects ...runtime.Object)
 	fakeClientset := fake.NewSimpleClientset(objects...)
 	apps := &alphafake.FakeApps{&fakeClientset.Fake}
 	deps := &FakeDeps{fake: &fakeClientset.Fake, ns: ns}
+	replicas := &FakeReplicas{fake: &fakeClientset.Fake, ns: ns}
 	resDefs := &FakeResDef{fake: &fakeClientset.Fake, ns: ns}
 	return client.NewClient(
 		fakeClientset,
 		apps,
 		deps,
 		resDefs,
+		replicas,
 		ns,
 		apiVersions)
 }
