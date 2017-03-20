@@ -38,7 +38,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 	sched := New(c, nil, 0)
 
-	dg, err := sched.BuildDependencyGraph(interfaces.DependencyGraphOptions{})
+	dg, err := sched.BuildDependencyGraph(interfaces.DependencyGraphOptions{ReplicaCount: 1})
 	if err != nil {
 		t.Error(err)
 		return
@@ -389,7 +389,8 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		mocks.MakeDependency("pod/ready-1", "serviceaccount/sa-1"),
 	)
 
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +431,8 @@ func TestPreparedStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/1", "job/2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +452,8 @@ func TestRunningStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/ready-1", "job/2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -470,7 +473,8 @@ func TestFinishedStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/ready-1", "job/ready-2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,7 +498,8 @@ func TestGraph(t *testing.T) {
 		mocks.MakeDependency("job/ready-2", "job/1"),
 		mocks.MakeDependency("job/3", "job/1"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

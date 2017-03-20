@@ -15,10 +15,17 @@
 package client
 
 import (
+	"bytes"
+	"encoding/json"
+	"strings"
+
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/rest"
 )
 
+// Flow is a pseudo-resource (i.e. it looks like resource but cannot be created in k8s, but can be wrapped with
+// ResourceDefinition), that represents the scope and parameters of the named reusable subgraph.
 type Flow struct {
 	unversioned.TypeMeta `json:",inline"`
 
@@ -40,6 +47,7 @@ type Flow struct {
 	Parameters map[string]FlowParameter `json:"parameters,omitempty"`
 }
 
+// FlowParameter represents declaration of a parameter that flow can accept (its description, default value etc)
 type FlowParameter struct {
 	// Optional default value for the parameter. If the declared parameter has nil Default then the argument for
 	// this parameter becomes mandatory (i.e. it MUST be provided)
@@ -47,4 +55,137 @@ type FlowParameter struct {
 
 	// Description of the parameter (help string)
 	Description string `json:"description,omitempty"`
+}
+
+// Replica resource represents one instance of the replicated flow. Since the only difference between replicas is their
+// $AC_NAME value which is replica name this resource is only needed to generate unique name for each replica and make
+// those name persistent so that we could do CRD (CRUD without "U") on the list of replica names
+type Replica struct {
+	unversioned.TypeMeta `json:",inline"`
+
+	// Standard object metadata
+	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	FlowName string `json:"flowName,omitempty"`
+}
+
+// List of replicas
+type ReplicaList struct {
+	unversioned.TypeMeta `json:",inline"`
+
+	// Standard list metadata.
+	unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	Items []Replica `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+type ReplicasInterface interface {
+	List(opts api.ListOptions) (*ReplicaList, error)
+	Create(replica *Replica) (*Replica, error)
+	Delete(name string) error
+	Get(name string) (result *Replica, err error)
+}
+
+type replicas struct {
+	rc        *rest.RESTClient
+	namespace string
+}
+
+func newReplicas(c rest.Config, ns string) (*replicas, error) {
+	rc, err := thirdPartyResourceRESTClient(&c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &replicas{rc, ns}, nil
+}
+
+func (r *replicas) List(opts api.ListOptions) (*ReplicaList, error) {
+	resp, err := r.rc.Get().
+		Namespace(r.namespace).
+		Resource("replicas").
+		LabelsSelectorParam(opts.LabelSelector).
+		DoRaw()
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ReplicaList{}
+	err = json.NewDecoder(bytes.NewReader(resp)).Decode(result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (r *replicas) Create(replica *Replica) (result *Replica, err error) {
+	result = &Replica{}
+	data, err := r.rc.Post().
+		Resource("replicas").
+		Namespace(r.namespace).
+		Body(replica).
+		Do().Raw()
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, result)
+	return
+}
+
+func (r *replicas) Delete(name string) error {
+	return r.rc.Delete().
+		Namespace(r.namespace).
+		Resource("replicas").
+		Name(name).
+		Do().
+		Error()
+}
+
+func (r *replicas) Get(name string) (result *Replica, err error) {
+	err = r.rc.Get().
+		Namespace(r.namespace).
+		Resource("replicas").
+		Name(name).
+		Do().Into(result)
+
+	return
+}
+
+func (r *Replica) UnmarshalJSON(data []byte) error {
+	type XReplica Replica
+	tmp := XReplica{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	*r = Replica(tmp)
+	return nil
+}
+
+func (rl *ReplicaList) UnmarshalJSON(data []byte) error {
+	type XReplicaList ReplicaList
+	tmp := XReplicaList{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	*rl = ReplicaList(tmp)
+	return nil
+}
+
+func (f *Flow) UnmarshalJSON(data []byte) error {
+	type XFlow Flow
+	tmp := XFlow{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	*f = Flow(tmp)
+	return nil
+}
+
+func (r *Replica) ReplicaName() string {
+	return r.Name[1+strings.LastIndex(r.Name, "-"):]
 }
