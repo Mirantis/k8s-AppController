@@ -60,6 +60,16 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&Dependency{},
 		&DependencyList{},
 	)
+	flowDeploymentGVK := SchemeGroupVersion.WithKind("Deployment")
+	scheme.AddKnownTypeWithName(
+		flowDeploymentGVK,
+		&FlowDeployment{},
+	)
+	flowDeploymentListGVK := SchemeGroupVersion.WithKind("DeploymentList")
+	scheme.AddKnownTypeWithName(
+		flowDeploymentListGVK,
+		&FlowDeploymentList{},
+	)
 	return nil
 }
 
@@ -94,6 +104,7 @@ type Interface interface {
 
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
+	FlowDeployments() FlowDeploymentsInterface
 
 	IsEnabled(version unversioned.GroupVersion) bool
 	Namespace() string
@@ -104,6 +115,7 @@ type Client struct {
 	alphaApps           v1alpha1.AppsInterface
 	dependencies        DependenciesInterface
 	resourceDefinitions ResourceDefinitionsInterface
+	flowDeployments     FlowDeploymentsInterface
 	namespace           string
 	apiVersions         *unversioned.APIGroupList
 }
@@ -179,7 +191,12 @@ func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 	return c.clientset.Core().PersistentVolumeClaims(c.namespace)
 }
 
-// Namespace returns current namespace for the client
+// FlowDeployments return interface to access flow deployments
+func (c Client) FlowDeployments() FlowDeploymentsInterface {
+	return c.flowDeployments
+}
+
+// Returns AC namespace
 func (c Client) Namespace() string {
 	return c.namespace
 }
@@ -211,6 +228,10 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+	flowDeployments, err := newFlowDeployments(c, namespace)
+	if err != nil {
+		return nil, err
+	}
 	cl, err := kubernetes.NewForConfig(&c)
 	if err != nil {
 		return nil, err
@@ -224,7 +245,7 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 		return nil, err
 	}
 
-	return NewClient(cl, apps, deps, resdefs, namespace, versions), nil
+	return NewClient(cl, apps, deps, resdefs, flowDeployments, namespace, versions), nil
 }
 
 // Client class constructor
@@ -233,6 +254,7 @@ func NewClient(
 	alphaApps v1alpha1.AppsInterface,
 	dependencies DependenciesInterface,
 	resourceDefinitions ResourceDefinitionsInterface,
+	flowDeployments FlowDeploymentsInterface,
 	namespace string,
 	apiVersions *unversioned.APIGroupList) Interface {
 
@@ -241,6 +263,7 @@ func NewClient(
 		alphaApps:           alphaApps,
 		dependencies:        dependencies,
 		resourceDefinitions: resourceDefinitions,
+		flowDeployments:     flowDeployments,
 		namespace:           namespace,
 		apiVersions:         apiVersions,
 	}

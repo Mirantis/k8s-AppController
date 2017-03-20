@@ -64,8 +64,6 @@ func deploy(cmd *cobra.Command, args []string) {
 		}
 		flowArgMap[key] = value
 	}
-	log.Println("Using concurrency:", concurrency)
-
 	flowName := interfaces.DefaultFlowName
 
 	if len(args) > 1 {
@@ -95,6 +93,7 @@ func deploy(cmd *cobra.Command, args []string) {
 		Args:                flowArgMap,
 		AllowUndeclaredArgs: anyArgs,
 	}
+
 	log.Println("Going to deploy flow:", flowName)
 	depGraph, err := sched.BuildDependencyGraph(options)
 	if err != nil {
@@ -133,7 +132,8 @@ func InitRunCommand() (*cobra.Command, error) {
 	}
 
 	var labelSelector string
-	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
+	run.Flags().StringVarP(&labelSelector, "label", "l", "",
+		"Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
 
 	run.Flags().Bool("undeclared-args", false, "Allow undeclared arguments")
 
