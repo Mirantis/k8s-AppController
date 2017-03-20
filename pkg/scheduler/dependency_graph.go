@@ -18,7 +18,9 @@ import (
 	"container/list"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/copier"
@@ -27,6 +29,7 @@ import (
 
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/labels"
 )
 
 // DependencyGraph is a full deployment depGraph as a mapping from job keys to
@@ -42,6 +45,7 @@ type GraphContext struct {
 	graph     *DependencyGraph
 	scheduler *Scheduler
 	flow      *client.Flow
+	replica   string
 }
 
 // Returns the Scheduler that was used to create the dependency graph
@@ -51,19 +55,24 @@ func (gc GraphContext) Scheduler() interfaces.Scheduler {
 
 // Returns argument values available in the current graph context
 func (gc GraphContext) GetArg(name string) string {
-	val, ok := gc.args[name]
-	if ok {
-		return val
+	switch name {
+	case "AC_NAME":
+		return gc.replica
+	default:
+		val, ok := gc.args[name]
+		if ok {
+			return val
+		}
+		val, ok = gc.graph.graphOptions.Args[name]
+		if ok {
+			return val
+		}
+		fp, ok := gc.flow.Parameters[name]
+		if ok && fp.Default != nil {
+			return *fp.Default
+		}
+		return ""
 	}
-	val, ok = gc.graph.graphOptions.Args[name]
-	if ok {
-		return val
-	}
-	fp, ok := gc.flow.Parameters[name]
-	if ok && fp.Default != nil {
-		return *fp.Default
-	}
-	return ""
 }
 
 // Returns the currently running dependency graph
@@ -81,6 +90,40 @@ func newScheduledResourceFor(r interfaces.Resource, context *GraphContext) *Sche
 		Meta:     map[string]map[string]string{},
 		Context:  context,
 	}
+}
+
+type DependencyList client.DependencyList
+
+var _ sort.Interface = &DependencyList{}
+
+// Len is the number of dependencies in the collection.
+func (d *DependencyList) Len() int {
+	return len(d.Items)
+}
+
+// Less reports whether the dependency with index i should sort before the element with index j.
+func (d *DependencyList) Less(i, j int) bool {
+	if d.Items[i].CreationTimestamp.Equal(d.Items[j].CreationTimestamp) {
+		return d.Items[i].UID < d.Items[j].UID
+	}
+	return d.Items[i].CreationTimestamp.Before(d.Items[j].CreationTimestamp)
+}
+
+// Swap swaps the elements with indexes i and j.
+func (d *DependencyList) Swap(i, j int) {
+	d.Items[i], d.Items[j] = d.Items[j], d.Items[i]
+}
+
+func (sched *Scheduler) getDependencies() ([]client.Dependency, error) {
+	depList, err := sched.client.Dependencies().List(api.ListOptions{LabelSelector: sched.selector})
+	if err != nil {
+		return nil, err
+	}
+	tmp := DependencyList(*depList)
+	sort.Stable(&tmp)
+
+	return tmp.Items, nil
+
 }
 
 func groupDependencies(dependencies []client.Dependency,
@@ -222,8 +265,8 @@ func NewDependencyGraph(sched *Scheduler, options interfaces.DependencyGraphOpti
 	}
 }
 
-func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependency client.Dependency) *GraphContext {
-	context := &GraphContext{scheduler: sched, graph: parentContext.graph, flow: parentContext.flow}
+func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependency client.Dependency, replica string) *GraphContext {
+	context := &GraphContext{scheduler: sched, graph: parentContext.graph, flow: parentContext.flow, replica: replica}
 	context.args = make(map[string]string)
 	for key, value := range dependency.Args {
 		context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
@@ -281,6 +324,81 @@ func unique(slice []string) []string {
 	return result
 }
 
+type ReplicaList client.ReplicaList
+
+var _ sort.Interface = &ReplicaList{}
+
+// Len is the number of replicas in the collection.
+func (rl *ReplicaList) Len() int {
+	return len(rl.Items)
+}
+
+// Less reports whether the replica with index i should sort before the element with index j.
+func (rl *ReplicaList) Less(i, j int) bool {
+	if rl.Items[i].CreationTimestamp.Equal(rl.Items[j].CreationTimestamp) {
+		return rl.Items[i].UID < rl.Items[j].UID
+	}
+	return rl.Items[i].CreationTimestamp.Before(rl.Items[j].CreationTimestamp)
+}
+
+// Swap swaps the elements with indexes i and j.
+func (rl *ReplicaList) Swap(i, j int) {
+	rl.Items[i], rl.Items[j] = rl.Items[j], rl.Items[i]
+}
+
+func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.DependencyGraphOptions) ([]string, error) {
+	label := labels.Set{"flow": flow.Name}
+	var tmp ReplicaList
+	var maxCurrentTime time.Time
+
+	count := options.ReplicaCount
+	if !options.ReplicaCountIsRelative || options.ReplicaCount == 0 {
+		existingReplicas, err := sched.client.Replicas().List(api.ListOptions{
+			LabelSelector: labels.SelectorFromSet(label),
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range existingReplicas.Items {
+			if item.CreationTimestamp.After(maxCurrentTime) {
+				maxCurrentTime = item.CreationTimestamp.Time
+			}
+		}
+		tmp = ReplicaList(*existingReplicas)
+		if options.ReplicaCount == 0 {
+			count = len(tmp.Items)
+		}
+	}
+
+	for len(tmp.Items) < count {
+		replica := &client.Replica{
+			ObjectMeta: api.ObjectMeta{
+				GenerateName: strings.ToLower(flow.Name) + "-",
+				Labels:       label,
+				Namespace:    sched.client.Namespace(),
+			},
+			FlowName: flow.Name,
+		}
+		replica, err := sched.client.Replicas().Create(replica)
+		if err != nil {
+			return nil, err
+		}
+		if !replica.CreationTimestamp.After(maxCurrentTime) {
+			time.Sleep(time.Second)
+			sched.client.Replicas().Delete(replica.Name)
+			continue
+		}
+		tmp.Items = append(tmp.Items, *replica)
+	}
+
+	sort.Stable(&tmp)
+	var result []string
+	for _, replica := range tmp.Items {
+		result = append(result, replica.ReplicaName())
+	}
+	return result[:count], nil
+}
+
 // BuildDependencyGraph loads dependencies data and creates the DependencyGraph
 func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphOptions) (interfaces.DependencyGraph, error) {
 	if options.FlowName == "" {
@@ -314,17 +432,17 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	}
 
 	log.Println("Getting dependencies")
-	depList, err := sched.client.Dependencies().List(api.ListOptions{LabelSelector: sched.selector})
+	depList, err := sched.getDependencies()
 	if err != nil {
 		return nil, err
 	}
 
 	log.Println("Making sure there is no cycles in the dependency graph")
-	if err = EnsureNoCycles(depList.Items); err != nil {
+	if err = EnsureNoCycles(depList); err != nil {
 		return nil, err
 	}
 
-	dependencies := groupDependencies(depList.Items, resDefs)
+	dependencies := groupDependencies(depList, resDefs)
 
 	depGraph := NewDependencyGraph(sched, options)
 	rootContext := &GraphContext{scheduler: sched, graph: depGraph, flow: flow, args: options.Args}
@@ -339,65 +457,73 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		scheduledResource *ScheduledResource
 		parentContext     *GraphContext
 	}
+
+	replicas, err := sched.allocateReplicas(flow, options)
+	if err != nil {
+		return nil, err
+	}
+
 	blocks := map[string][]*Block{}
 
-	queue := list.New()
-	queue.PushFront(&Block{dependency: client.Dependency{Child: fullFlowName}})
+	for _, replica := range replicas {
+		queue := list.New()
+		queue.PushFront(&Block{dependency: client.Dependency{Child: fullFlowName}})
 
-	for e := queue.Front(); e != nil; e = e.Next() {
-		parent := e.Value.(*Block)
+		for e := queue.Front(); e != nil; e = e.Next() {
+			parent := e.Value.(*Block)
 
-		deps := filterDependencies(dependencies, parent.dependency.Child, flow)
+			deps := filterDependencies(dependencies, parent.dependency.Child, flow)
 
-		for _, dep := range deps {
-			if parent.scheduledResource != nil && strings.HasPrefix(parent.scheduledResource.Key(), "flow/") {
-				parentFlow := resDefs[dep.Parent]
-				if parentFlow.Flow != nil && canDependencyBelongToFlow(&dep, parentFlow.Flow) {
-					continue
+			for _, dep := range deps {
+				if parent.scheduledResource != nil && strings.HasPrefix(parent.scheduledResource.Key(), "flow/") {
+					parentFlow := resDefs[dep.Parent]
+					if parentFlow.Flow != nil && canDependencyBelongToFlow(&dep, parentFlow.Flow) {
+						continue
+					}
 				}
-			}
-			parentContext := rootContext
-			if parent.scheduledResource != nil {
-				parentContext = parent.scheduledResource.Context
-			}
+				parentContext := rootContext
+				if parent.scheduledResource != nil {
+					parentContext = parent.scheduledResource.Context
+				}
 
-			kind, name, err := keyParts(dep.Child)
+				kind, name, err := keyParts(dep.Child)
 
-			context := sched.prepareContext(parentContext, dep)
-			sr, err := sched.newScheduledResource(kind, name, resDefs, context)
-			if err != nil {
-				return nil, err
+				context := sched.prepareContext(parentContext, dep, replica)
+				sr, err := sched.newScheduledResource(kind, name, resDefs, context)
+				if err != nil {
+					return nil, err
+				}
+
+				block := &Block{
+					scheduledResource: sr,
+					dependency:        dep,
+					parentContext:     parentContext,
+				}
+
+				blocks[dep.Child] = append(blocks[dep.Child], block)
+
+				if parent.scheduledResource != nil {
+					sr.Requires = append(sr.Requires, parent.scheduledResource.Key())
+					parent.scheduledResource.RequiredBy = append(parent.scheduledResource.RequiredBy, sr.Key())
+					sr.Meta[parent.dependency.Child] = dep.Meta
+				}
+				queue.PushBack(block)
 			}
-
-			block := &Block{
-				scheduledResource: sr,
-				dependency:        dep,
-				parentContext:     parentContext,
-			}
-
-			blocks[dep.Child] = append(blocks[dep.Child], block)
-
-			if parent.scheduledResource != nil {
-				sr.Requires = append(sr.Requires, parent.scheduledResource.Key())
-				parent.scheduledResource.RequiredBy = append(parent.scheduledResource.RequiredBy, sr.Key())
-				sr.Meta[parent.dependency.Child] = dep.Meta
-			}
-			queue.PushBack(block)
 		}
-	}
-	for _, block := range blocks {
-		for _, entry := range block {
-			key := entry.scheduledResource.Key()
-			existingSr := depGraph.graph[key]
-			if existingSr == nil {
-				log.Printf("Adding resource %s to the dependency graph flow %s", key, options.FlowName)
-				depGraph.graph[key] = entry.scheduledResource
-			} else {
-				sched.updateContext(existingSr.Context, entry.parentContext, entry.dependency)
-				existingSr.Requires = append(existingSr.Requires, entry.scheduledResource.Requires...)
-				existingSr.RequiredBy = append(existingSr.RequiredBy, entry.scheduledResource.RequiredBy...)
-				for metaKey, metaValue := range entry.scheduledResource.Meta {
-					existingSr.Meta[metaKey] = metaValue
+		for _, block := range blocks {
+			for _, entry := range block {
+				key := entry.scheduledResource.Key()
+				existingSr := depGraph.graph[key]
+				if existingSr == nil {
+					log.Printf("Adding resource %s to the dependency graph flow %s", key, options.FlowName)
+					depGraph.graph[key] = entry.scheduledResource
+				} else {
+					sched.updateContext(existingSr.Context, entry.parentContext, entry.dependency)
+					existingSr.Requires = append(existingSr.Requires, entry.scheduledResource.Requires...)
+					existingSr.RequiredBy = append(existingSr.RequiredBy, entry.scheduledResource.RequiredBy...)
+					for metaKey, metaValue := range entry.scheduledResource.Meta {
+						existingSr.Meta[metaKey] = metaValue
+					}
 				}
 			}
 		}

@@ -64,8 +64,6 @@ func deploy(cmd *cobra.Command, args []string) {
 		}
 		flowArgMap[key] = value
 	}
-	log.Println("Using concurrency:", concurrency)
-
 	flowName := interfaces.DefaultFlowName
 
 	if len(args) > 1 {
@@ -85,16 +83,28 @@ func deploy(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	replicasString, err := cmd.Flags().GetString("replicas")
+	if err != nil {
+		log.Fatal(err)
+	}
+	replicas, err := strconv.Atoi(strings.TrimSpace(replicasString))
+	if err != nil || replicas < 0 {
+		log.Fatal("Invalid replica count format")
+	}
+
 	log.Println("Using concurrency:", concurrency)
 	log.Println("Using label selector:", labelSelector)
 
 	sched := scheduler.New(c, sel, concurrency)
 	options := interfaces.DependencyGraphOptions{
-		FlowName:            flowName,
-		ExportedOnly:        true,
-		Args:                flowArgMap,
-		AllowUndeclaredArgs: anyArgs,
+		FlowName:               flowName,
+		ExportedOnly:           true,
+		Args:                   flowArgMap,
+		AllowUndeclaredArgs:    anyArgs,
+		ReplicaCount:           replicas,
+		ReplicaCountIsRelative: replicas > 0 && strings.ContainsAny(replicasString, "+"),
 	}
+
 	log.Println("Going to deploy flow:", flowName)
 	depGraph, err := sched.BuildDependencyGraph(options)
 	if err != nil {
@@ -132,13 +142,12 @@ func InitRunCommand() (*cobra.Command, error) {
 		Run:   deploy,
 	}
 
-	var labelSelector string
-	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
+	run.Flags().StringP("label", "l", "",
+		"Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
 
 	run.Flags().Bool("undeclared-args", false, "Allow undeclared arguments")
 
-	var args []string
-	run.Flags().StringArrayVar(&args, "arg", []string{}, "Flow arguments (key=value)")
+	run.Flags().StringArray("arg", []string{}, "Flow arguments (key=value)")
 
 	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 
@@ -152,11 +161,12 @@ func InitRunCommand() (*cobra.Command, error) {
 			concurrencyDefault = 0
 		}
 	}
-	var concurrency int
-	run.Flags().IntVarP(&concurrency, "concurrency", "c", concurrencyDefault, "concurrency")
+	run.Flags().IntP("concurrency", "c", concurrencyDefault, "concurrency")
 
-	var clusterUrl string
-	run.Flags().StringVar(&clusterUrl, "url", os.Getenv("KUBERNETES_CLUSTER_URL"),
+	run.Flags().String("url", os.Getenv("KUBERNETES_CLUSTER_URL"),
 		"URL of the Kubernetes cluster. Overrides KUBERNETES_CLUSTER_URL env variable in AppController pod.")
+
+	run.Flags().StringP("replicas", "n", "1", "number of flow replicas: [+]number")
+
 	return run, err
 }

@@ -78,10 +78,12 @@ type GraphContext interface {
 }
 
 type DependencyGraphOptions struct {
-	FlowName            string
-	Args                map[string]string
-	ExportedOnly        bool
-	AllowUndeclaredArgs bool
+	FlowName               string
+	Args                   map[string]string
+	ExportedOnly           bool
+	AllowUndeclaredArgs    bool
+	ReplicaCount           int
+	ReplicaCountIsRelative bool
 }
 
 type Scheduler interface {
