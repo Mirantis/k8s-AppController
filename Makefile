@@ -1,9 +1,7 @@
 
 IMAGE_REPO ?= mirantis/k8s-appcontroller
-WORKING ?= ~/testappcontroller
-K8S_SOURCE_LOCATION = .k8s-source
 K8S_CLUSTER_MARKER = .k8s-cluster
-K8S_TAG ?= v1.5.2
+K8S_VERSION ?= v1.5
 
 .PHONY: docker
 docker: kubeac Makefile
@@ -29,7 +27,7 @@ img-in-dind: docker $(K8S_CLUSTER_MARKER)
 .PHONY: e2e
 e2e: $(K8S_CLUSTER_MARKER) img-in-dind
 	go test -c -o e2e.test ./e2e/
-	PATH=$(PATH):$(WORKING)/kubernetes/_output/bin/ ./e2e.test --cluster-url=http://0.0.0.0:8888 --k8s-version=$(K8S_TAG)
+	./e2e.test --cluster-url=http://0.0.0.0:8888 --k8s-version=$(K8S_VERSION)
 
 .PHONY: clean-all
 clean-all: clean clean-k8s
@@ -42,14 +40,10 @@ clean:
 
 .PHONY: clean-k8s
 clean-k8s:
-	WORKING=$(WORKING) scripts/dind_down.sh
-	<$(K8S_SOURCE_LOCATION) xargs rm -rf
-	-rm $(K8S_SOURCE_LOCATION)
+	 ./kubernetes-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh down
 	-rm $(K8S_CLUSTER_MARKER)
 
-$(K8S_SOURCE_LOCATION):
-	WORKING=$(WORKING) scripts/checkout_k8s.sh > $(K8S_SOURCE_LOCATION)
-
 $(K8S_CLUSTER_MARKER): $(K8S_SOURCE_LOCATION)
-	WORKING=$(WORKING) ./scripts/prepare_dind.sh
+	git clone https://github.com/Mirantis/kubeadm-dind-cluster.git 
+        ./kubernetes-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh up
 	touch $(K8S_CLUSTER_MARKER)
