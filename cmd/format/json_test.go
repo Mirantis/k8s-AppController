@@ -28,7 +28,7 @@ func TestKindJSON(t *testing.T) {
 	}
 
 	if kind.Kind != "job" {
-		t.Errorf("Extracted kind should be \"job\", is %s", kind)
+		t.Errorf("extracted kind should be \"job\", is %s", kind)
 	}
 }
 
@@ -50,6 +50,6 @@ func TestWrapJSON(t *testing.T) {
     "job": {"kind": "Job", "metadata": {"name": "name"}}
 }` + "\n"
 	if wrapped != expected {
-		t.Errorf("Wrapped doesn't match expected output\nExpected:\n%s\nAactual:\n%s", expected, wrapped)
+		t.Errorf("wrapped doesn't match expected output\nExpected:\n%s\nAactual:\n%s", expected, wrapped)
 	}
 }

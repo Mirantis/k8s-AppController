@@ -14,7 +14,9 @@
 
 package interfaces
 
-import "github.com/Mirantis/k8s-AppController/pkg/client"
+import (
+	"github.com/Mirantis/k8s-AppController/pkg/client"
+)
 
 type ResourceStatus string
 
@@ -52,7 +54,26 @@ type Resource interface {
 
 // ResourceTemplate is an interface for AppController supported resource templates
 type ResourceTemplate interface {
-	NameMatches(client.ResourceDefinition, string) bool
-	New(client.ResourceDefinition, client.Interface) Resource
-	NewExisting(string, client.Interface) Resource
+	Kind() string
+	ShortName(client.ResourceDefinition) string
+	New(client.ResourceDefinition, client.Interface, GraphContext) Resource
+	NewExisting(string, client.Interface, GraphContext) Resource
+}
+
+type DeploymentReport interface {
+	AsText(int) []string
+}
+
+type DependencyGraph interface {
+	GetStatus() (DeploymentStatus, DeploymentReport)
+	Deploy(<-chan struct{})
+}
+
+type GraphContext interface {
+	Scheduler() Scheduler
+	Graph() DependencyGraph
+}
+
+type Scheduler interface {
+	BuildDependencyGraph() (DependencyGraph, error)
 }
