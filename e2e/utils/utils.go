@@ -31,6 +31,11 @@ import (
 	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"k8s.io/client-go/pkg/apis/rbac/v1alpha1"
+)
+
+const (
+	rbacServiceAccountAdmin = "system:serviceaccount-admin"
 )
 
 type TContext struct {
@@ -43,6 +48,34 @@ func SkipIf14() {
 	if strings.Contains(TestContext.Version, "1.4") {
 		Skip("This test is disabled on kubernetes of version 1.4")
 	}
+}
+
+// AddServiceAccountToAdmins will add system:serviceaccounts to cluster-admin ClusterRole
+func AddServiceAccountToAdmins(c kubernetes.Interface) {
+	if strings.Contains(TestContext.Version, "1.6") {
+		return
+	}
+	roleBinding := &v1alpha1.ClusterRoleBinding{
+		ObjectMeta: v1.ObjectMeta{
+			Name: rbacServiceAccountAdmin,
+		},
+		Subjects: []v1alpha1.Subject{{
+			Kind: "Group",
+			Name: "system:serviceaccounts",
+		}},
+		RoleRef: v1alpha1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+	_, err := c.Rbac().ClusterRoleBindings().Create(roleBinding)
+	Expect(err).NotTo(HaveOccurred(), "Wasnt able to create role binding for serviceaccounts")
+}
+
+func RemoveServiceAccountFromAdmins(c kubernetes.Interface) {
+	err := c.Rbac().ClusterRoleBindings().Delete(rbacServiceAccountAdmin, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to remove serviceaccount from admin group")
 }
 
 var TestContext = TContext{}
