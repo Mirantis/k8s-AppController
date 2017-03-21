@@ -53,6 +53,7 @@ func AddServiceAccountToAdmins(c kubernetes.Interface) {
 	if strings.Contains(TestContext.Version, "1.6") {
 		return
 	}
+	By("Adding service account group to cluster-admin role")
 	roleBinding := &v1alpha1.ClusterRoleBinding{
 		ObjectMeta: v1.ObjectMeta{
 			Name: rbacServiceAccountAdmin,
@@ -68,12 +69,16 @@ func AddServiceAccountToAdmins(c kubernetes.Interface) {
 		},
 	}
 	_, err := c.Rbac().ClusterRoleBindings().Create(roleBinding)
-	Expect(err).NotTo(HaveOccurred(), "Wasnt able to create role binding for serviceaccounts")
+	Expect(err).NotTo(HaveOccurred(), "Failed to create role binding for serviceaccounts")
 }
 
 func RemoveServiceAccountFromAdmins(c kubernetes.Interface) {
+	if strings.Contains(TestContext.Version, "1.6") {
+		return
+	}
+	By("Remowing service account group from cluster-admin role")
 	err := c.Rbac().ClusterRoleBindings().Delete(rbacServiceAccountAdmin, nil)
-	Expect(err).NotTo(HaveOccurred(), "Failed to remove serviceaccount from admin group")
+	Expect(err).NotTo(HaveOccurred(), "Failed to remove serviceaccount from cluster-admin role")
 }
 
 var TestContext = TContext{}
