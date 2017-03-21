@@ -109,6 +109,7 @@ func (a *AppControllerManager) BeforeEach() {
 	var err error
 	a.Clientset, err = KubeClient()
 	Expect(err).NotTo(HaveOccurred())
+	AddServiceAccountToAdmins(a.Clientset)
 	By("Creating namespace and initializing test framework")
 	namespaceObj := &v1.Namespace{
 		ObjectMeta: v1.ObjectMeta{
@@ -133,6 +134,7 @@ func (a *AppControllerManager) AfterEach() {
 	}
 	By("Removing namespace")
 	DeleteNS(a.Clientset, a.Namespace)
+	RemoveServiceAccountFromAdmins(a.Clientset)
 }
 
 func NewAppControllerManager() *AppControllerManager {
