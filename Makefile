@@ -40,10 +40,11 @@ clean:
 
 .PHONY: clean-k8s
 clean-k8s:
-	 ./kubeadm-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh {down,clean}
+	./kubeadm-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh down
+	./kubeadm-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh clean
 	-rm $(K8S_CLUSTER_MARKER)
 
-$(K8S_CLUSTER_MARKER): $(K8S_SOURCE_LOCATION)
-	git clone https://github.com/Mirantis/kubeadm-dind-cluster.git 
+$(K8S_CLUSTER_MARKER):
+	if [ ! -d "kubeadm-dind-cluster" ]; then git clone https://github.com/Mirantis/kubeadm-dind-cluster.git; fi
 	./kubeadm-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh up
 	touch $(K8S_CLUSTER_MARKER)
