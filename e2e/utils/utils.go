@@ -18,6 +18,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
@@ -27,8 +29,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"k8s.io/client-go/pkg/apis/rbac/v1alpha1"
@@ -44,15 +44,14 @@ type TContext struct {
 }
 
 func SkipIf14() {
-	// TODO semver compare
 	if strings.Contains(TestContext.Version, "1.4") {
-		Skip("This test is disabled on kubernetes of version 1.4")
+		Skip("This test is disabled on kubernetes of versions 1.4")
 	}
 }
 
 // AddServiceAccountToAdmins will add system:serviceaccounts to cluster-admin ClusterRole
 func AddServiceAccountToAdmins(c kubernetes.Interface) {
-	if strings.Contains(TestContext.Version, "1.6") {
+	if IsVersionOlderThan16() {
 		return
 	}
 	By("Adding service account group to cluster-admin role")
@@ -75,7 +74,7 @@ func AddServiceAccountToAdmins(c kubernetes.Interface) {
 }
 
 func RemoveServiceAccountFromAdmins(c kubernetes.Interface) {
-	if strings.Contains(TestContext.Version, "1.6") {
+	if IsVersionOlderThan16() {
 		return
 	}
 	By("Remowing service account group from cluster-admin role")
@@ -91,6 +90,22 @@ func init() {
 	flag.StringVar(&TestContext.Examples, "examples-directory", "examples", "Provide path to directory with examples")
 	flag.StringVar(&TestContext.Version, "k8s-version", "", "Specify kubernetes version that is used for e2e tests")
 	flag.StringVar(&url, "cluster-url", "http://127.0.0.1:8080", "apiserver address to use with restclient")
+}
+
+func SanitizedVersion() float64 {
+	var dirtyVersion string
+	if strings.HasPrefix(TestContext.Version, "v") {
+		dirtyVersion = TestContext.Version[1:]
+	} else {
+		dirtyVersion = TestContext.Version
+	}
+	version, err := strconv.ParseFloat(dirtyVersion, 64)
+	Expect(err).NotTo(HaveOccurred())
+	return version
+}
+
+func IsVersionOlderThan16() bool {
+	return SanitizedVersion() < 1.6
 }
 
 func Logf(format string, a ...interface{}) {
