@@ -40,7 +40,6 @@ clean:
 
 .PHONY: clean-k8s
 clean-k8s:
-	./kubeadm-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh down
 	./kubeadm-dind-cluster/fixed/dind-cluster-$(K8S_VERSION).sh clean
 	-rm $(K8S_CLUSTER_MARKER)
 
