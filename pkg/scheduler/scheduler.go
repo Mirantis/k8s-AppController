@@ -15,59 +15,15 @@
 package scheduler
 
 import (
-	"container/list"
 	"fmt"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 	"github.com/Mirantis/k8s-AppController/pkg/resources"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/labels"
 )
-
-// ScheduledResourceStatus describes possible status of a single resource
-type ScheduledResourceStatus int
-
-// Possible values for ScheduledResourceStatus
-const (
-	Init ScheduledResourceStatus = iota
-	Creating
-	Ready
-	Error
-)
-
-// DeploymentStatus describes possible status of whole deployment process
-type DeploymentStatus int
-
-// Possible values for DeploymentStatus
-const (
-	Empty DeploymentStatus = iota
-	Prepared
-	Running
-	Finished
-	TimedOut
-)
-
-func (s DeploymentStatus) String() string {
-	switch s {
-	case Empty:
-		return "No dependencies loaded"
-	case Prepared:
-		return "Deployment not started"
-	case Running:
-		return "Deployment is running"
-	case Finished:
-		return "Deployment finished"
-	case TimedOut:
-		return "Deployment timed out"
-	}
-	panic("Unreachable")
-}
 
 // CheckInterval is an interval between rechecking the tree for updates
 const (
@@ -210,156 +166,6 @@ func (sr *ScheduledResource) ResetStatus() {
 	sr.status = ""
 }
 
-// DependencyGraph is a full deployment graph as a mapping from job keys to
-// ScheduledResource pointers
-type DependencyGraph map[string]*ScheduledResource
-
-func newResource(name string, resDefs []client.ResourceDefinition, c client.Interface, resourceTemplate interfaces.ResourceTemplate) interfaces.Resource {
-	for _, rd := range resDefs {
-		if resourceTemplate.NameMatches(rd, name) {
-			log.Println("Found resource definition for ", name)
-			return resourceTemplate.New(rd, c)
-		}
-	}
-
-	log.Printf("Resource definition for '%s' not found, so it is expected to exist already", name)
-	return resourceTemplate.NewExisting(name, c)
-
-}
-
-// NewScheduledResource is a constructor for ScheduledResource
-func NewScheduledResource(kind string, name string,
-	resDefs []client.ResourceDefinition, c client.Interface) (*ScheduledResource, error) {
-
-	var r interfaces.Resource
-
-	resourceTemplate, ok := resources.KindToResourceTemplate[kind]
-	if !ok {
-		return nil, fmt.Errorf("Not a proper resource kind: %s. Expected '%s'", kind, strings.Join(resources.Kinds, "', '"))
-	}
-	r = newResource(name, resDefs, c, resourceTemplate)
-
-	return NewScheduledResourceFor(r), nil
-}
-
-// NewScheduledResourceFor returns new scheduled resource for given resource in init state
-func NewScheduledResourceFor(r interfaces.Resource) *ScheduledResource {
-	return &ScheduledResource{
-		Started:  false,
-		Ignored:  false,
-		Error:    nil,
-		Resource: r,
-		Meta:     map[string]map[string]string{},
-	}
-}
-
-func keyParts(key string) (kind string, name string, err error) {
-	parts := strings.Split(key, "/")
-
-	if len(parts) < 2 {
-		return "", "", fmt.Errorf("Not a proper resource key: %s. Expected KIND/NAME", key)
-	}
-
-	return parts[0], parts[1], nil
-}
-
-// BuildDependencyGraph loads dependencies data and creates the DependencyGraph
-func BuildDependencyGraph(c client.Interface, sel labels.Selector) (DependencyGraph, error) {
-
-	log.Println("Getting resource definitions")
-	resDefList, err := c.ResourceDefinitions().List(api.ListOptions{LabelSelector: sel})
-	if err != nil {
-		return nil, err
-	}
-
-	resDefs := resDefList.Items
-
-	log.Println("Getting dependencies")
-	depList, err := c.Dependencies().List(api.ListOptions{LabelSelector: sel})
-	if err != nil {
-		return nil, err
-	}
-
-	depGraph := DependencyGraph{}
-
-	for _, d := range depList.Items {
-		parent := d.Parent
-		child := d.Child
-
-		// NOTE(ikhudoshyn): We should normalize parent's and child's key
-		// to the form KIND/NAME, so that no extra metainformation
-		// (e.g. success factor for replica set) will not be a part of the key
-
-		log.Println("Found dependency", parent, "->", child)
-
-		for _, key := range []string{parent, child} {
-			if _, ok := depGraph[key]; !ok {
-				log.Printf("Resource %s not found in dependecy graph yet, adding.", key)
-
-				kind, name, err := keyParts(key)
-				if err != nil {
-					return nil, err
-				}
-
-				sr, err := NewScheduledResource(kind, name, resDefs, c)
-				if err != nil {
-					return nil, err
-				}
-
-				depGraph[key] = sr
-			}
-		}
-
-		depGraph[child].Requires = append(
-			depGraph[child].Requires, depGraph[parent])
-
-		depGraph[child].Meta[parent] = d.Meta
-
-		depGraph[parent].RequiredBy = append(
-			depGraph[parent].RequiredBy, depGraph[child])
-	}
-
-	log.Println("Looking for resource definitions not in dependency list")
-	for _, r := range resDefList.Items {
-		var resource interfaces.Resource
-
-		if r.Pod != nil {
-			resource = resources.NewPod(r.Pod, c.Pods(), r.Meta)
-		} else if r.Job != nil {
-			resource = resources.NewJob(r.Job, c.Jobs(), r.Meta)
-		} else if r.Service != nil {
-			resource = resources.NewService(r.Service, c.Services(), c, r.Meta)
-		} else if r.ReplicaSet != nil {
-			resource = resources.NewReplicaSet(r.ReplicaSet, c.ReplicaSets(), r.Meta)
-		} else if r.StatefulSet != nil {
-			resource = resources.NewStatefulSet(r.StatefulSet, c.StatefulSets(), c, r.Meta)
-		} else if r.PetSet != nil {
-			resource = resources.NewPetSet(r.PetSet, c.PetSets(), c, r.Meta)
-		} else if r.DaemonSet != nil {
-			resource = resources.NewDaemonSet(r.DaemonSet, c.DaemonSets(), r.Meta)
-		} else if r.ConfigMap != nil {
-			resource = resources.NewConfigMap(r.ConfigMap, c.ConfigMaps(), r.Meta)
-		} else if r.Secret != nil {
-			resource = resources.NewSecret(r.Secret, c.Secrets(), r.Meta)
-		} else if r.Deployment != nil {
-			resource = resources.NewDeployment(r.Deployment, c.Deployments(), r.Meta)
-		} else if r.PersistentVolumeClaim != nil {
-			resource = resources.NewPersistentVolumeClaim(r.PersistentVolumeClaim, c.PersistentVolumeClaims(), r.Meta)
-		} else if r.ServiceAccount != nil {
-			resource = resources.NewServiceAccount(r.ServiceAccount, c.ServiceAccounts(), r.Meta)
-		} else {
-			return nil, fmt.Errorf("Found unsupported resource %v", r)
-		}
-
-		if _, ok := depGraph[resource.Key()]; !ok {
-			log.Printf("Resource %s not found in dependecy graph yet, adding.", resource.Key())
-			depGraph[resource.Key()] = NewScheduledResourceFor(resource)
-		}
-	}
-
-	return depGraph, nil
-}
-
 func createResources(toCreate chan *ScheduledResource, finished chan string, ccLimiter chan struct{}, stopChan <-chan struct{}) {
 	for r := range toCreate {
 		log.Printf("Requesting creation of %v", r.Key())
@@ -484,10 +290,15 @@ func ignoreAll(top *ScheduledResource) {
 	}
 }
 
-// Create starts the deployment of a DependencyGraph
-func Create(depGraph DependencyGraph, concurrency int, stopChan <-chan struct{}) {
+// Deploy starts the deployment of a DependencyGraph
+func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
 
-	depCount := len(depGraph)
+	depCount := len(depGraph.graph)
+	if depCount == 0 {
+		return
+	}
+
+	concurrency := depGraph.scheduler.concurrency
 
 	concurrencyLimiterLen := depCount
 	if concurrency > 0 && concurrency < concurrencyLimiterLen {
@@ -504,7 +315,7 @@ func Create(depGraph DependencyGraph, concurrency int, stopChan <-chan struct{})
 
 	go createResources(toCreate, created, ccLimiter, stopChan)
 
-	for _, r := range depGraph {
+	for _, r := range depGraph.graph {
 		if len(r.Requires) == 0 {
 			r.RequestCreation(toCreate)
 		}
@@ -526,84 +337,6 @@ func Create(depGraph DependencyGraph, concurrency int, stopChan <-chan struct{})
 		}
 	}
 	// TODO Make sure every KO gets created eventually
-}
-
-// DetectCycles implements Kosaraju's algorithm https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
-// for detecting cycles in graph.
-// We are depending on the fact that any strongly connected component of a graph is a cycle
-// if it consists of more than one vertex
-func DetectCycles(depGraph DependencyGraph) [][]*ScheduledResource {
-	// is vertex visited in first phase of the algorithm
-	visited := make(map[string]bool)
-	// is vertex assigned to strongly connected component
-	assigned := make(map[string]bool)
-
-	// each key is root of strongly connected component
-	// the slice consists of all vertices belonging to strongly connected component to which root belongs
-	components := make(map[string][]*ScheduledResource)
-
-	orderedVertices := list.New()
-
-	for key := range depGraph {
-		visited[key] = false
-		assigned[key] = false
-	}
-
-	for key := range depGraph {
-		visitVertex(depGraph[key], visited, orderedVertices)
-	}
-
-	for e := orderedVertices.Front(); e != nil; e = e.Next() {
-		vertex := e.Value.(*ScheduledResource)
-		assignVertex(vertex, vertex, assigned, components)
-	}
-
-	// if any strongly connected component consist of more than one vertex - it's a cycle
-	var cycles [][]*ScheduledResource
-	for _, component := range components {
-		if len(component) > 1 {
-			cycles = append(cycles, component)
-		}
-	}
-
-	// detect self cycles - not part of Kosaraju's algorithm
-	for key, vertex := range depGraph {
-		for _, child := range vertex.RequiredBy {
-			if key == child.Key() {
-				cycles = append(cycles, []*ScheduledResource{vertex, vertex})
-			}
-		}
-	}
-	return cycles
-}
-
-func visitVertex(vertex *ScheduledResource, visited map[string]bool, orderedVertices *list.List) {
-	if visited[vertex.Key()] == false {
-		visited[vertex.Key()] = true
-		for _, v := range vertex.RequiredBy {
-			visitVertex(v, visited, orderedVertices)
-		}
-		orderedVertices.PushFront(vertex)
-	}
-}
-
-func assignVertex(vertex, root *ScheduledResource, assigned map[string]bool, components map[string][]*ScheduledResource) {
-	if assigned[vertex.Key()] == false {
-		var component []*ScheduledResource
-		// if component is not yet initiated, make the slice
-		component, ok := components[root.Key()]
-		if !ok {
-			component = make([]*ScheduledResource, 0, 1)
-			components[root.Key()] = component
-		}
-
-		components[root.Key()] = append(component, vertex)
-		assigned[vertex.Key()] = true
-
-		for _, v := range vertex.Requires {
-			assignVertex(v, root, assigned, components)
-		}
-	}
 }
 
 // GetNodeReport acts as a more verbose version of IsBlocked. It performs the
@@ -639,13 +372,13 @@ func (sr *ScheduledResource) GetNodeReport(name string) report.NodeReport {
 // GetStatus generates data for getting the status of deployment. Returns
 // a DeploymentStatus and a human readable report string
 // TODO: Allow for other formats of report (e.g. json for visualisations)
-func (graph *DependencyGraph) GetStatus() (DeploymentStatus, report.DeploymentReport) {
+func (depGraph DependencyGraph) GetStatus() (interfaces.DeploymentStatus, interfaces.DeploymentReport) {
 	var readyExist, nonReadyExist bool
-	var status DeploymentStatus
-	report := make(report.DeploymentReport, 0, len(*graph))
-	for key, resource := range *graph {
+	var status interfaces.DeploymentStatus
+	deploymentReport := make(report.DeploymentReport, 0, len(depGraph.graph))
+	for key, resource := range depGraph.graph {
 		depReport := resource.GetNodeReport(key)
-		report = append(report, depReport)
+		deploymentReport = append(deploymentReport, depReport)
 		if depReport.Ready {
 			readyExist = true
 		} else {
@@ -654,13 +387,13 @@ func (graph *DependencyGraph) GetStatus() (DeploymentStatus, report.DeploymentRe
 	}
 	switch {
 	case readyExist && nonReadyExist:
-		status = Running
+		status = interfaces.Running
 	case readyExist:
-		status = Finished
+		status = interfaces.Finished
 	case nonReadyExist:
-		status = Prepared
+		status = interfaces.Prepared
 	default:
-		status = Empty
+		status = interfaces.Empty
 	}
-	return status, report
+	return status, deploymentReport
 }

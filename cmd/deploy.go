@@ -15,17 +15,15 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
-	"strings"
-
-	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/labels"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
+	"github.com/spf13/cobra"
+
+	"k8s.io/client-go/pkg/labels"
 )
 
 func deploy(cmd *cobra.Command, args []string) {
@@ -63,32 +61,16 @@ func deploy(cmd *cobra.Command, args []string) {
 
 	log.Println("Using label selector:", labelSelector)
 
-	depGraph, err := scheduler.BuildDependencyGraph(c, sel)
+	sched := scheduler.New(c, sel, concurrency)
+	depGraph, err := sched.BuildDependencyGraph()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Checking for circular dependencies.")
-	cycles := scheduler.DetectCycles(depGraph)
-	if len(cycles) > 0 {
-		message := "Cycles detected, terminating:\n"
-		for _, cycle := range cycles {
-			keys := make([]string, 0, len(cycle))
-			for _, vertex := range cycle {
-				keys = append(keys, vertex.Key())
-			}
-			message = fmt.Sprintf("%sCycle: %s\n", message, strings.Join(keys, ", "))
-		}
-
-		log.Fatal(message)
-	} else {
-		log.Println("No cycles detected.")
-	}
 	stopChan := make(chan struct{})
-	scheduler.Create(depGraph, concurrency, stopChan)
+	depGraph.Deploy(stopChan)
 
 	log.Println("Done")
-
 }
 
 func getLabelSelector(cmd *cobra.Command) (string, error) {

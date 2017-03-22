@@ -15,45 +15,19 @@
 package mocks
 
 import (
+	"strings"
+
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+
 	"k8s.io/client-go/pkg/api"
 )
 
-type Dependency struct {
-	Parent string
-	Child  string
-	Meta   map[string]string
-}
-
-type dependencyClient struct {
-	dependencies []Dependency
-}
-
-func (d *dependencyClient) List(opts api.ListOptions) (*client.DependencyList, error) {
-	list := &client.DependencyList{}
-
-	for _, dep := range d.dependencies {
-		list.Items = append(
-			list.Items,
-			client.Dependency{
-				Parent: dep.Parent,
-				Child:  dep.Child,
-				Meta:   make(map[string]string),
-			},
-		)
+func MakeDependency(parent, child string) *client.Dependency {
+	return &client.Dependency{
+		ObjectMeta: api.ObjectMeta{
+			Name:      strings.Replace(parent+"-"+child, "/", "-", -1),
+			Namespace: "testing"},
+		Parent: parent,
+		Child:  child,
 	}
-
-	return list, nil
-}
-
-func (d *dependencyClient) Create(_ *client.Dependency) (*client.Dependency, error) {
-	panic("Not implemented")
-}
-
-func (d *dependencyClient) Delete(_ string, _ *api.DeleteOptions) error {
-	panic("Not implemented")
-}
-
-func NewDependencyClient(dependencies ...Dependency) client.DependenciesInterface {
-	return &dependencyClient{dependencies}
 }

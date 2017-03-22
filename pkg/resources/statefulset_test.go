@@ -17,10 +17,10 @@ package resources
 import (
 	"testing"
 
-	"k8s.io/client-go/pkg/apis/apps/v1beta1"
-
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
+
+	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
 // TestStatefulSetSuccessCheck checks status of ready StatefulSet
@@ -33,7 +33,7 @@ func TestStatefulSetSuccessCheck(t *testing.T) {
 	}
 
 	if status != interfaces.ResourceReady {
-		t.Errorf("Status should be `ready`, is `%s` instead.", status)
+		t.Errorf("status should be `ready`, is `%s` instead.", status)
 	}
 }
 
@@ -45,13 +45,13 @@ func TestStatefulSetFailCheck(t *testing.T) {
 	c := mocks.NewClient(ss, pod)
 	status, err := statefulsetStatus(c.StatefulSets(), "fail", c)
 
-	expectedError := "Resource pod/fail is not ready"
+	expectedError := "resource pod/fail is not ready"
 	if err.Error() != expectedError {
-		t.Errorf("Expected `%s` as error, got `%s`", expectedError, err.Error())
+		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
 	}
 
 	if status != interfaces.ResourceNotReady {
-		t.Errorf("Status should be `not ready`, is `%s` instead.", status)
+		t.Errorf("status should be `not ready`, is `%s` instead.", status)
 	}
 }
 
