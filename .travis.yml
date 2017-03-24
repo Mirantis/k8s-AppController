@@ -17,9 +17,15 @@ matrix:
       env: K8S_VERSION=v1.5 PUBLISH=1
     - go: 1.7
       env: K8S_VERSION=v1.4
+cache:
+  directories:
+    - $HOME/$K8S_VERSION
+before_script:
+   - CACHE=$HOME/$K8S_VERSION ./scripts/import_saved_dind.sh
 script:
   - go get github.com/Masterminds/glide
   - make test
   - make e2e
 after_success:
+  - CACHE=$HOME/$K8S_VERSION ./scripts/save_dind_images.sh
   - make docker-publish
