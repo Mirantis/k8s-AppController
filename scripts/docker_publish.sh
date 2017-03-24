@@ -37,22 +37,22 @@ function push-to-docker {
     echo "TRAVIS_TEST_RESULT is not set!"
     exit 1
   else
-      if [ "${TRAVIS_TEST_RESULT}" -ne 0 ]; then
-        echo "Some of the previous steps ended with an errors! The build is broken!"
-        exit 1
-      fi
+    if [ "${TRAVIS_TEST_RESULT}" -ne 0 ]; then
+      echo "Some of the previous steps ended with an errors! The build is broken!"
+      exit 1
+    fi
   fi
 
-  if [ "${TRAVIS_PULL_REQUEST_BRANCH}" != "" ]; then
+  if [ -n "${TRAVIS_PULL_REQUEST_BRANCH}" ]; then
     echo "Processing PR ${TRAVIS_PULL_REQUEST_BRANCH}"
     exit 0
   else
-      set +o xtrace
-      docker login -u="${DOCKER_USERNAME}" -p="${DOCKER_PASSWORD}"
-      set -o xtrace
+    set +o xtrace
+    docker login -u="${DOCKER_USERNAME}" -p="${DOCKER_PASSWORD}"
+    set -o xtrace
   fi
 
-  if [ ! -z "${TRAVIS_TAG}" ]; then
+  if [ -n "${TRAVIS_TAG}" ]; then
     echo "Pushing with tag - ${TRAVIS_TAG}"
     docker tag "${IMAGE_REPO}" "${IMAGE_REPO}":"${TRAVIS_TAG}"
     docker push "${IMAGE_REPO}":"${TRAVIS_TAG}"
