@@ -38,12 +38,12 @@ type Service struct {
 
 type serviceTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a service
+// ShortName returns wrapped resource name if it was a service
 func (serviceTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Service == nil {
 		return ""
 	}
-	return definition.Service.Name
+	return getObjectName(definition.Service)
 }
 
 // k8s resource kind that this fabric supports
@@ -132,10 +132,10 @@ func serviceKey(name string) string {
 }
 
 func (s Service) Key() string {
-	return serviceKey(s.Service.Name)
+	return serviceKey(getObjectName(s.Service))
 }
 
-func (s Service) Create() error {
+func (s *Service) Create() error {
 	if err := checkExistence(s); err != nil {
 		log.Println("Creating", s.Key())
 		s.Service, err = s.Client.Create(s.Service)
@@ -156,7 +156,7 @@ func (s Service) Status(meta map[string]string) (interfaces.ResourceStatus, erro
 
 // NewService is Service constructor. Needs apiClient for service status checks
 func NewService(service *v1.Service, client corev1.ServiceInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Service{Base: Base{meta}, Service: service, Client: client, APIClient: apiClient}}
+	return report.SimpleReporter{BaseResource: &Service{Base: Base{meta}, Service: service, Client: client, APIClient: apiClient}}
 }
 
 // StatusIsCacheable for service always returns false since the status must be

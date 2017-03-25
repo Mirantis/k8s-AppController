@@ -38,12 +38,12 @@ type flowTemplateFactory struct{}
 
 var counter uint32
 
-// Returns wrapped resource name if it was a flow
+// ShortName returns wrapped resource name if it was a flow
 func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Flow == nil {
 		return ""
 	}
-	return definition.Flow.Name
+	return getObjectName(definition.Flow)
 }
 
 // k8s resource kind that this fabric supports
@@ -61,14 +61,14 @@ func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface
 			flow:          newFlow,
 			context:       gc,
 			status:        interfaces.ResourceNotReady,
-			generatedName: fmt.Sprintf("%s-%v", newFlow.Name, atomic.AddUint32(&counter, 1)),
-			originalName:  def.Flow.Name,
+			generatedName: fmt.Sprintf("%s-%v", getObjectName(newFlow), atomic.AddUint32(&counter, 1)),
+			originalName:  getObjectName(def.Flow),
 		}}
 }
 
 // NewExisting returns a new object based on existing one wrapped as Resource
 func (flowTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	log.Fatal("Cannot depend on flow that has no resource definition")
+	log.Fatal("cannot depend on flow that has no resource definition")
 	return nil
 }
 

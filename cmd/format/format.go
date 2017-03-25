@@ -28,12 +28,16 @@ type DataExtractor struct {
 	Kind     string "kind"
 	Metadata struct {
 		Name string "name"
+		GenerateName string "generateName"
 	} "metadata"
 }
 
-func normalizeName(name string) string {
+func normalizeName(kind, name string) string {
+	if name == "" {
+		return ""
+	}
 	for k, v := range map[string]string{"$": "", "_": "-"} {
 		name = strings.Replace(name, k, v, -1)
 	}
-	return strings.ToLower(name)
+	return kind + "-" + strings.ToLower(name)
 }

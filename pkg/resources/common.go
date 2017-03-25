@@ -25,6 +25,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/copier"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 
+	"k8s.io/client-go/pkg/api/meta"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/labels"
 )
@@ -220,4 +221,12 @@ func parametrizeResource(resource interface{}, context interfaces.GraphContext, 
 		}
 		return value
 	}, append(replaceIn, "ObjectMeta")...)
+}
+
+func getObjectName(resource meta.Object) string {
+	name := resource.GetName()
+	if name != "" {
+		return name
+	}
+	return resource.GetGenerateName()
 }

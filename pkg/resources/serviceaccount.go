@@ -39,12 +39,12 @@ type ExistingServiceAccount struct {
 
 type serviceAccountTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a serviceaccount
+// ShortName returns wrapped resource name if it was a serviceaccount
 func (serviceAccountTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.ServiceAccount == nil {
 		return ""
 	}
-	return definition.ServiceAccount.Name
+	return getObjectName(definition.ServiceAccount)
 }
 
 // k8s resource kind that this fabric supports
@@ -67,7 +67,7 @@ func serviceAccountKey(name string) string {
 }
 
 func (c ServiceAccount) Key() string {
-	return serviceAccountKey(c.ServiceAccount.Name)
+	return serviceAccountKey(getObjectName(c.ServiceAccount))
 }
 
 func serviceAccountStatus(c corev1.ServiceAccountInterface, name string) (interfaces.ResourceStatus, error) {
@@ -83,7 +83,7 @@ func (c ServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatu
 	return serviceAccountStatus(c.Client, c.ServiceAccount.Name)
 }
 
-func (c ServiceAccount) Create() error {
+func (c *ServiceAccount) Create() error {
 	if err := checkExistence(c); err != nil {
 		log.Println("Creating", c.Key())
 		c.ServiceAccount, err = c.Client.Create(c.ServiceAccount)
@@ -97,7 +97,7 @@ func (c ServiceAccount) Delete() error {
 }
 
 func NewServiceAccount(c *v1.ServiceAccount, client corev1.ServiceAccountInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ServiceAccount{Base: Base{meta}, ServiceAccount: c, Client: client}}
+	return report.SimpleReporter{BaseResource: &ServiceAccount{Base: Base{meta}, ServiceAccount: c, Client: client}}
 }
 
 func NewExistingServiceAccount(name string, client corev1.ServiceAccountInterface) interfaces.Resource {

@@ -46,7 +46,8 @@ func (f Yaml) Wrap(k8sObject string) (string, error) {
 		base := `apiVersion: appcontroller.k8s/v1alpha1
 kind: Definition
 metadata:
-  name: ` + normalizeName(data.Kind+"-"+data.Metadata.Name) + "\n"
+  name: ` + normalizeName(data.Kind, data.Metadata.Name) + `
+  generateName: ` + normalizeName(data.Kind, data.Metadata.GenerateName) + "\n"
 		result = append(result, base+data.Kind+":\n"+strings.Trim(o, "\n"))
 	}
 

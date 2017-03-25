@@ -35,12 +35,12 @@ type DaemonSet struct {
 
 type daemonSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a daemonset
+// ShortName returns wrapped resource name if it was a daemonset
 func (daemonSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.DaemonSet == nil {
 		return ""
 	}
-	return definition.DaemonSet.Name
+	return getObjectName(definition.DaemonSet)
 }
 
 // k8s resource kind that this fabric supports
@@ -78,7 +78,7 @@ func daemonSetStatus(d v1beta1.DaemonSetInterface, name string) (interfaces.Reso
 
 // Key return DaemonSet key
 func (d DaemonSet) Key() string {
-	return daemonSetKey(d.DaemonSet.Name)
+	return daemonSetKey(getObjectName(d.DaemonSet))
 }
 
 // Status returns DaemonSet status. interfaces.ResourceReady means that its dependencies can be created
@@ -87,7 +87,7 @@ func (d DaemonSet) Status(meta map[string]string) (interfaces.ResourceStatus, er
 }
 
 // Create looks for DaemonSet in K8s and creates it if not present
-func (d DaemonSet) Create() error {
+func (d *DaemonSet) Create() error {
 	if err := checkExistence(d); err != nil {
 		log.Println("Creating", d.Key())
 		d.DaemonSet, err = d.Client.Create(d.DaemonSet)
@@ -103,7 +103,7 @@ func (d DaemonSet) Delete() error {
 
 // NewDaemonSet is a constructor
 func NewDaemonSet(daemonset *extbeta1.DaemonSet, client v1beta1.DaemonSetInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: DaemonSet{Base: Base{meta}, DaemonSet: daemonset, Client: client}}
+	return report.SimpleReporter{BaseResource: &DaemonSet{Base: Base{meta}, DaemonSet: daemonset, Client: client}}
 }
 
 // ExistingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController
