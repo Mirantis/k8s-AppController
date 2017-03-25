@@ -35,12 +35,12 @@ type StatefulSet struct {
 
 type statefulSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a statefulset
+// ShortName returns wrapped resource name if it was a statefulset
 func (statefulSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.StatefulSet == nil {
 		return ""
 	}
-	return definition.StatefulSet.Name
+	return getObjectName(definition.StatefulSet)
 }
 
 // k8s resource kind that this fabric supports
@@ -50,7 +50,10 @@ func (statefulSetTemplateFactory) Kind() string {
 
 // New returns new StatefulSet based on resource definition
 func (statefulSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewStatefulSet(def.StatefulSet, c.StatefulSets(), c, def.Meta)
+	newStatefulSet := parametrizeResource(def.StatefulSet, gc,
+		"Spec.Template.Spec.Containers.Env",
+		"Spec.Template.Spec.InitContainers.Env").(*appsbeta1.StatefulSet)
+	return NewStatefulSet(newStatefulSet, c.StatefulSets(), c, def.Meta)
 }
 
 // NewExisting returns new ExistingStatefulSet based on resource definition
@@ -73,14 +76,14 @@ func statefulsetKey(name string) string {
 
 // Key returns StatefulSet name
 func (p StatefulSet) Key() string {
-	return statefulsetKey(p.StatefulSet.Name)
+	return statefulsetKey(getObjectName(p.StatefulSet))
 }
 
 // Create looks for a StatefulSet in Kubernetes cluster and creates it if it's not there
-func (p StatefulSet) Create() error {
+func (p *StatefulSet) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
-		_, err = p.Client.Create(p.StatefulSet)
+		p.StatefulSet, err = p.Client.Create(p.StatefulSet)
 		return err
 	}
 	return nil
@@ -98,7 +101,7 @@ func (p StatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, 
 
 // NewStatefulSet is a constructor
 func NewStatefulSet(statefulset *appsbeta1.StatefulSet, client v1beta1.StatefulSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: StatefulSet{Base: Base{meta}, StatefulSet: statefulset, Client: client, APIClient: apiClient}}
+	return report.SimpleReporter{BaseResource: &StatefulSet{Base: Base{meta}, StatefulSet: statefulset, Client: client, APIClient: apiClient}}
 }
 
 // ExistingStatefulSet is a wrapper for K8s StatefulSet object which is meant to already be in a cluster bofer AppController execution

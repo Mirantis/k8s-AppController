@@ -39,12 +39,12 @@ type ExistingSecret struct {
 
 type secretTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a secret
+// ShortName returns wrapped resource name if it was a secret
 func (secretTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Secret == nil {
 		return ""
 	}
-	return definition.Secret.Name
+	return getObjectName(definition.Secret)
 }
 
 // k8s resource kind that this fabric supports
@@ -53,7 +53,7 @@ func (secretTemplateFactory) Kind() string {
 }
 
 func (secretTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewSecret(def.Secret, ci.Secrets(), def.Meta)
+	return NewSecret(parametrizeResource(def.Secret, gc).(*v1.Secret), ci.Secrets(), def.Meta)
 }
 
 func (secretTemplateFactory) NewExisting(name string, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
@@ -65,7 +65,7 @@ func secretKey(name string) string {
 }
 
 func (s Secret) Key() string {
-	return secretKey(s.Secret.Name)
+	return secretKey(getObjectName(s.Secret))
 }
 
 func (s ExistingSecret) Key() string {
@@ -86,7 +86,7 @@ func (s Secret) Status(meta map[string]string) (interfaces.ResourceStatus, error
 	return secretStatus(s.Client, s.Secret.Name)
 }
 
-func (s Secret) Create() error {
+func (s *Secret) Create() error {
 	if err := checkExistence(s); err != nil {
 		log.Println("Creating", s.Key())
 		s.Secret, err = s.Client.Create(s.Secret)
@@ -100,7 +100,7 @@ func (s Secret) Delete() error {
 }
 
 func NewSecret(s *v1.Secret, client corev1.SecretInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Secret{Base: Base{meta}, Secret: s, Client: client}}
+	return report.SimpleReporter{BaseResource: &Secret{Base: Base{meta}, Secret: s, Client: client}}
 }
 
 func NewExistingSecret(name string, client corev1.SecretInterface) interfaces.Resource {

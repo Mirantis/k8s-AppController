@@ -35,12 +35,12 @@ type Deployment struct {
 
 type deploymentTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a deployment
+// ShortName returns wrapped resource name if it was a deployment
 func (deploymentTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Deployment == nil {
 		return ""
 	}
-	return definition.Deployment.Name
+	return getObjectName(definition.Deployment)
 }
 
 // k8s resource kind that this fabric supports
@@ -50,7 +50,10 @@ func (deploymentTemplateFactory) Kind() string {
 
 // New returns new Deployment based on resource definition
 func (deploymentTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewDeployment(def.Deployment, c.Deployments(), def.Meta)
+	newDeployment := parametrizeResource(def.Deployment, gc,
+		"Spec.Template.Spec.Containers.Env",
+		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.Deployment)
+	return NewDeployment(newDeployment, c.Deployments(), def.Meta)
 }
 
 // NewExisting returns new ExistingDeployment based on resource definition
@@ -76,7 +79,7 @@ func deploymentStatus(d v1beta1.DeploymentInterface, name string) (interfaces.Re
 
 // Key return Deployment key
 func (d Deployment) Key() string {
-	return deploymentKey(d.Deployment.Name)
+	return deploymentKey(getObjectName(d.Deployment))
 }
 
 // Status returns Deployment status. interfaces.ResourceReady means that its dependencies can be created
@@ -85,7 +88,7 @@ func (d Deployment) Status(meta map[string]string) (interfaces.ResourceStatus, e
 }
 
 // Create looks for Deployment in K8s and creates it if not present
-func (d Deployment) Create() error {
+func (d *Deployment) Create() error {
 	log.Println("Looking for deployment", d.Deployment.Name)
 	status, err := d.Status(nil)
 
@@ -105,7 +108,7 @@ func (d Deployment) Delete() error {
 
 // NewDeployment is a constructor
 func NewDeployment(deployment *extbeta1.Deployment, client v1beta1.DeploymentInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Deployment{Base: Base{meta}, Deployment: deployment, Client: client}}
+	return report.SimpleReporter{BaseResource: &Deployment{Base: Base{meta}, Deployment: deployment, Client: client}}
 }
 
 // ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController

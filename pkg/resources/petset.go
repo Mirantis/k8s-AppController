@@ -34,12 +34,12 @@ type PetSet struct {
 
 type petSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a petset
+// ShortName returns wrapped resource name if it was a petset
 func (petSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.PetSet == nil {
 		return ""
 	}
-	return definition.PetSet.Name
+	return getObjectName(definition.PetSet)
 }
 
 // k8s resource kind that this fabric supports
@@ -49,7 +49,10 @@ func (petSetTemplateFactory) Kind() string {
 
 // New returns new PetSet based on resource definition
 func (petSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewPetSet(def.PetSet, c.PetSets(), c, def.Meta)
+	newPetSet := parametrizeResource(def.PetSet, gc,
+		"Spec.Template.Spec.Containers.Env",
+		"Spec.Template.Spec.InitContainers.Env").(*appsalpha1.PetSet)
+	return NewPetSet(newPetSet, c.PetSets(), c, def.Meta)
 }
 
 // NewExisting returns new ExistingPetSet based on resource definition
@@ -72,14 +75,14 @@ func petsetKey(name string) string {
 
 // Key returns PetSet name
 func (p PetSet) Key() string {
-	return petsetKey(p.PetSet.Name)
+	return petsetKey(getObjectName(p.PetSet))
 }
 
 // Create looks for a PetSet in Kubernetes cluster and creates it if it's not there
-func (p PetSet) Create() error {
+func (p *PetSet) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
-		_, err = p.Client.Create(p.PetSet)
+		p.PetSet, err = p.Client.Create(p.PetSet)
 		return err
 	}
 	return nil
@@ -97,7 +100,7 @@ func (p PetSet) Status(meta map[string]string) (interfaces.ResourceStatus, error
 
 // NewPetSet is a constructor
 func NewPetSet(petset *appsalpha1.PetSet, client v1alpha1.PetSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: PetSet{Base: Base{meta}, PetSet: petset, Client: client, APIClient: apiClient}}
+	return report.SimpleReporter{BaseResource: &PetSet{Base: Base{meta}, PetSet: petset, Client: client, APIClient: apiClient}}
 }
 
 // ExistingPetSet is a wrapper for K8s PetSet object which is meant to already be in a cluster bofer AppController execution

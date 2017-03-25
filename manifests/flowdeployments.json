@@ -1,0 +1,13 @@
+{
+	"metadata": {
+		"name": "deployment.appcontroller.k8s"
+	},
+	"apiVersion": "extensions/v1beta1",
+	"kind": "ThirdPartyResource",
+	"description": "AppController Flow deployment",
+	"versions": [
+		{
+			"name": "v1alpha1"
+		}
+	]
+}

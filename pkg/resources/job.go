@@ -37,12 +37,12 @@ func jobKey(name string) string {
 
 type jobTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a job
+// ShortName returns wrapped resource name if it was a job
 func (jobTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Job == nil {
 		return ""
 	}
-	return definition.Job.Name
+	return getObjectName(definition.Job)
 }
 
 // k8s resource kind that this fabric supports
@@ -52,7 +52,10 @@ func (jobTemplateFactory) Kind() string {
 
 // New returns new Job on resource definition
 func (jobTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewJob(def.Job, c.Jobs(), def.Meta)
+	newJob := parametrizeResource(def.Job, gc,
+		"Spec.Template.Spec.Containers.Env",
+		"Spec.Template.Spec.InitContainers.Env").(*v1.Job)
+	return NewJob(newJob, c.Jobs(), def.Meta)
 }
 
 // NewExisting returns new ExistingJob based on resource definition
@@ -77,7 +80,7 @@ func jobStatus(j batchv1.JobInterface, name string) (interfaces.ResourceStatus, 
 
 // Key returns job name
 func (j Job) Key() string {
-	return jobKey(j.Job.Name)
+	return jobKey(getObjectName(j.Job))
 }
 
 // Status returns job status
@@ -86,7 +89,7 @@ func (j Job) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 }
 
 // Create creates k8s job object
-func (j Job) Create() error {
+func (j *Job) Create() error {
 	if err := checkExistence(j); err != nil {
 		log.Println("Creating", j.Key())
 		j.Job, err = j.Client.Create(j.Job)
@@ -101,7 +104,7 @@ func (j Job) Delete() error {
 }
 
 func NewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Job{Base: Base{meta}, Job: job, Client: client}}
+	return report.SimpleReporter{BaseResource: &Job{Base: Base{meta}, Job: job, Client: client}}
 }
 
 type ExistingJob struct {

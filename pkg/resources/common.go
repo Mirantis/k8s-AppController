@@ -22,8 +22,10 @@ import (
 	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/copier"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 
+	"k8s.io/client-go/pkg/api/meta"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/labels"
 )
@@ -208,4 +210,23 @@ func GetStringMeta(r interfaces.BaseResource, paramName string, defaultValue str
 	}
 
 	return string(strVal)
+}
+
+// Substitutes flow arguments into resource structure. Returns modified copy of the resource
+func parametrizeResource(resource interface{}, context interfaces.GraphContext, replaceIn ...string) interface{} {
+	return copier.CopyWithReplacements(resource, func(p string) string {
+		value := context.GetArg(p)
+		if value == "" {
+			return "$" + p
+		}
+		return value
+	}, append(replaceIn, "ObjectMeta")...)
+}
+
+func getObjectName(resource meta.Object) string {
+	name := resource.GetName()
+	if name != "" {
+		return name
+	}
+	return resource.GetGenerateName()
 }

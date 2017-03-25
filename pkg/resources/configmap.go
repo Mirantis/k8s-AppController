@@ -39,12 +39,12 @@ type ExistingConfigMap struct {
 
 type configMapTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a configmap
+// ShortName returns wrapped resource name if it was a configmap
 func (configMapTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.ConfigMap == nil {
 		return ""
 	}
-	return definition.ConfigMap.Name
+	return getObjectName(definition.ConfigMap)
 }
 
 // k8s resource kind that this fabric supports
@@ -54,7 +54,7 @@ func (configMapTemplateFactory) Kind() string {
 
 // New returns a new object wrapped as Resource
 func (configMapTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewConfigMap(def.ConfigMap, ci.ConfigMaps(), def.Meta)
+	return NewConfigMap(parametrizeResource(def.ConfigMap, gc).(*v1.ConfigMap), ci.ConfigMaps(), def.Meta)
 }
 
 // NewExisting returns a new object based on existing one wrapped as Resource
@@ -67,7 +67,7 @@ func configMapKey(name string) string {
 }
 
 func (c ConfigMap) Key() string {
-	return configMapKey(c.ConfigMap.Name)
+	return configMapKey(getObjectName(c.ConfigMap))
 }
 
 func configMapStatus(c corev1.ConfigMapInterface, name string) (interfaces.ResourceStatus, error) {
@@ -84,7 +84,7 @@ func (c ConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, er
 	return configMapStatus(c.Client, c.ConfigMap.Name)
 }
 
-func (c ConfigMap) Create() error {
+func (c *ConfigMap) Create() error {
 	if err := checkExistence(c); err != nil {
 		log.Println("Creating", c.Key())
 		c.ConfigMap, err = c.Client.Create(c.ConfigMap)
@@ -98,7 +98,7 @@ func (c ConfigMap) Delete() error {
 }
 
 func NewConfigMap(c *v1.ConfigMap, client corev1.ConfigMapInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ConfigMap{Base: Base{meta}, ConfigMap: c, Client: client}}
+	return report.SimpleReporter{BaseResource: &ConfigMap{Base: Base{meta}, ConfigMap: c, Client: client}}
 }
 
 func NewExistingConfigMap(name string, client corev1.ConfigMapInterface) interfaces.Resource {

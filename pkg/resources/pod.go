@@ -33,12 +33,12 @@ type Pod struct {
 
 type podTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a pod
+// ShortName returns wrapped resource name if it was a pod
 func (podTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Pod == nil {
 		return ""
 	}
-	return definition.Pod.Name
+	return getObjectName(definition.Pod)
 }
 
 // k8s resource kind that this fabric supports
@@ -48,7 +48,10 @@ func (podTemplateFactory) Kind() string {
 
 // New returns new Pod based on resource definition
 func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewPod(def.Pod, c.Pods(), def.Meta)
+	newPod := parametrizeResource(def.Pod, gc,
+		"Spec.Containers.Env",
+		"Spec.InitContainers.Env").(*v1.Pod)
+	return NewPod(newPod, c.Pods(), def.Meta)
 }
 
 // NewExisting returns new ExistingPod based on resource definition
@@ -61,7 +64,7 @@ func podKey(name string) string {
 }
 
 func (p Pod) Key() string {
-	return podKey(p.Pod.Name)
+	return podKey(getObjectName(p.Pod))
 }
 
 func podStatus(p corev1.PodInterface, name string) (interfaces.ResourceStatus, error) {
@@ -91,7 +94,7 @@ func isReady(pod *v1.Pod) bool {
 	return false
 }
 
-func (p Pod) Create() error {
+func (p *Pod) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
 		p.Pod, err = p.Client.Create(p.Pod)
@@ -117,7 +120,7 @@ func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
 }
 
 func NewPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Pod{Base: Base{meta}, Pod: pod, Client: client}}
+	return report.SimpleReporter{BaseResource: &Pod{Base: Base{meta}, Pod: pod, Client: client}}
 }
 
 type ExistingPod struct {

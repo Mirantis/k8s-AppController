@@ -36,12 +36,12 @@ type ReplicaSet struct {
 
 type replicaSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a replicaset
+// ShortName returns wrapped resource name if it was a replicaset
 func (replicaSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.ReplicaSet == nil {
 		return ""
 	}
-	return definition.ReplicaSet.Name
+	return getObjectName(definition.ReplicaSet)
 }
 
 // k8s resource kind that this fabric supports
@@ -51,7 +51,10 @@ func (replicaSetTemplateFactory) Kind() string {
 
 // New returns new ReplicaSet based on resource definition
 func (replicaSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewReplicaSet(def.ReplicaSet, c.ReplicaSets(), def.Meta)
+	newReplicaSet := parametrizeResource(def.ReplicaSet, gc,
+		"Spec.Template.Spec.Containers.Env",
+		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.ReplicaSet)
+	return NewReplicaSet(newReplicaSet, c.ReplicaSets(), def.Meta)
 }
 
 // NewExisting returns new ExistingReplicaSet based on resource definition
@@ -117,10 +120,10 @@ func replicaSetKey(name string) string {
 }
 
 func (r ReplicaSet) Key() string {
-	return replicaSetKey(r.ReplicaSet.Name)
+	return replicaSetKey(getObjectName(r.ReplicaSet))
 }
 
-func (r ReplicaSet) Create() error {
+func (r *ReplicaSet) Create() error {
 	if err := checkExistence(r); err != nil {
 		log.Println("Creating", r.Key())
 		r.ReplicaSet, err = r.Client.Create(r.ReplicaSet)
@@ -150,8 +153,8 @@ func (r ReplicaSet) StatusIsCacheable(meta map[string]string) bool {
 	return !ok
 }
 
-func NewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) ReplicaSet {
-	return ReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
+func NewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) *ReplicaSet {
+	return &ReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
 }
 
 type ExistingReplicaSet struct {

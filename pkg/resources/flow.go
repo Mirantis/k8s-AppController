@@ -16,7 +16,9 @@ package resources
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"sync/atomic"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -25,19 +27,23 @@ import (
 
 type Flow struct {
 	Base
-	flow      *client.Flow
-	scheduler interfaces.Scheduler
-	status    interfaces.ResourceStatus
+	flow          *client.Flow
+	context       interfaces.GraphContext
+	status        interfaces.ResourceStatus
+	generatedName string
+	originalName  string
 }
 
 type flowTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a flow
+var counter uint32
+
+// ShortName returns wrapped resource name if it was a flow
 func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Flow == nil {
 		return ""
 	}
-	return definition.Flow.Name
+	return getObjectName(definition.Flow)
 }
 
 // k8s resource kind that this fabric supports
@@ -47,29 +53,44 @@ func (flowTemplateFactory) Kind() string {
 
 // New returns a new object wrapped as Resource
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	newFlow := parametrizeResource(def.Flow, gc).(*client.Flow)
+
 	return report.SimpleReporter{
 		BaseResource: &Flow{
-			Base:      Base{def.Meta},
-			flow:      def.Flow,
-			scheduler: gc.Scheduler(),
-			status:    interfaces.ResourceNotReady,
+			Base:          Base{def.Meta},
+			flow:          newFlow,
+			context:       gc,
+			status:        interfaces.ResourceNotReady,
+			generatedName: fmt.Sprintf("%s-%v", getObjectName(newFlow), atomic.AddUint32(&counter, 1)),
+			originalName:  getObjectName(def.Flow),
 		}}
 }
 
 // NewExisting returns a new object based on existing one wrapped as Resource
 func (flowTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	log.Fatal("Cannot depend on flow that has no resource definition")
+	log.Fatal("cannot depend on flow that has no resource definition")
 	return nil
 }
 
 // Identifier of the object
 func (f Flow) Key() string {
-	return "flow/" + f.flow.Name
+	return "flow/" + f.generatedName
 }
 
 // Triggers the flow deployment like it was the resource creation
 func (f *Flow) Create() error {
-	graph, err := f.scheduler.BuildDependencyGraph(f.flow.Name, map[string]string{})
+	args := map[string]string{}
+	for arg := range f.flow.Parameters {
+		val := f.context.GetArg(arg)
+		if val != "" {
+			args[arg] = val
+		}
+	}
+	options := interfaces.DependencyGraphOptions{
+		FlowName: f.originalName,
+		Args:     args,
+	}
+	graph, err := f.context.Scheduler().BuildDependencyGraph(options)
 	if err != nil {
 		return err
 	}
