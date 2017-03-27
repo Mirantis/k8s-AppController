@@ -38,7 +38,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 	sched := New(c, nil, 0)
 
-	dg, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	dg, err := sched.BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Error(err)
 		return
@@ -72,9 +72,9 @@ func TestBuildDependencyGraph(t *testing.T) {
 			sr.Key(), 1, len(sr.Requires))
 	}
 
-	if sr.RequiredBy[0].Key() != "pod/ready-2" {
+	if sr.RequiredBy[0] != "pod/ready-2" {
 		t.Errorf("wrong value of 'RequiredBy' for scheduled resource '%s', expected '%s', actual '%s'",
-			sr.Key(), "pod/ready-2", sr.RequiredBy[0].Key())
+			sr.Key(), "pod/ready-2", sr.RequiredBy[0])
 		return
 	}
 
@@ -95,9 +95,9 @@ func TestBuildDependencyGraph(t *testing.T) {
 			sr.Key(), 1, len(sr.Requires))
 	}
 
-	if sr.Requires[0].Key() != "pod/ready-1" {
+	if sr.Requires[0] != "pod/ready-1" {
 		t.Errorf("wrong value of 'Requires' for scheduled resource '%s', expected '%s', actual '%s'",
-			sr.Key(), "pod/ready-1", sr.Requires[0].Key())
+			sr.Key(), "pod/ready-1", sr.Requires[0])
 	}
 
 	if len(sr.RequiredBy) != 0 {
@@ -107,10 +107,16 @@ func TestBuildDependencyGraph(t *testing.T) {
 }
 
 func TestIsBlocked(t *testing.T) {
+	depGraph := NewDependencyGraph(nil, interfaces.DependencyGraphOptions{})
+	context := &GraphContext{graph: depGraph}
+
 	one := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 		Meta:     map[string]map[string]string{},
+		Context:  context,
 	}
+
+	depGraph.graph["fake1"] = one
 
 	if one.IsBlocked() {
 		t.Error("scheduled resource is blocked but it must not")
@@ -119,9 +125,12 @@ func TestIsBlocked(t *testing.T) {
 	two := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
 		Meta:     map[string]map[string]string{},
+		Context:  context,
 	}
 
-	one.Requires = []*ScheduledResource{two}
+	depGraph.graph["fake2"] = two
+
+	one.Requires = []string{"fake2"}
 
 	if one.IsBlocked() {
 		t.Error("scheduled resource is blocked but it must not")
@@ -132,24 +141,30 @@ func TestIsBlocked(t *testing.T) {
 		t.Error("scheduled resource is not blocked but it must be")
 	}
 
-	three := &ScheduledResource{
+	depGraph.graph["fake3"] = &ScheduledResource{
 		Resource: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
 		Meta:     map[string]map[string]string{},
+		Context:  context,
 	}
 
 	two.Error = nil
-	one.Requires = append(one.Requires, three)
+	one.Requires = append(one.Requires, "fake3")
 
 	if !one.IsBlocked() {
-		t.Errorf("scheduled resource is not blocked but it must be")
+		t.Error("scheduled resource is not blocked but it must be")
 	}
 }
 
 func TestIsBlockedWithOnErrorDependency(t *testing.T) {
+	depGraph := NewDependencyGraph(nil, interfaces.DependencyGraphOptions{})
+	context := &GraphContext{graph: depGraph}
+
 	one := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 		Meta:     map[string]map[string]string{},
+		Context:  context,
 	}
+	depGraph.graph["fake1"] = one
 
 	if one.IsBlocked() {
 		t.Error("scheduled resource is blocked but it must be not")
@@ -158,9 +173,11 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	two := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "not ready")},
 		Meta:     map[string]map[string]string{},
+		Context:  context,
 	}
+	depGraph.graph["fake2"] = two
 
-	one.Requires = []*ScheduledResource{two}
+	one.Requires = []string{"fake2"}
 	one.Meta["fake2"] = map[string]string{"on-error": "true"}
 
 	if !one.IsBlocked() {
@@ -298,12 +315,13 @@ func TestLimitConcurrency(t *testing.T) {
 		counter := mocks.NewCounterWithMemo()
 
 		sched := &Scheduler{concurrency: concurrency}
-		depGraph := NewDependencyGraph(sched)
+		depGraph := NewDependencyGraph(sched, interfaces.DependencyGraphOptions{})
 
 		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
 			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second/4)}
-			sr := newScheduledResourceFor(r)
+			context := &GraphContext{graph: depGraph}
+			sr := newScheduledResourceFor(r, context)
 			depGraph.graph[sr.Key()] = sr
 		}
 		stopChan := make(chan struct{})
@@ -320,7 +338,7 @@ func TestLimitConcurrency(t *testing.T) {
 }
 
 func TestStopBeforeDeploymentStarted(t *testing.T) {
-	depGraph := NewDependencyGraph(&Scheduler{})
+	depGraph := NewDependencyGraph(&Scheduler{}, interfaces.DependencyGraphOptions{})
 	sr := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 	}
@@ -371,7 +389,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		mocks.MakeDependency("pod/ready-1", "serviceaccount/sa-1"),
 	)
 
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -392,7 +410,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 
 func TestEmptyStatus(t *testing.T) {
 	c := mocks.NewClient()
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -412,7 +430,7 @@ func TestPreparedStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/1", "job/2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -432,7 +450,7 @@ func TestRunningStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/ready-1", "job/2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +470,7 @@ func TestFinishedStatus(t *testing.T) {
 
 		mocks.MakeDependency("job/ready-1", "job/ready-2"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,7 +494,7 @@ func TestGraph(t *testing.T) {
 		mocks.MakeDependency("job/ready-2", "job/1"),
 		mocks.MakeDependency("job/3", "job/1"),
 	)
-	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DefaultFlowName, nil)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(interfaces.DependencyGraphOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

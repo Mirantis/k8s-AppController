@@ -15,9 +15,12 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -27,10 +30,19 @@ import (
 	"k8s.io/client-go/pkg/labels"
 )
 
-func deploy(cmd *cobra.Command, args []string) {
-	var err error
+var argRe, _ = regexp.Compile(`\s*(\w+)\W+(.*)`)
 
+func deploy(cmd *cobra.Command, args []string) {
 	concurrency, err := cmd.Flags().GetInt("concurrency")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	anyArgs, err := cmd.Flags().GetBool("undeclared-args")
+	if err != nil {
+		log.Fatal(err)
+	}
+	url, err := cmd.Flags().GetString("url")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,14 +52,25 @@ func deploy(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	log.Println("Using concurrency:", concurrency)
-
-	var url string
-	if len(args) > 0 {
-		url = args[0]
+	flowArgs, err := cmd.Flags().GetStringArray("arg")
+	if err != nil {
+		log.Fatal(err)
 	}
-	if url == "" {
-		url = os.Getenv("KUBERNETES_CLUSTER_URL")
+	flowArgMap := map[string]string{}
+	for _, val := range flowArgs {
+		key, value, err := parseArg(val)
+		if err != nil {
+			log.Fatal(err)
+		}
+		flowArgMap[key] = value
+	}
+	flowName := interfaces.DefaultFlowName
+
+	if len(args) > 1 {
+		log.Fatal("Too many command line arguments")
+	}
+	if len(args) == 1 {
+		flowName = args[0]
 	}
 
 	c, err := client.New(url)
@@ -60,10 +83,19 @@ func deploy(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	log.Println("Using concurrency:", concurrency)
 	log.Println("Using label selector:", labelSelector)
 
 	sched := scheduler.New(c, sel, concurrency)
-	depGraph, err := sched.BuildDependencyGraph(interfaces.DefaultFlowName, make(map[string]string))
+	options := interfaces.DependencyGraphOptions{
+		FlowName:            flowName,
+		ExportedOnly:        true,
+		Args:                flowArgMap,
+		AllowUndeclaredArgs: anyArgs,
+	}
+
+	log.Println("Going to deploy flow:", flowName)
+	depGraph, err := sched.BuildDependencyGraph(options)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,6 +104,14 @@ func deploy(cmd *cobra.Command, args []string) {
 	depGraph.Deploy(stopChan)
 
 	log.Println("Done")
+}
+
+func parseArg(arg string) (string, string, error) {
+	res := argRe.FindStringSubmatch(arg)
+	if len(res) != 3 {
+		return "", "", fmt.Errorf("invalid argument %s", arg)
+	}
+	return res[1], strings.TrimSpace(res[2]), nil
 }
 
 func getLabelSelector(cmd *cobra.Command) (string, error) {
@@ -92,7 +132,13 @@ func InitRunCommand() (*cobra.Command, error) {
 	}
 
 	var labelSelector string
-	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
+	run.Flags().StringVarP(&labelSelector, "label", "l", "",
+		"Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
+
+	run.Flags().Bool("undeclared-args", false, "Allow undeclared arguments")
+
+	var args []string
+	run.Flags().StringArrayVar(&args, "arg", []string{}, "Flow arguments (key=value)")
 
 	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 
@@ -108,5 +154,9 @@ func InitRunCommand() (*cobra.Command, error) {
 	}
 	var concurrency int
 	run.Flags().IntVarP(&concurrency, "concurrency", "c", concurrencyDefault, "concurrency")
+
+	var clusterUrl string
+	run.Flags().StringVar(&clusterUrl, "url", os.Getenv("KUBERNETES_CLUSTER_URL"),
+		"URL of the Kubernetes cluster. Overrides KUBERNETES_CLUSTER_URL env variable in AppController pod.")
 	return run, err
 }

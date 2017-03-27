@@ -15,8 +15,14 @@
 package client
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strings"
+
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/rest"
 )
 
 type Flow struct {
@@ -31,4 +37,160 @@ type Flow struct {
 	// it would mean that creating a job is what the flow does. Otherwise it would mean that the job depends on
 	// the the flow (i.e. it won't be created before everything, the flow consists of)
 	Construction map[string]string `json:"construction,omitempty"`
+
+	// Exported flows can be triggered by the user (through the CLI) whereas those that are not
+	// can only be triggered by other flows (including DEFAULT flow which is exported by-default)
+	Exported bool `json:"exported,omitempty"`
+
+	// Parameters that the flow can accept (i.e. valid inputs for the flow)
+	Parameters map[string]FlowParameter `json:"parameters,omitempty"`
+
+	// How many times the flow subgraph should be replicated
+	ReplicaCount int `json:"replicaCount,omitempty"`
+
+	// Stable flows (default) re-use existing replicas up to ReplicaCount.
+	// Unstable flows produce new replicas on each run
+	Stable bool `json:"stable,omitempty"`
+}
+
+type FlowParameter struct {
+	// Optional default value for the parameter. If the declared parameter has nil Default then the argument for
+	// this parameter becomes mandatory (i.e. it MUST be provided)
+	Default *string `json:"default,omitempty"`
+
+	// Description of the parameter (help string)
+	Description string `json:"description,omitempty"`
+}
+
+type FlowDeployment struct {
+	unversioned.TypeMeta `json:",inline"`
+
+	// Standard object metadata
+	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	FlowName string `json:"flowName,omitempty"`
+}
+
+type FlowDeploymentList struct {
+	unversioned.TypeMeta `json:",inline"`
+
+	// Standard list metadata.
+	unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	Items []FlowDeployment `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+type FlowDeploymentsInterface interface {
+	List(opts api.ListOptions) (*FlowDeploymentList, error)
+	Create(flowDeployment *FlowDeployment) (*FlowDeployment, error)
+	Delete(name string, opts *api.DeleteOptions) error
+	Get(name string) (result *FlowDeployment, err error)
+}
+
+type flowdeployments struct {
+	rc        *rest.RESTClient
+	namespace string
+}
+
+func newFlowDeployments(c rest.Config, ns string) (*flowdeployments, error) {
+	rc, err := thirdPartyResourceRESTClient(&c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &flowdeployments{rc, ns}, nil
+}
+
+func (f *flowdeployments) List(opts api.ListOptions) (*FlowDeploymentList, error) {
+	resp, err := f.rc.Get().
+		Namespace(f.namespace).
+		Resource("deployments").
+		LabelsSelectorParam(opts.LabelSelector).
+		DoRaw()
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &FlowDeploymentList{}
+	err = json.NewDecoder(bytes.NewReader(resp)).Decode(result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (f *flowdeployments) Create(flowDeployment *FlowDeployment) (result *FlowDeployment, err error) {
+	result = &FlowDeployment{}
+	data, err := f.rc.Post().
+		Resource("deployments").
+		Namespace(f.namespace).
+		Body(flowDeployment).
+		Do().Raw()
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, result)
+	return
+}
+
+func (f *flowdeployments) Delete(name string, opts *api.DeleteOptions) error {
+	return f.rc.Delete().
+		Namespace(f.namespace).
+		Resource("deployments").
+		Name(name).
+		Body(opts).
+		Do().
+		Error()
+}
+
+func (f *flowdeployments) Get(name string) (result *FlowDeployment, err error) {
+	err = f.rc.Get().
+		Namespace(f.namespace).
+		Resource("deployments").
+		Name(name).
+		Do().Into(result)
+
+	return
+}
+
+func (fd *FlowDeployment) UnmarshalJSON(data []byte) error {
+	type XFlowDeployment FlowDeployment
+	tmp := XFlowDeployment{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	*fd = FlowDeployment(tmp)
+	return nil
+}
+
+func (fl *FlowDeploymentList) UnmarshalJSON(data []byte) error {
+	type XFlowDeploymentList FlowDeploymentList
+	tmp := XFlowDeploymentList{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	*fl = FlowDeploymentList(tmp)
+	return nil
+}
+
+func (f *Flow) UnmarshalJSON(data []byte) error {
+	type XFlow Flow
+	tmp := XFlow{ReplicaCount: 1, Stable: true}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	if tmp.ReplicaCount < 0 {
+		return fmt.Errorf("invalid replicaCout %v", tmp.ReplicaCount)
+	}
+	*f = Flow(tmp)
+	return nil
+}
+
+func (fd *FlowDeployment) ReplicaName() string {
+	return fd.Name[1+strings.LastIndex(fd.Name, "-"):]
 }

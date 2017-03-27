@@ -14,6 +14,8 @@
 
 package format
 
+import "strings"
+
 // Format is an interface for data formats for wrapper
 type Format interface {
 	ExtractData(k8sObject string) (DataExtractor, error)
@@ -27,4 +29,11 @@ type DataExtractor struct {
 	Metadata struct {
 		Name string "name"
 	} "metadata"
+}
+
+func normalizeName(name string) string {
+	for k, v := range map[string]string{"$": "", "_": "-"} {
+		name = strings.Replace(name, k, v, -1)
+	}
+	return strings.ToLower(name)
 }
