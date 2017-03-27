@@ -338,20 +338,24 @@ func (f *FlowDeploymentList) Swap(i, j int) {
 }
 
 func (sched *Scheduler) allocateReplicas(flow *client.Flow, label map[string]string) ([]string, error) {
-	existingReplicas, err := sched.client.FlowDeployments().List(api.ListOptions{
-		FieldSelector: fields.SelectorFromSet(fields.Set{"flowName": flow.Name}),
-		LabelSelector: sched.selector,
-	})
-	if err != nil {
-		return nil, err
-	}
+	var tmp FlowDeploymentList
 	var maxCurrentTime time.Time
-	for _, item := range existingReplicas.Items {
-		if item.CreationTimestamp.After(maxCurrentTime) {
-			maxCurrentTime = item.CreationTimestamp.Time
+
+	if flow.Stable {
+		existingReplicas, err := sched.client.FlowDeployments().List(api.ListOptions{
+			FieldSelector: fields.SelectorFromSet(fields.Set{"flowName": flow.Name}),
+			LabelSelector: sched.selector,
+		})
+		if err != nil {
+			return nil, err
 		}
+		for _, item := range existingReplicas.Items {
+			if item.CreationTimestamp.After(maxCurrentTime) {
+				maxCurrentTime = item.CreationTimestamp.Time
+			}
+		}
+		tmp = FlowDeploymentList(*existingReplicas)
 	}
-	tmp := FlowDeploymentList(*existingReplicas)
 
 	for len(tmp.Items) < flow.ReplicaCount {
 		replica := &client.FlowDeployment{}
@@ -359,7 +363,7 @@ func (sched *Scheduler) allocateReplicas(flow *client.Flow, label map[string]str
 		replica.FlowName = flow.Name
 		replica.Labels = label
 		replica.Namespace = sched.client.Namespace()
-		replica, err = sched.client.FlowDeployments().Create(replica)
+		replica, err := sched.client.FlowDeployments().Create(replica)
 		if err != nil {
 			return nil, err
 		}

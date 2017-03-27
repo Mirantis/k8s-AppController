@@ -47,6 +47,10 @@ type Flow struct {
 
 	// How many times the flow subgraph should be replicated
 	ReplicaCount int `json:"replicaCount,omitempty"`
+
+	// Stable flows (default) re-use existing replicas up to ReplicaCount.
+	// Unstable flows produce new replicas on each run
+	Stable bool `json:"stable,omitempty"`
 }
 
 type FlowParameter struct {
@@ -175,7 +179,7 @@ func (fl *FlowDeploymentList) UnmarshalJSON(data []byte) error {
 
 func (f *Flow) UnmarshalJSON(data []byte) error {
 	type XFlow Flow
-	tmp := XFlow{ReplicaCount: 1}
+	tmp := XFlow{ReplicaCount: 1, Stable: true}
 	err := json.Unmarshal(data, &tmp)
 	if err != nil {
 		return err
