@@ -23,6 +23,9 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 	"github.com/Mirantis/k8s-AppController/pkg/resources"
+
+	"k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/pkg/api/unversioned"
 )
 
 // CheckInterval is an interval between rechecking the tree for updates
@@ -33,13 +36,15 @@ const (
 
 // ScheduledResource is a wrapper for Resource with attached relationship data
 type ScheduledResource struct {
-	Requires   []string
-	RequiredBy []string
-	Started    bool
-	Ignored    bool
-	Error      error
-	Context    *GraphContext
-	status     interfaces.ResourceStatus
+	Requires       []string
+	RequiredBy     []string
+	Started        bool
+	Ignored        bool
+	Error          error
+	Existing       bool
+	Context        *GraphContext
+	usedInReplicas []string
+	status         interfaces.ResourceStatus
 	interfaces.Resource
 	// parentKey -> dependencyMetadata
 	Meta map[string]map[string]string
@@ -224,13 +229,12 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 					}
 				}
 
-				if attemptNo > 1 {
+				if attemptNo > 1 && (!r.Existing || r.Context.graph.graphOptions.AllowDeleteExternalResources) {
 					log.Printf("Trying to delete resource %s after previous unsuccessful attempt", r.Key())
 					err = r.Delete()
 					if err != nil {
 						log.Printf("Error deleting resource %s: %v", r.Key(), err)
 					}
-
 				}
 
 				r.RLock()
@@ -298,10 +302,6 @@ func ignoreAll(top *ScheduledResource) {
 func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
 
 	depCount := len(depGraph.graph)
-	if depCount == 0 {
-		return
-	}
-
 	concurrency := depGraph.scheduler.concurrency
 
 	concurrencyLimiterLen := depCount
@@ -326,8 +326,7 @@ func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
 	}
 
 	log.Printf("%s flow: waiting for %d resource deployments", depGraph.graphOptions.FlowName, depCount)
-	var i int
-	for {
+	for i := 0; i < depCount; {
 		select {
 		case <-stopChan:
 			log.Printf("Deployment of %s is stopped", depGraph.graphOptions.FlowName)
@@ -335,10 +334,11 @@ func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
 		case <-created:
 			i++
 			log.Printf("%s flow: %v out of %v were created", depGraph.graphOptions.FlowName, i, depCount)
-			if depCount == i {
-				return
-			}
 		}
+	}
+	if depGraph.finalizer != nil {
+		log.Print("Performing resource cleanup")
+		depGraph.finalizer()
 	}
 	// TODO Make sure every KO gets created eventually
 }
@@ -401,4 +401,44 @@ func (depGraph DependencyGraph) GetStatus() (interfaces.DeploymentStatus, interf
 		status = interfaces.Empty
 	}
 	return status, deploymentReport
+}
+
+func runConcurrently(funcs []func() bool, concurrency int) bool {
+	sem := make(chan bool, concurrency)
+	defer close(sem)
+
+	result := true
+
+	for _, f := range funcs {
+		sem <- true
+		go func(foo func() bool) {
+			defer func() { <-sem }()
+			if !foo() {
+				result = false
+			}
+		}(f)
+	}
+
+	for i := 0; i < cap(sem); i++ {
+		sem <- true
+	}
+	return result
+}
+
+func deleteResource(resource *ScheduledResource) error {
+	if !resource.Existing || resource.Context.graph.graphOptions.AllowDeleteExternalResources {
+		log.Printf("%s flow: Deleting resource %s", resource.Context.flow.Name, resource.Key())
+		err := resource.Delete()
+		if err != nil {
+			log.Println(err)
+			statusError, ok := err.(*errors.StatusError)
+			if ok && statusError.Status().Reason == unversioned.StatusReasonNotFound {
+				return nil
+			}
+		}
+		return err
+	} else {
+		log.Printf("%s: Won't delete external resource %s", resource.Context.flow.Name, resource.Key())
+	}
+	return nil
 }

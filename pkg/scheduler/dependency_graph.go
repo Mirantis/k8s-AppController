@@ -38,22 +38,24 @@ type DependencyGraph struct {
 	graph        map[string]*ScheduledResource
 	scheduler    *Scheduler
 	graphOptions interfaces.DependencyGraphOptions
+	finalizer    func()
 }
 
 type GraphContext struct {
-	args      map[string]string
-	graph     *DependencyGraph
-	scheduler *Scheduler
-	flow      *client.Flow
-	replica   string
+	args         map[string]string
+	graph        *DependencyGraph
+	scheduler    *Scheduler
+	flow         *client.Flow
+	replica      string
+	dependencies []client.Dependency
 }
 
-// Returns the Scheduler that was used to create the dependency graph
+// Scheduler returns the Scheduler that was used to create the dependency graph
 func (gc GraphContext) Scheduler() interfaces.Scheduler {
 	return gc.scheduler
 }
 
-// Returns argument values available in the current graph context
+// GetArg returns argument values available in the current graph context
 func (gc GraphContext) GetArg(name string) string {
 	switch name {
 	case "AC_NAME":
@@ -75,13 +77,18 @@ func (gc GraphContext) GetArg(name string) string {
 	}
 }
 
-// Returns the currently running dependency graph
+// Graph method returns the currently running dependency graph
 func (gc GraphContext) Graph() interfaces.DependencyGraph {
 	return gc.graph
 }
 
+// Dependencies method returns list of incoming dependencies for the node on which operation is performed
+func (gc GraphContext) Dependencies() []client.Dependency {
+	return gc.dependencies
+}
+
 // newScheduledResourceFor returns new scheduled resource for given resource in init state
-func newScheduledResourceFor(r interfaces.Resource, context *GraphContext) *ScheduledResource {
+func newScheduledResourceFor(r interfaces.Resource, context *GraphContext, existing bool) *ScheduledResource {
 	return &ScheduledResource{
 		Started:  false,
 		Ignored:  false,
@@ -89,24 +96,26 @@ func newScheduledResourceFor(r interfaces.Resource, context *GraphContext) *Sche
 		Resource: r,
 		Meta:     map[string]map[string]string{},
 		Context:  context,
+		Existing: existing,
 	}
 }
 
-type DependencyList client.DependencyList
-var _ sort.Interface = &DependencyList{}
+type SortableDependencyList client.DependencyList
 
-func (d *DependencyList) Len() int {
+var _ sort.Interface = &SortableDependencyList{}
+
+func (d *SortableDependencyList) Len() int {
 	return len(d.Items)
 }
 
-func (d *DependencyList) Less(i, j int) bool {
+func (d *SortableDependencyList) Less(i, j int) bool {
 	if d.Items[i].CreationTimestamp.Equal(d.Items[j].CreationTimestamp) {
 		return d.Items[i].UID < d.Items[j].UID
 	}
 	return d.Items[i].CreationTimestamp.Before(d.Items[j].CreationTimestamp)
 }
 
-func (d *DependencyList) Swap(i, j int) {
+func (d *SortableDependencyList) Swap(i, j int) {
 	d.Items[i], d.Items[j] = d.Items[j], d.Items[i]
 }
 
@@ -115,10 +124,10 @@ func (sched *Scheduler) getDependencies() ([]client.Dependency, error) {
 	if err != nil {
 		return nil, err
 	}
-	tmp := DependencyList(*depList)
-	sort.Stable(&tmp)
+	sortableDepList := SortableDependencyList(*depList)
+	sort.Stable(&sortableDepList)
 
-	return tmp.Items, nil
+	return sortableDepList.Items, nil
 
 }
 
@@ -186,20 +195,34 @@ func (sched *Scheduler) getResourceDefinitions() (map[string]client.ResourceDefi
 }
 
 func filterDependencies(dependencies map[string][]client.Dependency, parent string,
-	flow *client.Flow) []client.Dependency {
+	flow *client.Flow, useDestructionSelector bool) []client.Dependency {
 
 	children := dependencies[parent]
 	var result []client.Dependency
 	for _, dep := range children {
-		if canDependencyBelongToFlow(&dep, flow) {
+		if canDependencyBelongToFlow(&dep, flow, useDestructionSelector) {
 			result = append(result, dep)
 		}
 	}
 	return result
 }
 
-func canDependencyBelongToFlow(dep *client.Dependency, flow *client.Flow) bool {
-	for k, v := range flow.Construction {
+// canDependencyBelongToFlow returns true if the given dependency connects nodes that belong either to construction
+// or destruction paths of the flow (depending on useDestructionSelector parameter)
+// if construction path is empty then any dependency is going to match it since empty map is contained in any label map
+// however, if destruction path is empty or nil, it means that it's not set so no dependency is going to match it
+func canDependencyBelongToFlow(dep *client.Dependency, flow *client.Flow, useDestructionSelector bool) bool {
+	var selector map[string]string
+	if useDestructionSelector {
+		selector = flow.Destruction
+		if selector == nil || len(selector) == 0 {
+			return false
+		}
+	} else {
+		selector = flow.Construction
+	}
+
+	for k, v := range selector {
 		if dep.Labels[k] != v {
 			return false
 		}
@@ -209,7 +232,7 @@ func canDependencyBelongToFlow(dep *client.Dependency, flow *client.Flow) bool {
 
 // newScheduledResource is a constructor for ScheduledResource
 func (sched Scheduler) newScheduledResource(kind, name string, resDefs map[string]client.ResourceDefinition,
-	gc *GraphContext) (*ScheduledResource, error) {
+	gc *GraphContext, silent bool) (*ScheduledResource, error) {
 
 	var r interfaces.Resource
 
@@ -218,28 +241,36 @@ func (sched Scheduler) newScheduledResource(kind, name string, resDefs map[strin
 		return nil, fmt.Errorf("not a proper resource kind: %s. Expected '%s'",
 			kind, strings.Join(resources.Kinds, "', '"))
 	}
-	r, err := sched.newResource(kind, name, resDefs, gc, resourceTemplate)
+	r, existing, err := sched.newResource(kind, name, resDefs, gc, resourceTemplate, silent)
 	if err != nil {
 		return nil, err
 	}
 
-	return newScheduledResourceFor(r, gc), nil
+	return newScheduledResourceFor(r, gc, existing), nil
 }
 
+// newResource returns creates a resource controller for a given resources name and factory.
+// It returns the created controller (implementation of interfaces.Resource), flag saying if the created controller
+// will create new resource or check the status of existing resource outside (i.e. that doesn't have resource defintition)
+// and error (or nil, if no error happened)
 func (sched Scheduler) newResource(kind, name string, resDefs map[string]client.ResourceDefinition,
-	gc *GraphContext, resourceTemplate interfaces.ResourceTemplate) (interfaces.Resource, error) {
+	gc *GraphContext, resourceTemplate interfaces.ResourceTemplate, silent bool) (interfaces.Resource, bool, error) {
 	rd, ok := resDefs[kind+"/"+name]
 	if ok {
-		log.Printf("Found resource definition for %s/%s", kind, name)
-		return resourceTemplate.New(rd, sched.client, *gc), nil
+		if !silent {
+			log.Printf("Found resource definition for %s/%s", kind, name)
+		}
+		return resourceTemplate.New(rd, sched.client, *gc), false, nil
 	}
 
-	log.Printf("Resource definition for '%s/%s' not found, so it is expected to exist already", kind, name)
+	if !silent {
+		log.Printf("Resource definition for '%s/%s' not found, so it is expected to exist already", kind, name)
+	}
 	r := resourceTemplate.NewExisting(name, sched.client, *gc)
 	if r == nil {
-		return nil, fmt.Errorf("existing resource %s/%s cannot be reffered", kind, name)
+		return nil, true, fmt.Errorf("existing resource %s/%s cannot be reffered", kind, name)
 	}
-	return r, nil
+	return r, true, nil
 }
 
 func keyParts(key string) (kind, name string, err error) {
@@ -261,11 +292,20 @@ func NewDependencyGraph(sched *Scheduler, options interfaces.DependencyGraphOpti
 	}
 }
 
-func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependency client.Dependency, replica string) *GraphContext {
-	context := &GraphContext{scheduler: sched, graph: parentContext.graph, flow: parentContext.flow, replica: replica}
+func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependencies []client.Dependency, replica string) *GraphContext {
+	context := &GraphContext{
+		scheduler:  sched,
+		graph:      parentContext.graph,
+		flow:       parentContext.flow,
+		replica:    replica,
+		dependencies: dependencies,
+	}
+
 	context.args = make(map[string]string)
-	for key, value := range dependency.Args {
-		context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
+	for _, dependency := range dependencies {
+		for key, value := range dependency.Args {
+			context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
+		}
 	}
 	return context
 }
@@ -274,6 +314,7 @@ func (sched *Scheduler) updateContext(context, parentContext *GraphContext, depe
 	for key, value := range dependency.Args {
 		context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
 	}
+	context.dependencies = append(context.dependencies, dependency)
 }
 
 func (sched *Scheduler) newDefaultFlowObject() *client.Flow {
@@ -286,7 +327,7 @@ func (sched *Scheduler) newDefaultFlowObject() *client.Flow {
 			Name:      interfaces.DefaultFlowName,
 			Namespace: sched.client.Namespace(),
 		},
-		Exported:     true,
+		Exported: true,
 	}
 }
 
@@ -320,49 +361,65 @@ func unique(slice []string) []string {
 	return result
 }
 
-type ReplicaList client.ReplicaList
-var _ sort.Interface = &ReplicaList{}
+type SortableReplicaList client.ReplicaList
 
-func (rl *ReplicaList) Len() int {
+var _ sort.Interface = &SortableReplicaList{}
+
+func (rl *SortableReplicaList) Len() int {
 	return len(rl.Items)
 }
 
-func (rl *ReplicaList) Less(i, j int) bool {
+func (rl *SortableReplicaList) Less(i, j int) bool {
 	if rl.Items[i].CreationTimestamp.Equal(rl.Items[j].CreationTimestamp) {
 		return rl.Items[i].UID < rl.Items[j].UID
 	}
 	return rl.Items[i].CreationTimestamp.Before(rl.Items[j].CreationTimestamp)
 }
 
-func (rl *ReplicaList) Swap(i, j int) {
+func (rl *SortableReplicaList) Swap(i, j int) {
 	rl.Items[i], rl.Items[j] = rl.Items[j], rl.Items[i]
 }
 
-func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.DependencyGraphOptions) ([]string, error) {
-	label := labels.Set{"flow": flow.Name}
-	var tmp ReplicaList
+func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.DependencyGraphOptions) ([]client.Replica, []client.Replica, error) {
+	name := flow.Name
+	if options.FlowInstanceName != "" {
+		name = options.FlowInstanceName
+	}
+	label := labels.Set{"flow": name}
+	var existingSortableReplicas SortableReplicaList
 	var maxCurrentTime time.Time
 
 	count := options.ReplicaCount
-	if !options.ReplicaCountIsRelative || options.ReplicaCount == 0 {
+	if options.FixedNumberOfReplicas || options.ReplicaCount <= 0 {
 		existingReplicas, err := sched.client.Replicas().List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(label),
 		})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, item := range existingReplicas.Items {
 			if item.CreationTimestamp.After(maxCurrentTime) {
 				maxCurrentTime = item.CreationTimestamp.Time
 			}
 		}
-		tmp = ReplicaList(*existingReplicas)
-		if options.ReplicaCount == 0 {
-			count = len(tmp.Items)
+		existingSortableReplicas = SortableReplicaList(*existingReplicas)
+		if !options.FixedNumberOfReplicas && options.ReplicaCount <= 0 {
+			count = len(existingSortableReplicas.Items) + options.ReplicaCount
 		}
 	}
+	if count < options.MinReplicaCount && options.MinReplicaCount > 0 {
+		count = options.MinReplicaCount
+	}
+	if count > options.MaxReplicaCount && options.MaxReplicaCount > options.MinReplicaCount && options.MaxReplicaCount > 0 {
+		count = options.MaxReplicaCount
+	}
 
-	for len(tmp.Items) < count {
+	if count < len(existingSortableReplicas.Items) {
+		sort.Stable(&existingSortableReplicas)
+		return nil, existingSortableReplicas.Items[count:], nil
+	}
+
+	for len(existingSortableReplicas.Items) < count {
 		replica := &client.Replica{}
 		replica.GenerateName = strings.ToLower(flow.Name) + "-"
 		replica.FlowName = flow.Name
@@ -370,22 +427,19 @@ func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.D
 		replica.Namespace = sched.client.Namespace()
 		replica, err := sched.client.Replicas().Create(replica)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if !replica.CreationTimestamp.After(maxCurrentTime) {
 			time.Sleep(time.Second)
 			sched.client.Replicas().Delete(replica.Name)
 			continue
 		}
-		tmp.Items = append(tmp.Items, *replica)
+		existingSortableReplicas.Items = append(existingSortableReplicas.Items, *replica)
 	}
 
-	sort.Stable(&tmp)
-	var result []string
-	for _, replica := range tmp.Items {
-		result = append(result, replica.ReplicaName())
-	}
-	return result[:count], nil
+	sort.Stable(&existingSortableReplicas)
+
+	return existingSortableReplicas.Items[:count], nil, nil
 }
 
 // BuildDependencyGraph loads dependencies data and creates the DependencyGraph
@@ -394,7 +448,9 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		options.FlowName = interfaces.DefaultFlowName
 	}
 
-	log.Println("Getting resource definitions")
+	if !options.Silent {
+		log.Println("Getting resource definitions")
+	}
 	resDefs, err := sched.getResourceDefinitions()
 	if err != nil {
 		return nil, err
@@ -420,13 +476,17 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		return nil, err
 	}
 
-	log.Println("Getting dependencies")
+	if !options.Silent {
+		log.Println("Getting dependencies")
+	}
 	depList, err := sched.getDependencies()
 	if err != nil {
 		return nil, err
 	}
 
-	log.Println("Making sure there is no cycles in the dependency graph")
+	if !options.Silent {
+		log.Println("Making sure there is no cycles in the dependency graph")
+	}
 	if err = EnsureNoCycles(depList); err != nil {
 		return nil, err
 	}
@@ -436,37 +496,89 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	depGraph := NewDependencyGraph(sched, options)
 	rootContext := &GraphContext{scheduler: sched, graph: depGraph, flow: flow, args: options.Args}
 
-	if _, ok := dependencies[fullFlowName]; !ok {
-		log.Printf("Flow %s is empty", options.FlowName)
-		return depGraph, nil
+	replicas, deleteReplicas, err := sched.allocateReplicas(flow, options)
+	if err != nil {
+		return nil, err
 	}
+
+	err = sched.fillDependencyGraph(rootContext, resDefs, dependencies, flow, replicas, false)
+	if err != nil {
+		return nil, err
+	}
+	err = sched.fillDependencyGraph(rootContext, resDefs, dependencies, flow, deleteReplicas, true)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, value := range depGraph.graph {
+		value.RequiredBy = unique(value.RequiredBy)
+		value.Requires = unique(value.Requires)
+		value.usedInReplicas = unique(value.usedInReplicas)
+	}
+
+	if len(deleteReplicas) > 0 {
+		dryRunOptions := getDryRunDependencyGraphOptions(options)
+
+		// since we are using dry-run options, allocateReplicas will only return existing replicas
+		allReplicas, _, err := sched.allocateReplicas(flow, dryRunOptions)
+		allReplicasGraph := NewDependencyGraph(sched, dryRunOptions)
+		context := &GraphContext{scheduler: sched, graph: allReplicasGraph, flow: flow, args: dryRunOptions.Args}
+
+		// create dependency graph that has all the replicas (both those that we are about to delete and those that
+		// remain to see what resources belong exclusively to deleted replicas and what resources are shared with
+		// replicas alive and thus must non be deleted
+		err = sched.fillDependencyGraph(context, resDefs, dependencies, flow, allReplicas, false)
+		if err != nil {
+			return nil, err
+		}
+
+		// compose finalizer method that will delete all the resources belonging to deleted replicas and those
+		// that were created specially for destruction (for example, jobs with cleanup scripts)
+		depGraph.finalizer = sched.composeFinalizer(allReplicasGraph, depGraph, deleteReplicas)
+	}
+
+	return depGraph, nil
+}
+
+
+// getDryRunDependencyGraphOptions returns dependency graph options that will not produce side effects
+// (i.e. no new or deleted replicas and no logging)
+func getDryRunDependencyGraphOptions(options interfaces.DependencyGraphOptions) interfaces.DependencyGraphOptions {
+	options.ReplicaCount = 0
+	options.MinReplicaCount = 0
+	options.FixedNumberOfReplicas = false
+	options.Silent = true
+	return options
+}
+
+func (sched *Scheduler) fillDependencyGraph(rootContext *GraphContext,
+	resDefs map[string]client.ResourceDefinition,
+	dependencies map[string][]client.Dependency,
+	flow *client.Flow, replicas []client.Replica, useDestructionSelector bool) error {
 
 	type Block struct {
 		dependency        client.Dependency
 		scheduledResource *ScheduledResource
 		parentContext     *GraphContext
 	}
-
-	replicas, err := sched.allocateReplicas(flow, options)
-	if err != nil {
-		return nil, err
-	}
-
 	blocks := map[string][]*Block{}
+	silent := rootContext.graph.graphOptions.Silent
 
 	for _, replica := range replicas {
+		replicaName := replica.ReplicaName()
 		queue := list.New()
-		queue.PushFront(&Block{dependency: client.Dependency{Child: fullFlowName}})
+		queue.PushFront(&Block{dependency: client.Dependency{Child: "flow/" + flow.Name}})
 
 		for e := queue.Front(); e != nil; e = e.Next() {
 			parent := e.Value.(*Block)
 
-			deps := filterDependencies(dependencies, parent.dependency.Child, flow)
+			deps := filterDependencies(dependencies, parent.dependency.Child, flow, useDestructionSelector)
 
 			for _, dep := range deps {
 				if parent.scheduledResource != nil && strings.HasPrefix(parent.scheduledResource.Key(), "flow/") {
 					parentFlow := resDefs[dep.Parent]
-					if parentFlow.Flow != nil && canDependencyBelongToFlow(&dep, parentFlow.Flow) {
+					if parentFlow.Flow != nil && (canDependencyBelongToFlow(&dep, parentFlow.Flow, true) ||
+						canDependencyBelongToFlow(&dep, parentFlow.Flow, false)) {
 						continue
 					}
 				}
@@ -477,11 +589,12 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 
 				kind, name, err := keyParts(dep.Child)
 
-				context := sched.prepareContext(parentContext, dep, replica)
-				sr, err := sched.newScheduledResource(kind, name, resDefs, context)
+				context := sched.prepareContext(parentContext, []client.Dependency{dep}, replicaName)
+				sr, err := sched.newScheduledResource(kind, name, resDefs, context, silent)
 				if err != nil {
-					return nil, err
+					return err
 				}
+				sr.usedInReplicas = []string{replicaName}
 
 				block := &Block{
 					scheduledResource: sr,
@@ -502,14 +615,17 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		for _, block := range blocks {
 			for _, entry := range block {
 				key := entry.scheduledResource.Key()
-				existingSr := depGraph.graph[key]
+				existingSr := rootContext.graph.graph[key]
 				if existingSr == nil {
-					log.Printf("Adding resource %s to the dependency graph flow %s", key, options.FlowName)
-					depGraph.graph[key] = entry.scheduledResource
+					if !silent {
+						log.Printf("Adding resource %s to the dependency graph flow %s", key, flow.Name)
+					}
+					rootContext.graph.graph[key] = entry.scheduledResource
 				} else {
 					sched.updateContext(existingSr.Context, entry.parentContext, entry.dependency)
 					existingSr.Requires = append(existingSr.Requires, entry.scheduledResource.Requires...)
 					existingSr.RequiredBy = append(existingSr.RequiredBy, entry.scheduledResource.RequiredBy...)
+					existingSr.usedInReplicas = append(existingSr.usedInReplicas, entry.scheduledResource.usedInReplicas...)
 					for metaKey, metaValue := range entry.scheduledResource.Meta {
 						existingSr.Meta[metaKey] = metaValue
 					}
@@ -517,11 +633,87 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 			}
 		}
 	}
+	return nil
+}
 
-	for _, value := range depGraph.graph {
-		value.RequiredBy = unique(value.RequiredBy)
-		value.Requires = unique(value.Requires)
+// getResourceDestructors builds a list of functions, each of them delete one of replica resources
+func getResourceDestructors(construction, destruction *DependencyGraph, replicaMap map[string]client.Replica, failed *chan *ScheduledResource) []func() bool {
+	var destructors []func() bool
+
+	for _, depGraph := range [2]*DependencyGraph{construction, destruction} {
+		for _, resource := range depGraph.graph {
+			resourceCanBeDeleted := true
+			for _, replicaName := range resource.usedInReplicas {
+				if _, found := replicaMap[replicaName]; !found {
+					resourceCanBeDeleted = false
+					break
+				}
+			}
+			if resourceCanBeDeleted {
+				destructors = append(destructors, getDestructorFunc(resource))
+			}
+		}
+	}
+	return destructors
+}
+
+func getDestructorFunc(resource *ScheduledResource) func() bool {
+	return func() bool {
+		return deleteResource(resource) != nil
+	}
+}
+
+// deleteReplicaResources invokes resources destructors and deletes replicas for which 100% of resources were deleted
+func deleteReplicaResources(sched *Scheduler, destructors []func() bool, replicaMap map[string]client.Replica, failed *chan *ScheduledResource) {
+	*failed = make(chan *ScheduledResource, len(destructors))
+	defer close(*failed)
+	runConcurrently(destructors, sched.concurrency)
+	failedReplicas := map[string]bool{}
+
+readFailed:
+	for {
+		select {
+		case res := <- *failed:
+			for _, replicaName := range res.usedInReplicas {
+				failedReplicas[replicaName] = true
+			}
+		default:
+			break readFailed
+		}
+	}
+	var deleteReplicaFuncs []func() bool
+
+	for replicaName, replicaObject := range replicaMap {
+		if _, found := failedReplicas[replicaName]; found {
+			continue
+		}
+		replicaNameCopy := replicaName
+		replicaObjectCopy := replicaObject
+		deleteReplicaFuncs = append(deleteReplicaFuncs, func() bool {
+			log.Printf("%s flow: Deleting replica %s", replicaObjectCopy.FlowName, replicaNameCopy)
+			err := sched.client.Replicas().Delete(replicaObjectCopy.Name)
+			if err != nil {
+				log.Println(err)
+			}
+			return true
+		})
 	}
 
-	return depGraph, nil
+	if deleteReplicaFuncs != nil {
+		runConcurrently(deleteReplicaFuncs, sched.concurrency)
+	}
+}
+
+func (sched *Scheduler) composeFinalizer(construction, destruction *DependencyGraph, replicas []client.Replica) func() {
+	replicaMap := map[string]client.Replica{}
+	for _, replica := range replicas {
+		replicaMap[replica.ReplicaName()] = replica
+	}
+
+	var failed chan *ScheduledResource
+	destructors := getResourceDestructors(construction, destruction, replicaMap, &failed)
+
+	return func() {
+		deleteReplicaResources(sched, destructors, replicaMap, &failed)
+	}
 }

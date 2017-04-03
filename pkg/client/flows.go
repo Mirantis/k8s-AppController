@@ -32,12 +32,15 @@ type Flow struct {
 	// Standard object metadata
 	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Specifies (partial) label that is used to identify dependencies that belong to
+	// Construction specifies (partial) label that is used to identify dependencies that belong to
 	// the construction path of the Flow (i.e. Flows can have different paths for construction and destruction).
 	// For example, if we have flow->job dependency and it matches the Construction label it would mean that
 	// creating a job is what the flow does. Otherwise it would mean that the job depends on
 	// the the flow (i.e. it won't be created before everything, the flow consists of)
 	Construction map[string]string `json:"construction,omitempty"`
+
+	// Destruction specifies (partial) label that is used to identify dependencies that belong to the destruction path of the Flow.
+	Destruction map[string]string `json:"destruction,omitempty"`
 
 	// Exported flows can be triggered by the user (through the CLI) whereas those that are not
 	// can only be triggered by other flows (including DEFAULT flow which is exported by-default)
