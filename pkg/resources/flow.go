@@ -15,14 +15,13 @@
 package resources
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	"sync/atomic"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
+	"strings"
 )
 
 type Flow struct {
@@ -35,8 +34,6 @@ type Flow struct {
 }
 
 type flowTemplateFactory struct{}
-
-var counter uint32
 
 // Returns wrapped resource name if it was a flow
 func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) string {
@@ -55,13 +52,16 @@ func (flowTemplateFactory) Kind() string {
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newFlow := parametrizeResource(def.Flow, gc).(*client.Flow)
 
+	dep := gc.Dependency()
+	depName := strings.Replace(dep.Name, dep.GenerateName, "",1)
+
 	return report.SimpleReporter{
 		BaseResource: &Flow{
 			Base:          Base{def.Meta},
 			flow:          newFlow,
 			context:       gc,
 			status:        interfaces.ResourceNotReady,
-			generatedName: fmt.Sprintf("%s-%v", newFlow.Name, atomic.AddUint32(&counter, 1)),
+			generatedName: fmt.Sprintf("%s-%s%s", newFlow.Name, depName, gc.GetArg("AC_NAME")),
 			originalName:  def.Flow.Name,
 		}}
 }
@@ -77,8 +77,7 @@ func (f Flow) Key() string {
 	return "flow/" + f.generatedName
 }
 
-// Triggers the flow deployment like it was the resource creation
-func (f *Flow) Create() error {
+func (f *Flow) constructGraph(destroy bool) (interfaces.DependencyGraph, error) {
 	args := map[string]string{}
 	for arg := range f.flow.Parameters {
 		val := f.context.GetArg(arg)
@@ -89,8 +88,29 @@ func (f *Flow) Create() error {
 	options := interfaces.DependencyGraphOptions{
 		FlowName: f.originalName,
 		Args:     args,
+		FlowInstanceName:       f.generatedName,
 	}
+
+	if destroy {
+		// Delete one replica
+		options.ReplicaCount = -1
+	} else {
+		// Recheck existing replica resources or create one replica if none exist
+		options.ReplicaCount = 0
+		options.MinReplicaCount = 1
+	}
+
 	graph, err := f.context.Scheduler().BuildDependencyGraph(options)
+	if err != nil {
+		return nil, err
+	}
+	return graph, nil
+
+}
+
+// Triggers the flow deployment like it was the resource creation
+func (f *Flow) Create() error {
+	graph, err := f.constructGraph(false)
 	if err != nil {
 		return err
 	}
@@ -104,7 +124,14 @@ func (f *Flow) Create() error {
 
 // Deletes resources allocated to the flow
 func (f Flow) Delete() error {
-	return errors.New("Not supported yet")
+	graph, err := f.constructGraph(true)
+	if err != nil {
+		return err
+	}
+	stopChan := make(chan struct{})
+	graph.Deploy(stopChan)
+	f.status = interfaces.ResourceReady
+	return nil
 }
 
 // Current status of the flow deployment

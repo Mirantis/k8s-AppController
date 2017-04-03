@@ -42,6 +42,10 @@ func deploy(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	deleteExternal, err := cmd.Flags().GetBool("delete-external")
+	if err != nil {
+		log.Fatal(err)
+	}
 	url, err := cmd.Flags().GetString("url")
 	if err != nil {
 		log.Fatal(err)
@@ -87,9 +91,15 @@ func deploy(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	replicas, err := strconv.Atoi(strings.TrimSpace(replicasString))
-	if err != nil || replicas < 0 {
-		log.Fatal("Invalid replica count format")
+	replicasString = strings.TrimSpace(replicasString)
+	replicas := 0
+	minReplicaCount := 1
+	if replicasString != "" {
+		replicas, err = strconv.Atoi(replicasString)
+		if err != nil {
+			log.Fatal("Invalid replica count format")
+		}
+		minReplicaCount = 0
 	}
 
 	log.Println("Using concurrency:", concurrency)
@@ -97,12 +107,14 @@ func deploy(cmd *cobra.Command, args []string) {
 
 	sched := scheduler.New(c, sel, concurrency)
 	options := interfaces.DependencyGraphOptions{
-		FlowName:               flowName,
-		ExportedOnly:           true,
-		Args:                   flowArgMap,
-		AllowUndeclaredArgs:    anyArgs,
-		ReplicaCount:           replicas,
-		ReplicaCountIsRelative: replicas > 0 && strings.ContainsAny(replicasString, "+"),
+		FlowName:                     flowName,
+		ExportedOnly:                 true,
+		Args:                         flowArgMap,
+		AllowUndeclaredArgs:          anyArgs,
+		ReplicaCount:                 replicas,
+		FixedNumberOfReplicas:        replicasString != "" && !strings.ContainsAny(replicasString, "+-"),
+		MinReplicaCount:              minReplicaCount,
+		AllowDeleteExternalResources: deleteExternal,
 	}
 
 	log.Println("Going to deploy flow:", flowName)
@@ -166,7 +178,8 @@ func InitRunCommand() (*cobra.Command, error) {
 	run.Flags().String("url", os.Getenv("KUBERNETES_CLUSTER_URL"),
 		"URL of the Kubernetes cluster. Overrides KUBERNETES_CLUSTER_URL env variable in AppController pod.")
 
-	run.Flags().StringP("replicas", "n", "1", "number of flow replicas: [+]number")
+	run.Flags().StringP("replicas", "n", "", "number of flow replicas: [+|-]number")
+	run.Flags().Bool("delete-external", false, "permit delete of external resources")
 
 	return run, err
 }
