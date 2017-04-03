@@ -321,7 +321,7 @@ func TestLimitConcurrency(t *testing.T) {
 			key := fmt.Sprintf("resource%d", i)
 			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second/4)}
 			context := &GraphContext{graph: depGraph}
-			sr := newScheduledResourceFor(r, context)
+			sr := newScheduledResourceFor(r, context, false)
 			depGraph.graph[sr.Key()] = sr
 		}
 		stopChan := make(chan struct{})

@@ -39,6 +39,9 @@ type Flow struct {
 	// the the flow (i.e. it won't be created before everything, the flow consists of)
 	Construction map[string]string `json:"construction,omitempty"`
 
+	// Specifies (partial) label that is used to identify dependencies that belong to the destruction path of the Flow.
+	Destruction map[string]string `json:"destruction,omitempty"`
+
 	// Exported flows can be triggered by the user (through the CLI) whereas those that are not
 	// can only be triggered by other flows (including DEFAULT flow which is exported by-default)
 	Exported bool `json:"exported,omitempty"`
