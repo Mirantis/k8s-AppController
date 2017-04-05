@@ -38,5 +38,5 @@ func Init() {
 	Wrap.Flags().StringVarP(&format, "format", "f", "yaml", "file format")
 
 	RootCmd = &cobra.Command{Use: "kubeac"}
-	RootCmd.AddCommand(Bootstrap, run, Wrap, status)
+	RootCmd.AddCommand(Bootstrap, run, Wrap, status, Deploy)
 }
