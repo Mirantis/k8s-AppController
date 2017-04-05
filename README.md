@@ -89,13 +89,9 @@ Load it to k8s:
 
 `kubectl create -f dependencies_file.yaml`
 
-Start appcontroller process:
+Start the graph deployment:
 
-`kubectl exec k8s-appcontroller ac-run`
-
-You can stop appcontroller process by:
-
-`kubectl exec k8s-appcontroller ac-stop`
+`kubectl exec k8s-appcontroller run`
 
 ## Reporting
 
