@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/util/intstr"
@@ -97,6 +98,22 @@ var _ = Describe("Basic Suite", func() {
 		framework.Run()
 		By("Verifying that second pod will enter running state")
 		testutils.WaitForPod(framework.Clientset, framework.Namespace.Name, pod2.Name, v1.PodRunning)
+	})
+
+	It("Deployment should finish even if appcontroller pod was terminated", func() {
+		By("Creating resource definition with single pod")
+		pod1 := PodPause("pod1")
+		framework.WrapAndCreate(pod1)
+		framework.Run()
+		framework.DeletePod()
+		By("Verify that pod is consistently not found")
+		Consistently(func() bool {
+			_, err := framework.Client.Pods().Get(pod1.Name)
+			return errors.IsNotFound(err)
+		}, 5*time.Second, 1*time.Second).Should(BeTrue(), "Pod was unexpectadly created")
+		By("Recreate appcontroller pod and verify that pod was successfully created")
+		framework.Prepare()
+		testutils.WaitForPod(framework.Clientset, framework.Namespace.Name, pod1.Name, v1.PodRunning)
 	})
 
 	Describe("Failure handling - subgraph", func() {
