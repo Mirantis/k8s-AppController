@@ -10,7 +10,7 @@ spec:
   - name: kubeac
     image: mirantis/k8s-appcontroller
     imagePullPolicy: IfNotPresent
-    command:  ["/usr/bin/run_runit"]
+    command:  ["kubeac", "deploy"]
     env:
     - name: KUBERNETES_AC_LABEL_SELECTOR
       value: ""
