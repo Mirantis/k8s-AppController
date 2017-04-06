@@ -60,6 +60,8 @@ func (gc GraphContext) GetArg(name string) string {
 	switch name {
 	case "AC_NAME":
 		return gc.replica
+	case "AC_FLOW_NAME":
+		return gc.flow.Name
 	default:
 		val, ok := gc.args[name]
 		if ok {
@@ -294,10 +296,10 @@ func NewDependencyGraph(sched *Scheduler, options interfaces.DependencyGraphOpti
 
 func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependencies []client.Dependency, replica string) *GraphContext {
 	context := &GraphContext{
-		scheduler:  sched,
-		graph:      parentContext.graph,
-		flow:       parentContext.flow,
-		replica:    replica,
+		scheduler:    sched,
+		graph:        parentContext.graph,
+		flow:         parentContext.flow,
+		replica:      replica,
 		dependencies: dependencies,
 	}
 
@@ -381,11 +383,15 @@ func (rl *SortableReplicaList) Swap(i, j int) {
 }
 
 func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.DependencyGraphOptions) ([]client.Replica, []client.Replica, error) {
-	name := flow.Name
-	if options.FlowInstanceName != "" {
-		name = options.FlowInstanceName
+	name := flow.ReplicaSpace
+	if name == "" {
+		if options.FlowInstanceName != "" {
+			name = options.FlowInstanceName
+		} else {
+			name = flow.Name
+		}
 	}
-	label := labels.Set{"flow": name}
+	label := labels.Set{"replicaspace": name}
 	var existingSortableReplicas SortableReplicaList
 	var maxCurrentTime time.Time
 
@@ -423,6 +429,7 @@ func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.D
 		replica := &client.Replica{}
 		replica.GenerateName = strings.ToLower(flow.Name) + "-"
 		replica.FlowName = flow.Name
+		replica.ReplicaSpace = name
 		replica.Labels = label
 		replica.Namespace = sched.client.Namespace()
 		replica, err := sched.client.Replicas().Create(replica)
@@ -539,7 +546,6 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 
 	return depGraph, nil
 }
-
 
 // getDryRunDependencyGraphOptions returns dependency graph options that will not produce side effects
 // (i.e. no new or deleted replicas and no logging)
@@ -673,7 +679,7 @@ func deleteReplicaResources(sched *Scheduler, destructors []func() bool, replica
 readFailed:
 	for {
 		select {
-		case res := <- *failed:
+		case res := <-*failed:
 			for _, replicaName := range res.usedInReplicas {
 				failedReplicas[replicaName] = true
 			}
@@ -697,6 +703,7 @@ readFailed:
 			}
 			return true
 		})
+
 	}
 
 	if deleteReplicaFuncs != nil {
