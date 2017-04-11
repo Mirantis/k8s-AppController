@@ -54,7 +54,7 @@ func (serviceAccountTemplateFactory) Kind() string {
 
 // New returns a new object wrapped as Resource
 func (serviceAccountTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewServiceAccount(def.ServiceAccount, ci.ServiceAccounts(), def.Meta)
+	return NewServiceAccount(parametrizeResource(def.ServiceAccount, gc).(*v1.ServiceAccount), ci.ServiceAccounts(), def.Meta)
 }
 
 // NewExisting returns a new object based on existing one wrapped as Resource

@@ -48,7 +48,8 @@ func (persistentVolumeClaimTemplateFactory) Kind() string {
 
 // New returns new PersistentVolumeClaim based on resource definition
 func (persistentVolumeClaimTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewPersistentVolumeClaim(def.PersistentVolumeClaim, c.PersistentVolumeClaims(), def.Meta)
+	return NewPersistentVolumeClaim(parametrizeResource(def.PersistentVolumeClaim, gc).(*v1.PersistentVolumeClaim),
+		c.PersistentVolumeClaims(), def.Meta)
 }
 
 // NewExisting returns new ExistingPersistentVolumeClaim based on resource definition
