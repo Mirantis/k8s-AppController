@@ -23,8 +23,13 @@ import (
 
 // TestConfigMapSuccessCheck checks status of ready ConfigMap
 func TestConfigMapSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.ConfigMaps("notfail"))
-	status, err := configMapStatus(c.ConfigMaps(), "notfail")
+	name := "notfail"
+	client := mocks.NewClient(mocks.ConfigMaps(name))
+
+	def := MakeDefinition(mocks.MakeConfigMap(name))
+	tested := createNewConfigMap(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -37,8 +42,13 @@ func TestConfigMapSuccessCheck(t *testing.T) {
 
 // TestConfigMapFailCheck checks status of not existing ConfigMap
 func TestConfigMapFailCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.ConfigMaps())
-	status, err := configMapStatus(c.ConfigMaps(), "fail")
+	name := "fail"
+	client := mocks.NewClient()
+
+	def := MakeDefinition(mocks.MakeConfigMap(name))
+	tested := createNewConfigMap(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err == nil {
 		t.Error("error not found, expected error")
@@ -46,5 +56,29 @@ func TestConfigMapFailCheck(t *testing.T) {
 
 	if status != interfaces.ResourceError {
 		t.Errorf("status should be `error`, is `%s` instead.", status)
+	}
+}
+
+// TestConfigMapUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestConfigMapUpgraded(t *testing.T) {
+	name := "notfail"
+	client := mocks.NewClient(mocks.ConfigMaps(name))
+
+	def := MakeDefinition(mocks.MakeConfigMap(name))
+
+	//Make definition differ from client version
+	def.ConfigMap.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+
+	tested := createNewConfigMap(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err == nil {
+		t.Error("Error not found, expected error")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

@@ -14,7 +14,10 @@
 
 package mocks
 
-import extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+import (
+	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/runtime"
+)
 
 type daemonSetClient struct {
 }
@@ -32,4 +35,12 @@ func MakeDaemonSet(name string) *extbeta1.DaemonSet {
 	}
 
 	return daemonSet
+}
+
+func DaemonSets(names ...string) runtime.Object {
+	var daemonsets []extbeta1.DaemonSet
+	for _, name := range names {
+		daemonsets = append(daemonsets, *MakeDaemonSet(name))
+	}
+	return &extbeta1.DaemonSetList{Items: daemonsets}
 }

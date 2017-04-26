@@ -25,9 +25,15 @@ import (
 
 // TestStatefulSetSuccessCheck checks status of ready StatefulSet
 func TestStatefulSetSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeStatefulSet("notfail"))
-	status, err := statefulsetStatus(c.StatefulSets(), "notfail", c)
+	name := "notfail"
+	ss := mocks.MakeStatefulSet(name)
 
+	client := mocks.NewClient(ss)
+
+	def := MakeDefinition(ss)
+	tested := createNewStatefulSet(def, client)
+
+	status, err := tested.Status(nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -39,11 +45,18 @@ func TestStatefulSetSuccessCheck(t *testing.T) {
 
 // TestStatefulSetFailCheck checks status of not ready statefulset
 func TestStatefulSetFailCheck(t *testing.T) {
-	ss := mocks.MakeStatefulSet("fail")
-	pod := mocks.MakePod("fail")
+	name := "fail"
+	ss := mocks.MakeStatefulSet(name)
+
+	pod := mocks.MakePod(name)
 	pod.Labels = ss.Spec.Template.ObjectMeta.Labels
-	c := mocks.NewClient(ss, pod)
-	status, err := statefulsetStatus(c.StatefulSets(), "fail", c)
+
+	client := mocks.NewClient(ss, pod)
+
+	def := MakeDefinition(ss)
+	tested := createNewStatefulSet(def, client)
+
+	status, err := tested.Status(nil)
 
 	expectedError := "resource pod/fail is not ready"
 	if err.Error() != expectedError {
@@ -66,5 +79,28 @@ func TestStatefulSetDisabledOn14Version(t *testing.T) {
 	c := mocks.NewClient1_4()
 	if c.IsEnabled(v1beta1.SchemeGroupVersion) {
 		t.Errorf("%v expected to be disabled", v1beta1.SchemeGroupVersion)
+	}
+}
+
+// TestStatefulSetUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestStatefulSetUpgraded(t *testing.T) {
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeStatefulSet(name))
+
+	def := MakeDefinition(mocks.MakeStatefulSet(name))
+	//Make definition differ from client version
+	def.StatefulSet.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+	tested := createNewStatefulSet(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err == nil {
+		t.Error("Error not found, expected error")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

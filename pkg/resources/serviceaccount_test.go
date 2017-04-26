@@ -23,8 +23,14 @@ import (
 
 // TestServiceAccountSuccessCheck checks status of ready ServiceAccount
 func TestServiceAccountSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.ServiceAccounts("notfail"))
-	status, err := serviceAccountStatus(c.ServiceAccounts(), "notfail")
+	sa := mocks.MakeServiceAccount("notfail")
+	c := mocks.NewClient(sa).ServiceAccounts()
+
+	def := MakeDefinition(sa)
+
+	tested := createNewServiceAccount(def, c)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -37,8 +43,13 @@ func TestServiceAccountSuccessCheck(t *testing.T) {
 
 // TestServiceAccountFailCheck checks status of not existing ServiceAccount
 func TestServiceAccountFailCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.ServiceAccounts())
-	status, err := serviceAccountStatus(c.ServiceAccounts(), "fail")
+	c := mocks.NewClient(mocks.ServiceAccounts()).ServiceAccounts()
+
+	def := MakeDefinition(mocks.MakeServiceAccount(""))
+
+	tested := createNewServiceAccount(def, c)
+
+	status, err := tested.Status(nil)
 
 	if err == nil {
 		t.Error("error not found, expected error")
@@ -46,5 +57,28 @@ func TestServiceAccountFailCheck(t *testing.T) {
 
 	if status != interfaces.ResourceError {
 		t.Errorf("status should be `error`, is `%s` instead.", status)
+	}
+}
+
+// TestServiceAccountUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestServiceAccountUpgraded(t *testing.T) {
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeServiceAccount(name)).ServiceAccounts()
+
+	def := MakeDefinition(mocks.MakeServiceAccount(name))
+	//Make definition differ from client version
+	def.ServiceAccount.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+	tested := createNewServiceAccount(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err == nil {
+		t.Error("Error not found, expected error")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

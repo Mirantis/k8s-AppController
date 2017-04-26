@@ -23,8 +23,14 @@ import (
 
 // TestSecretSuccessCheck checks status of ready Secret
 func TestSecretSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeSecret("notfail"))
-	status, err := secretStatus(c.Secrets(), "notfail")
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeSecret(name)).Secrets()
+
+	def := MakeDefinition(mocks.MakeSecret(name))
+	tested := createNewSecret(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -37,8 +43,15 @@ func TestSecretSuccessCheck(t *testing.T) {
 
 // TestSecretFailCheck checks status of not existing Secret
 func TestSecretFailCheck(t *testing.T) {
-	c := mocks.NewClient()
-	status, err := secretStatus(c.Secrets(), "fail")
+	name := "fail"
+
+	client := mocks.NewClient().Secrets()
+
+	secret := mocks.MakeSecret(name)
+	def := MakeDefinition(secret)
+	tested := createNewSecret(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err == nil {
 		t.Error("error not found, expected error")
@@ -46,5 +59,28 @@ func TestSecretFailCheck(t *testing.T) {
 
 	if status != interfaces.ResourceError {
 		t.Errorf("status should be `error`, is `%s` instead.", status)
+	}
+}
+
+// TestSecretUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestSecretUpgraded(t *testing.T) {
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeSecret(name)).Secrets()
+
+	def := MakeDefinition(mocks.MakeSecret(name))
+	//Make definition differ from client version
+	def.Secret.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+	tested := createNewSecret(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err == nil {
+		t.Error("Error not found, expected error")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

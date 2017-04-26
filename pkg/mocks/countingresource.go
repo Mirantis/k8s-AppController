@@ -80,6 +80,11 @@ func (c *CountingResource) NewExisting(name string, _ client.Interface) interfac
 	return report.SimpleReporter{BaseResource: NewResource(name, interfaces.ResourceReady)}
 }
 
+// EqualToDefinition returns is false
+func (c *CountingResource) EqualToDefinition(_ interface{}) bool {
+	return false
+}
+
 // NewCountingResource creates new instance of CountingResource
 func NewCountingResource(key string, counter *CounterWithMemo, timeout time.Duration) *CountingResource {
 	return &CountingResource{

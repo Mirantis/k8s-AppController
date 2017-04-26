@@ -23,8 +23,14 @@ import (
 
 // TestDaemonSetSuccessCheck check status for ready DaemonSet
 func TestDaemonSetSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeDaemonSet("not-fail"))
-	status, err := daemonSetStatus(c.DaemonSets(), "not-fail")
+	name := "not-fail"
+
+	client := mocks.NewClient(mocks.DaemonSets(name)).DaemonSets()
+
+	def := MakeDefinition(mocks.MakeDaemonSet(name))
+	tested := createNewDaemonSet(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -36,12 +42,44 @@ func TestDaemonSetSuccessCheck(t *testing.T) {
 
 // TestDaemonSetFailCheck status of not ready daemonset
 func TestDaemonSetFailCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeDaemonSet("fail"))
-	status, err := daemonSetStatus(c.DaemonSets(), "fail")
+	name := "fail"
+
+	client := mocks.NewClient(mocks.DaemonSets(name)).DaemonSets()
+
+	def := MakeDefinition(mocks.MakeDaemonSet(name))
+	tested := createNewDaemonSet(def, client)
+
+	status, err := tested.Status(nil)
+
 	if err != nil {
 		t.Error(err)
 	}
 	if status != interfaces.ResourceNotReady {
 		t.Errorf("status should be not ready, is %s instead.", status)
+	}
+}
+
+// TestDaemonSetUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestDaemonSetUpgraded(t *testing.T) {
+	name := "not-fail"
+
+	client := mocks.NewClient(mocks.DaemonSets(name)).DaemonSets()
+
+	def := MakeDefinition(mocks.MakeDaemonSet(name))
+
+	//Make definition differ from client version
+	def.DaemonSet.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+
+	tested := createNewDaemonSet(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err == nil {
+		t.Error("Error not found, expected error")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

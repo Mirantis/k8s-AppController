@@ -15,7 +15,9 @@
 package resources
 
 import (
+	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -60,8 +62,8 @@ func (jobTemplateFactory) Kind() string {
 
 // New returns Job controller for new resource based on resource definition
 func (jobTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	job := parametrizeResource(def.Job, gc, jobParamFields).(*v1.Job)
-	return createNewJob(job, c.Jobs(), def.Meta)
+	def.Job = parametrizeResource(def.Job, gc, jobParamFields).(*v1.Job)
+	return createNewJob(def, c.Jobs())
 }
 
 // NewExisting returns Job controller for existing resource by its name
@@ -69,12 +71,7 @@ func (jobTemplateFactory) NewExisting(name string, c client.Interface, gc interf
 	return report.SimpleReporter{BaseResource: existingJob{Name: name, Client: c.Jobs()}}
 }
 
-func jobStatus(j batchv1.JobInterface, name string) (interfaces.ResourceStatus, error) {
-	job, err := j.Get(name)
-	if err != nil {
-		return interfaces.ResourceError, err
-	}
-
+func jobStatus(job *v1.Job) (interfaces.ResourceStatus, error) {
 	for _, cond := range job.Status.Conditions {
 		if cond.Type == "Complete" && cond.Status == "True" {
 			return interfaces.ResourceReady, nil
@@ -91,7 +88,23 @@ func (j newJob) Key() string {
 
 // Status returns job status
 func (j newJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return jobStatus(j.Client, j.Job.Name)
+	job, err := j.Client.Get(j.Job.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	if !j.EqualToDefinition(job) {
+		return interfaces.ResourceWaitingForUpgrade, fmt.Errorf(string(interfaces.ResourceWaitingForUpgrade))
+	}
+
+	return jobStatus(job)
+}
+
+// EqualToDefinition checks if definition in object is compatible with provided object
+func (j newJob) EqualToDefinition(jobiface interface{}) bool {
+	job := jobiface.(*v1.Job)
+
+	return reflect.DeepEqual(job.ObjectMeta, j.Job.ObjectMeta) && reflect.DeepEqual(job.Spec, j.Job.Spec)
 }
 
 // Create looks for the Job in k8s and creates it if not present
@@ -109,8 +122,17 @@ func (j newJob) Delete() error {
 	return j.Client.Delete(j.Job.Name, nil)
 }
 
-func createNewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: newJob{Base: Base{meta}, Job: job, Client: client}}
+func createNewJob(def client.ResourceDefinition, client batchv1.JobInterface) interfaces.Resource {
+	return report.SimpleReporter{
+		BaseResource: newJob{
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
+			Job:    def.Job,
+			Client: client,
+		},
+	}
 }
 
 type existingJob struct {
@@ -126,7 +148,12 @@ func (j existingJob) Key() string {
 
 // Status returns job status
 func (j existingJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return jobStatus(j.Client, j.Name)
+	job, err := j.Client.Get(j.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	return jobStatus(job)
 }
 
 // Create looks for existing Job and returns error if there is no such Job

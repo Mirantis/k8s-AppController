@@ -15,7 +15,9 @@
 package resources
 
 import (
+	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -55,8 +57,8 @@ func (podTemplateFactory) Kind() string {
 
 // New returns Pod controller for new resource based on resource definition
 func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	pod := parametrizeResource(def.Pod, gc, podParamFields).(*v1.Pod)
-	return createNewPod(pod, c.Pods(), def.Meta)
+	def.Pod = parametrizeResource(def.Pod, gc, podParamFields).(*v1.Pod)
+	return createNewPod(def, c.Pods())
 }
 
 // NewExisting returns Pod controller for existing resource by its name
@@ -73,12 +75,7 @@ func (p newPod) Key() string {
 	return podKey(p.Pod.Name)
 }
 
-func podStatus(p corev1.PodInterface, name string) (interfaces.ResourceStatus, error) {
-	pod, err := p.Get(name)
-	if err != nil {
-		return interfaces.ResourceError, err
-	}
-
+func podStatus(pod *v1.Pod) (interfaces.ResourceStatus, error) {
 	if pod.Status.Phase == "Succeeded" {
 		return interfaces.ResourceReady, nil
 	}
@@ -117,11 +114,35 @@ func (p newPod) Delete() error {
 
 // Status returns pod status. It returns interfaces.ResourceReady if the pod is succeeded or running with succeeding readiness probe.
 func (p newPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return podStatus(p.Client, p.Pod.Name)
+	pod, err := p.Client.Get(p.Pod.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	if !p.EqualToDefinition(pod) {
+		return interfaces.ResourceWaitingForUpgrade, fmt.Errorf(string(interfaces.ResourceWaitingForUpgrade))
+	}
+	return podStatus(pod)
 }
 
-func createNewPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: newPod{Base: Base{meta}, Pod: pod, Client: client}}
+// EqualToDefinition checks if definition in object is compatible with provided object
+func (p newPod) EqualToDefinition(podiface interface{}) bool {
+	pod := podiface.(*v1.Pod)
+
+	return reflect.DeepEqual(pod.ObjectMeta, p.Pod.ObjectMeta) && reflect.DeepEqual(pod.Spec, p.Pod.Spec)
+}
+
+func createNewPod(def client.ResourceDefinition, c corev1.PodInterface) interfaces.Resource {
+	return report.SimpleReporter{
+		BaseResource: newPod{
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
+			Pod:    def.Pod,
+			Client: c,
+		},
+	}
 }
 
 type existingPod struct {
@@ -142,7 +163,11 @@ func (p existingPod) Create() error {
 
 // Status returns pod status. It returns interfaces.ResourceReady if the pod is succeeded or running with succeeding readiness probe.
 func (p existingPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return podStatus(p.Client, p.Name)
+	pod, err := p.Client.Get(p.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+	return podStatus(pod)
 }
 
 // Delete deletes pod from the cluster

@@ -67,6 +67,11 @@ func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.BaseR
 	return NewResource(name, "ready")
 }
 
+// EqualToDefinition returns is false
+func (c *Resource) EqualToDefinition(_ interface{}) bool {
+	return false
+}
+
 // NewResource creates new instance of Resource
 func NewResource(key string, status interfaces.ResourceStatus) *Resource {
 	return NewResourceWithMeta(key, status, nil)
