@@ -16,6 +16,7 @@ package resources
 
 import (
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -56,8 +57,22 @@ func (serviceTemplateFactory) Kind() string {
 
 // New returns Service controller for new resource based on resource definition
 func (serviceTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	service := parametrizeResource(def.Service, gc, serviceParamFields).(*v1.Service)
-	return report.SimpleReporter{BaseResource: newService{Base: Base{def.Meta}, Service: service, Client: c.Services(), APIClient: c}}
+	def.Service = parametrizeResource(def.Service, gc, serviceParamFields).(*v1.Service)
+	return createNewService(def, c)
+}
+
+func createNewService(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{
+		BaseResource: newService{
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
+			Service:   def.Service,
+			Client:    c.Services(),
+			APIClient: c,
+		},
+	}
 }
 
 // NewExisting returns Service controller for existing resource by its name
@@ -65,13 +80,7 @@ func (serviceTemplateFactory) NewExisting(name string, c client.Interface, gc in
 	return report.SimpleReporter{BaseResource: existingService{Name: name, Client: c.Services()}}
 }
 
-func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
-	service, err := s.Get(name)
-
-	if err != nil {
-		return interfaces.ResourceError, err
-	}
-
+func serviceStatus(service *v1.Service, apiClient client.Interface) (interfaces.ResourceStatus, error) {
 	log.Printf("Checking service status for selector %v", service.Spec.Selector)
 	selector := labels.SelectorFromSet(service.Spec.Selector)
 
@@ -91,13 +100,16 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 	}
 	resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 	for _, pod := range pods.Items {
-		resources = append(resources, createNewPod(&pod, apiClient.Pods(), nil))
+		def := MakeDefinition(&pod)
+		resources = append(resources, createNewPod(def, apiClient.Pods()))
 	}
 	for _, j := range jobs.Items {
-		resources = append(resources, createNewJob(&j, apiClient.Jobs(), nil))
+		def := MakeDefinition(&j)
+		resources = append(resources, createNewJob(def, apiClient.Jobs()))
 	}
 	for _, r := range replicasets.Items {
-		resources = append(resources, createNewReplicaSet(&r, apiClient.ReplicaSets(), nil))
+		def := MakeDefinition(&r)
+		resources = append(resources, createNewReplicaSet(def, apiClient.ReplicaSets()))
 	}
 	if apiClient.IsEnabled(v1beta1.SchemeGroupVersion) {
 		statefulsets, err := apiClient.StatefulSets().List(options)
@@ -105,7 +117,8 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 			return interfaces.ResourceError, err
 		}
 		for _, ps := range statefulsets.Items {
-			resources = append(resources, newStatefulSet(&ps, apiClient.StatefulSets(), apiClient, nil))
+			def := MakeDefinition(&ps)
+			resources = append(resources, createNewStatefulSet(def, apiClient))
 		}
 	} else {
 		petsets, err := apiClient.PetSets().List(api.ListOptions{LabelSelector: selector})
@@ -113,7 +126,8 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 			return interfaces.ResourceError, err
 		}
 		for _, ps := range petsets.Items {
-			resources = append(resources, newPetSet(&ps, apiClient.PetSets(), apiClient, nil))
+			def := MakeDefinition(&ps)
+			resources = append(resources, createNewStatefulSet(def, apiClient))
 		}
 	}
 	status, err := resourceListStatus(resources)
@@ -150,7 +164,22 @@ func (s newService) Delete() error {
 
 // Status returns Service Status. It is based on the status of all objects which match the service selector. If all of them are ready, the Service is considered ready.
 func (s newService) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
+	service, err := s.Client.Get(s.Service.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	if !s.equalsToDefinition(service) {
+		return interfaces.ResourceWaitingForUpgrade, nil
+	}
+	return serviceStatus(service, s.APIClient)
+}
+
+// equalsToDefinition checks if definition in object is compatible with provided object
+func (s newService) equalsToDefinition(serviceiface interface{}) bool {
+	service := serviceiface.(*v1.Service)
+
+	return reflect.DeepEqual(service.ObjectMeta, s.Service.ObjectMeta) && reflect.DeepEqual(service.Spec, s.Service.Spec)
 }
 
 type existingService struct {
@@ -172,7 +201,12 @@ func (s existingService) Create() error {
 
 // Status returns Service Status. It is based on the status of all objects which match the service selector. If all of them are ready, the Service is considered ready.
 func (s existingService) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return serviceStatus(s.Client, s.Name, s.APIClient)
+	service, err := s.Client.Get(s.Name)
+
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+	return serviceStatus(service, s.APIClient)
 }
 
 // Delete deletes Service from the cluster

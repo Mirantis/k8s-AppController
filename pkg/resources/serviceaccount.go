@@ -16,6 +16,7 @@ package resources
 
 import (
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -59,9 +60,20 @@ func (serviceAccountTemplateFactory) Kind() string {
 
 // New returns ServiceAccount controller for new resource based on resource definition
 func (serviceAccountTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	serviceAccount := parametrizeResource(def.ServiceAccount, gc, serviceAccountParamFields).(*v1.ServiceAccount)
+	def.ServiceAccount = parametrizeResource(def.ServiceAccount, gc, serviceAccountParamFields).(*v1.ServiceAccount)
+	return createNewServiceAccount(def, c.ServiceAccounts())
+}
+
+func createNewServiceAccount(def client.ResourceDefinition, c corev1.ServiceAccountInterface) interfaces.Resource {
 	return report.SimpleReporter{
-		BaseResource: newServiceAccount{Base: Base{def.Meta}, ServiceAccount: serviceAccount, Client: c.ServiceAccounts()},
+		BaseResource: newServiceAccount{
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
+			ServiceAccount: def.ServiceAccount,
+			Client:         c,
+		},
 	}
 }
 
@@ -79,18 +91,24 @@ func (c newServiceAccount) Key() string {
 	return serviceAccountKey(c.ServiceAccount.Name)
 }
 
-func serviceAccountStatus(c corev1.ServiceAccountInterface, name string) (interfaces.ResourceStatus, error) {
-	_, err := c.Get(name)
+func (c newServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+	sa, err := c.Client.Get(c.ServiceAccount.Name)
 	if err != nil {
 		return interfaces.ResourceError, err
+	}
+
+	if !c.equalsToDefinition(sa) {
+		return interfaces.ResourceWaitingForUpgrade, nil
 	}
 
 	return interfaces.ResourceReady, nil
 }
 
-// Status returns ServiceAccount status
-func (c newServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return serviceAccountStatus(c.Client, c.ServiceAccount.Name)
+// equalsToDefinition checks if definition in object is compatible with provided object
+func (c newServiceAccount) equalsToDefinition(serviceAccountiface interface{}) bool {
+	serviceAccount := serviceAccountiface.(*v1.ServiceAccount)
+
+	return reflect.DeepEqual(serviceAccount.ObjectMeta, c.ServiceAccount.ObjectMeta) && reflect.DeepEqual(serviceAccount.Secrets, c.ServiceAccount.Secrets) && reflect.DeepEqual(serviceAccount.ImagePullSecrets, c.ServiceAccount.ImagePullSecrets)
 }
 
 // Create looks for the ServiceAccount in k8s and creates it if not present
@@ -115,7 +133,12 @@ func (c existingServiceAccount) Key() string {
 
 // Status returns ServiceAccount status
 func (c existingServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return serviceAccountStatus(c.Client, c.Name)
+	_, err := c.Client.Get(c.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	return interfaces.ResourceReady, nil
 }
 
 // Create looks for existing ServiceAccount and returns error if there is no such ServiceAccount

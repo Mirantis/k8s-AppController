@@ -17,6 +17,7 @@ package resources
 import (
 	"errors"
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -58,8 +59,22 @@ func (deploymentTemplateFactory) Kind() string {
 
 // New returns Deployment controller for new resource based on resource definition
 func (deploymentTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newDeployment := parametrizeResource(def.Deployment, gc, deploymentParamFields).(*extbeta1.Deployment)
-	return report.SimpleReporter{BaseResource: Deployment{Base: Base{def.Meta}, Deployment: newDeployment, Client: c.Deployments()}}
+	def.Deployment = parametrizeResource(def.Deployment, gc, deploymentParamFields).(*extbeta1.Deployment)
+	return createNewDeployment(def, c.Deployments())
+}
+
+func createNewDeployment(def client.ResourceDefinition, c v1beta1.DeploymentInterface) interfaces.Resource {
+	return report.SimpleReporter{
+		BaseResource: Deployment{
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
+			Deployment: def.Deployment,
+			Client:     c,
+		},
+	}
+
 }
 
 // NewExisting returns Deployment controller for existing resource by its name
@@ -71,12 +86,7 @@ func deploymentKey(name string) string {
 	return "deployment/" + name
 }
 
-func deploymentStatus(d v1beta1.DeploymentInterface, name string) (interfaces.ResourceStatus, error) {
-	deployment, err := d.Get(name)
-	if err != nil {
-		return interfaces.ResourceError, err
-	}
-
+func deploymentStatus(deployment *extbeta1.Deployment) (interfaces.ResourceStatus, error) {
 	if deployment.Status.UpdatedReplicas >= *deployment.Spec.Replicas && deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
 		return interfaces.ResourceReady, nil
 	}
@@ -90,7 +100,22 @@ func (d Deployment) Key() string {
 
 // Status returns Deployment status. interfaces.ResourceReady means that its dependencies can be created
 func (d Deployment) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return deploymentStatus(d.Client, d.Deployment.Name)
+	deployment, err := d.Client.Get(d.Deployment.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	if !d.equalsToDefinition(deployment) {
+		return interfaces.ResourceWaitingForUpgrade, nil
+	}
+
+	return deploymentStatus(deployment)
+}
+
+func (d Deployment) equalsToDefinition(deployment interface{}) bool {
+	dep := deployment.(*extbeta1.Deployment)
+
+	return reflect.DeepEqual(dep.ObjectMeta, d.Deployment.ObjectMeta) && reflect.DeepEqual(dep.Spec, d.Deployment.Spec)
 }
 
 // Create looks for the Deployment in K8s and creates it if not present
@@ -131,7 +156,11 @@ func (d ExistingDeployment) Key() string {
 
 // Status returns Deployment status. interfaces.ResourceReady means that its dependencies can be created
 func (d ExistingDeployment) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return deploymentStatus(d.Client, d.Name)
+	deployment, err := d.Client.Get(d.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+	return deploymentStatus(deployment)
 }
 
 // Create looks for existing Deployment and returns error if there is no such Deployment

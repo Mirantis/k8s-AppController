@@ -23,8 +23,14 @@ import (
 
 // TestDeploymentSuccessCheck checks status of ready Deployment
 func TestDeploymentSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeDeployment("notfail"))
-	status, err := deploymentStatus(c.Deployments(), "notfail")
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeDeployment(name)).Deployments()
+
+	def := MakeDefinition(mocks.MakeDeployment(name))
+	tested := createNewDeployment(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -37,8 +43,14 @@ func TestDeploymentSuccessCheck(t *testing.T) {
 
 // TestDeploymentFailUpdatedCheck checks status of not ready deployment
 func TestDeploymentFailUpdatedCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeDeployment("fail"))
-	status, err := deploymentStatus(c.Deployments(), "fail")
+	name := "fail"
+
+	client := mocks.NewClient(mocks.MakeDeployment(name)).Deployments()
+
+	def := MakeDefinition(mocks.MakeDeployment(name))
+	tested := createNewDeployment(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -51,8 +63,14 @@ func TestDeploymentFailUpdatedCheck(t *testing.T) {
 
 // TestDeploymentFailAvailableCheck checks status of not ready deployment
 func TestDeploymentFailAvailableCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeDeployment("failav"))
-	status, err := deploymentStatus(c.Deployments(), "failav")
+	name := "failav"
+
+	client := mocks.NewClient(mocks.MakeDeployment(name)).Deployments()
+
+	def := MakeDefinition(mocks.MakeDeployment(name))
+	tested := createNewDeployment(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -60,5 +78,28 @@ func TestDeploymentFailAvailableCheck(t *testing.T) {
 
 	if status != interfaces.ResourceNotReady {
 		t.Errorf("status should be `not ready`, is `%s` instead.", status)
+	}
+}
+
+// TestDeploymentUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestDeploymentUpgraded(t *testing.T) {
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeDeployment(name)).Deployments()
+
+	def := MakeDefinition(mocks.MakeDeployment(name))
+	//Make definition differ from client version
+	def.Deployment.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+	tested := createNewDeployment(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err != nil {
+		t.Error("Error found, expected nil")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

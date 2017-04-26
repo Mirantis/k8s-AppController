@@ -23,9 +23,10 @@ type ResourceStatus string
 
 // Possible ResourceStatus values
 const (
-	ResourceReady    ResourceStatus = "ready"
-	ResourceNotReady ResourceStatus = "not ready"
-	ResourceError    ResourceStatus = "error"
+	ResourceReady             ResourceStatus = "ready"
+	ResourceNotReady          ResourceStatus = "not ready"
+	ResourceError             ResourceStatus = "error"
+	ResourceWaitingForUpgrade ResourceStatus = "waiting for upgrade"
 )
 
 // DefaultFlowName is the name of default flow (main dependency graph)
