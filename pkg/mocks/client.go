@@ -15,6 +15,8 @@
 package mocks
 
 import (
+	"strings"
+
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 
@@ -23,9 +25,11 @@ import (
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
+	"k8s.io/client-go/testing"
+
 )
 
-func newClient(apiVersions *unversioned.APIGroupList, objects ...runtime.Object) client.Interface {
+func newClientWithFake(apiVersions *unversioned.APIGroupList, objects ...runtime.Object) (client.Interface, *testing.Fake) {
 	ns := "testing"
 	fakeClientset := fake.NewSimpleClientset(objects...)
 	apps := &alphafake.FakeApps{&fakeClientset.Fake}
@@ -39,7 +43,12 @@ func newClient(apiVersions *unversioned.APIGroupList, objects ...runtime.Object)
 		resDefs,
 		replicas,
 		ns,
-		apiVersions)
+		apiVersions), &fakeClientset.Fake
+}
+
+func newClient(apiVersions *unversioned.APIGroupList, objects ...runtime.Object) client.Interface {
+	c, _ := newClientWithFake(apiVersions, objects...)
+	return c
 }
 
 func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupList {
@@ -55,6 +64,22 @@ func NewClient(objects ...runtime.Object) client.Interface {
 	return newClient(makeVersionsList(v1beta1.SchemeGroupVersion), objects...)
 }
 
+func NewClientWithFake(objects ...runtime.Object) (client.Interface, *testing.Fake) {
+	return newClientWithFake(makeVersionsList(v1beta1.SchemeGroupVersion), objects...)
+}
+
 func NewClient1_4(objects ...runtime.Object) client.Interface {
 	return newClient(makeVersionsList(v1alpha1.SchemeGroupVersion), objects...)
+}
+
+func normalizeName(name string) string {
+	transformations := map[string]string{
+		"/": "-",
+		"_": "",
+		"$": "",
+	}
+	for key, value := range transformations {
+		name = strings.Replace(name, key, value, -1)
+	}
+	return name
 }

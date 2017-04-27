@@ -56,3 +56,44 @@ func TestLabelFlag(t *testing.T) {
 		t.Errorf("label selector should be equal to `%s`, is `%s` instead", val2, label)
 	}
 }
+
+// TestParseArg tests how key-value arguments are parsed in command line interface
+func TestParseArg(t *testing.T) {
+	table := []struct{
+		arg string
+		key string
+		value string
+		error bool
+	} {
+		{"x=y", "x", "y", false},
+		{"x:y", "x", "y", false},
+		{"x = y", "x", "y", false},
+		{"x = y", "x", "y", false},
+		{"x => y", "x", "y", false},
+		{" x = y ", "x", "y", false},
+		{"x_1=y_2", "x_1", "y_2", false},
+		{"x1: y2", "x1", "y2", false},
+		{"x1 y2", "x1", "y2", false},
+		{"  x1   y2  ", "x1", "y2", false},
+		{"a=b=c", "a", "b=c", false},
+		{"a", "", "", true},
+		{"", "", "", true},
+		{"=", "", "", true},
+		{"a=", "a", "", false},
+		{"=a", "", "", true},
+	}
+
+	for _, x := range table {
+		key, value, err := parseArg(x.arg)
+		if (err != nil) != x.error {
+			t.Errorf("unexpected error for arg %s", x.arg)
+		} else {
+			if key != x.key {
+				t.Errorf("wrong key parsed for arg %s: %s != %s", x.arg, x.key, key)
+			}
+			if value != x.value {
+				t.Errorf("wrong value parsed for arg %s: %s != %s", x.arg, x.value, value)
+			}
+		}
+	}
+}

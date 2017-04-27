@@ -24,9 +24,12 @@ import (
 )
 
 func MakeResourceDefinition(name string) *client.ResourceDefinition {
+	resName := normalizeName(name)
+
 	rd := &client.ResourceDefinition{
-		ObjectMeta: api.ObjectMeta{Name: strings.Replace(name, "/", "-", 1), Namespace: "testing"},
+		ObjectMeta: api.ObjectMeta{Name: resName, Namespace: "testing"},
 	}
+
 
 	splitted := strings.Split(name, "/")
 	objectType := splitted[0]

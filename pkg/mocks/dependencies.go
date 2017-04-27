@@ -15,18 +15,34 @@
 package mocks
 
 import (
+	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 
 	"k8s.io/client-go/pkg/api"
 )
 
-func MakeDependency(parent, child string) *client.Dependency {
+var counter int32 = 0
+
+func MakeDependency(parent, child string, label ...string) *client.Dependency {
+	labelMap := map[string]string{}
+	for _, l := range label {
+		parts := strings.Split(l, "=")
+		if len(parts) == 2 {
+			labelMap[parts[0]] = parts[1]
+		}
+	}
+
+	c := atomic.AddInt32(&counter, 1)
+
 	return &client.Dependency{
 		ObjectMeta: api.ObjectMeta{
-			Name:      strings.Replace(parent+"-"+child, "/", "-", -1),
-			Namespace: "testing"},
+			Name:      normalizeName(fmt.Sprintf("%s-%s-%d", parent, child, c)),
+			Namespace: "testing",
+			Labels:    labelMap,
+		},
 		Parent: parent,
 		Child:  child,
 	}
