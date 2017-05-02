@@ -81,11 +81,6 @@ func GetAcClient(namespace string) (client.Interface, error) {
 
 func DeleteNS(clientset *kubernetes.Clientset, namespace *v1.Namespace) {
 	defer GinkgoRecover()
-	pods, err := clientset.Pods(namespace.Name).List(v1.ListOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	for _, pod := range pods.Items {
-		clientset.Pods(namespace.Name).Delete(pod.Name, nil)
-	}
 	clientset.Namespaces().Delete(namespace.Name, nil)
 }
 
