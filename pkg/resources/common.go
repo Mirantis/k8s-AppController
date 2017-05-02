@@ -71,11 +71,6 @@ func (b Base) Meta(paramName string) interface{} {
 	return val
 }
 
-// StatusIsCacheable is a basic implemetation for all resources
-func (b Base) StatusIsCacheable(meta map[string]string) bool {
-	return true
-}
-
 // KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
 // structs implement interfaces.ResourceTemplate
 var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{}

@@ -124,17 +124,19 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 	}
 }
 
-// Status either returns cached copy of resource's status or retrieves it via Resource.Status
-// depending on presence of cached copy and resource's settings
+// Status either returns cached copy of resource's status or retrieves it via Resource.Status.
+// Only ResourceReady is cached to avoid inconsistency for resources that may go to failure state over time
+// so that if resource becomes ready it stays in this status for the whole deployment duration.
+// Errors returned by the resource are never cached, however if AC sees permanent problem with resource it may set the
+// error field
 func (sr *ScheduledResource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	sr.Lock()
 	defer sr.Unlock()
-	if (sr.status == interfaces.ResourceReady || sr.Error != nil) && sr.Resource.StatusIsCacheable(meta) {
+	if sr.status != "" || sr.Error != nil {
 		return sr.status, sr.Error
 	}
 	status, err := sr.Resource.Status(meta)
-	sr.Error = err
-	if sr.Resource.StatusIsCacheable(meta) {
+	if err == nil && status == interfaces.ResourceReady {
 		sr.status = status
 	}
 	return status, err

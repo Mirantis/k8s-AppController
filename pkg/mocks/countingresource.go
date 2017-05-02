@@ -80,11 +80,6 @@ func (c *CountingResource) NewExisting(name string, _ client.Interface) interfac
 	return report.SimpleReporter{BaseResource: NewResource(name, interfaces.ResourceReady)}
 }
 
-// StatusIsCacheable is true
-func (c *CountingResource) StatusIsCacheable(meta map[string]string) bool {
-	return true
-}
-
 // NewCountingResource creates new instance of CountingResource
 func NewCountingResource(key string, counter *CounterWithMemo, timeout time.Duration) *CountingResource {
 	return &CountingResource{
