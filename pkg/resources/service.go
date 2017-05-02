@@ -159,12 +159,6 @@ func NewService(service *v1.Service, client corev1.ServiceInterface, apiClient c
 	return report.SimpleReporter{BaseResource: Service{Base: Base{meta}, Service: service, Client: client, APIClient: apiClient}}
 }
 
-// StatusIsCacheable for service always returns false since the status must be
-// checked on each request and not be cached
-func (s Service) StatusIsCacheable(meta map[string]string) bool {
-	return false
-}
-
 type ExistingService struct {
 	Base
 	Name      string
@@ -188,12 +182,6 @@ func (s ExistingService) Status(meta map[string]string) (interfaces.ResourceStat
 // Delete deletes Service from the cluster
 func (s ExistingService) Delete() error {
 	return s.Client.Delete(s.Name, nil)
-}
-
-// StatusIsCacheable for service always returns false since the status must be
-// checked on each request and not be cached
-func (s ExistingService) StatusIsCacheable(meta map[string]string) bool {
-	return false
 }
 
 func NewExistingService(name string, client corev1.ServiceInterface) interfaces.Resource {
