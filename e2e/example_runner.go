@@ -57,19 +57,21 @@ func (f *ExamplesFramework) Create(fileName string) {
 	// try to serialize it into Unstructured or UnstructuredList
 	data, err := ioutil.ReadFile(fileName)
 	Expect(err).NotTo(HaveOccurred())
-	jsonData, err := utilyaml.ToJSON(data)
-	Expect(err).NotTo(HaveOccurred())
-	var ust runtime.Unstructured
-	err = runtime.DecodeInto(api.Codecs.UniversalDecoder(), jsonData, &ust)
-	if err != nil {
-		var ustList runtime.UnstructuredList
-		err = runtime.DecodeInto(api.Codecs.UniversalDecoder(), jsonData, &ustList)
+
+	utils.ForEachYamlDocument(data, func(doc []byte) {
+		jsonData, err := utilyaml.ToJSON(doc)
 		Expect(err).NotTo(HaveOccurred())
-		f.handleListCreation(&ustList)
-		return
-	}
-	f.handleItemCreation(&ust)
-	return
+		var ust runtime.Unstructured
+		err = runtime.DecodeInto(api.Codecs.UniversalDecoder(), jsonData, &ust)
+		if err != nil {
+			var ustList runtime.UnstructuredList
+			err = runtime.DecodeInto(api.Codecs.UniversalDecoder(), jsonData, &ustList)
+			Expect(err).NotTo(HaveOccurred())
+			f.handleListCreation(&ustList)
+			return
+		}
+		f.handleItemCreation(&ust)
+	})
 }
 
 func (f *ExamplesFramework) handleItemCreation(ust *runtime.Unstructured) {
