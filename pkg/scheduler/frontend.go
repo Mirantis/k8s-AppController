@@ -34,6 +34,9 @@ type Scheduler struct {
 
 // New creates and initializes instance of Scheduler
 func New(client client.Interface, selector labels.Selector, concurrency int) interfaces.Scheduler {
+	if selector == nil {
+		selector, _ = labels.Parse("")
+	}
 	return &Scheduler{
 		client:      client,
 		selector:    selector,
@@ -146,6 +149,9 @@ func (sched *Scheduler) CreateDeployment(options interfaces.DependencyGraphOptio
 
 // Deploy deploys the dependency graph either in-place or by creating deployment task for a standalone process
 func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOptions, inplace bool, stopChan <-chan struct{}) (string, error) {
+	if options.FlowName == "" {
+		options.FlowName = interfaces.DefaultFlowName
+	}
 	var task string
 	if inplace {
 		log.Println("Going to deploy flow:", options.FlowName)
