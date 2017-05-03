@@ -120,7 +120,7 @@ func (f *ExamplesFramework) VerifyStatus(task string, options interfaces.Depende
 			utils.Logf("STATUS: %s\n", status)
 			return status == interfaces.Finished || status == interfaces.Empty
 		},
-		240*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(depReport.AsText(0), "\n"))
+		300*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(depReport.AsText(0), "\n"))
 }
 
 func (f *ExamplesFramework) CreateRunAndVerify(exampleName string, options interfaces.DependencyGraphOptions) {

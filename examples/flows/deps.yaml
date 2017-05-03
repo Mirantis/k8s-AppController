@@ -1,0 +1,49 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+parent: flow/DEFAULT
+child: flow/test-flow
+args:
+  prefix: a
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+parent: flow/DEFAULT
+child: pod/test-pod
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+parent: pod/test-pod
+child: flow/test-flow
+args:
+  prefix: b
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+parent: flow/test-flow
+child: job/test-job
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: test
+parent: flow/test-flow
+child: pod/$prefix-pod-$AC_NAME
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: test
+parent: pod/$prefix-pod-$AC_NAME
+child: job/$prefix-job-$AC_NAME
