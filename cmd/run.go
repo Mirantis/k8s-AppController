@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/pkg/labels"
 )
 
-var argRe, _ = regexp.Compile(`\s*(\w+)\W+(.*)`)
+var argRe = regexp.MustCompile(`\s*(\w+)\W+(.*)`)
 
 func run(cmd *cobra.Command, args []string) {
 	concurrency, err := cmd.Flags().GetInt("concurrency")
@@ -146,7 +146,7 @@ func getLabelSelector(cmd *cobra.Command) (string, error) {
 // InitRunCommand returns cobra command for creating AppController graph deployment
 func InitRunCommand() (*cobra.Command, error) {
 	run := &cobra.Command{
-		Use:   "run",
+		Use:   "run [flow-name]",
 		Short: "Create deployment of AppController graph flow",
 		Long:  "Create deployment of AppController graph flow",
 		Run:   run,

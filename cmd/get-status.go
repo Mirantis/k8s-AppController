@@ -46,12 +46,17 @@ func getStatus(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	var url string
-	if len(args) > 0 {
-		url = args[0]
+	flowName := interfaces.DefaultFlowName
+
+	if len(args) > 1 {
+		log.Fatal("Too many command line arguments")
 	}
-	if url == "" {
-		url = os.Getenv("KUBERNETES_CLUSTER_URL")
+	if len(args) == 1 {
+		flowName = args[0]
+	}
+	url, err := cmd.Flags().GetString("url")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	c, err := client.New(url)
@@ -62,12 +67,36 @@ func getStatus(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sched := scheduler.New(c, sel, 0)
-	graph, err := sched.BuildDependencyGraph(interfaces.DependencyGraphOptions{})
+	anyArgs, err := cmd.Flags().GetBool("undeclared-args")
 	if err != nil {
 		log.Fatal(err)
 	}
-	status, report := graph.GetStatus()
+	flowArgs, err := cmd.Flags().GetStringArray("arg")
+	if err != nil {
+		log.Fatal(err)
+	}
+	flowArgMap := map[string]string{}
+	for _, val := range flowArgs {
+		key, value, err := parseArg(val)
+		if err != nil {
+			log.Fatal(err)
+		}
+		flowArgMap[key] = value
+	}
+
+	log.Println("Using label selector:", labelSelector)
+
+	options := interfaces.DependencyGraphOptions{
+		FlowName:            flowName,
+		ExportedOnly:        true,
+		Args:                flowArgMap,
+		AllowUndeclaredArgs: anyArgs,
+	}
+
+	status, report, err := scheduler.GetStatus(c, sel, options)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if getJSON {
 		data, err := json.Marshal(report)
 		if err != nil {
@@ -89,7 +118,7 @@ func getStatus(cmd *cobra.Command, args []string) {
 func InitGetStatusCommand() (*cobra.Command, error) {
 	var err error
 	run := &cobra.Command{
-		Use:   "get-status",
+		Use:   "get-status [flow-name]",
 		Short: "Get status of deployment",
 		Long:  "Get status of deployment",
 		Run:   getStatus,
@@ -100,5 +129,10 @@ func InitGetStatusCommand() (*cobra.Command, error) {
 	var getJSON, report bool
 	run.Flags().BoolVarP(&getJSON, "json", "j", false, "Output JSON")
 	run.Flags().BoolVarP(&report, "report", "r", false, "Get human-readable full report")
+	run.Flags().String("url", os.Getenv("KUBERNETES_CLUSTER_URL"),
+		"URL of the Kubernetes cluster. Overrides KUBERNETES_CLUSTER_URL env variable in AppController pod.")
+	run.Flags().Bool("undeclared-args", false, "Allow undeclared arguments")
+	run.Flags().StringArray("arg", []string{}, "Flow arguments (key=value)")
+
 	return run, err
 }
