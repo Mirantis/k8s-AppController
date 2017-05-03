@@ -88,7 +88,6 @@ func getKeys(m map[string]interfaces.ResourceTemplate) (keys []string) {
 
 func resourceListStatus(resources []interfaces.BaseResource) (interfaces.ResourceStatus, error) {
 	for _, r := range resources {
-		log.Printf("Checking status for resource %s", r.Key())
 		status, err := r.Status(nil)
 		if err != nil {
 			return interfaces.ResourceError, err

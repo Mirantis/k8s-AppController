@@ -173,3 +173,29 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 	log.Println("Done")
 	return task, nil
 }
+
+// GetStatus returns deployment status
+func GetStatus(client client.Interface, selector labels.Selector,
+	options interfaces.DependencyGraphOptions) (interfaces.DeploymentStatus, interfaces.DeploymentReport, error) {
+
+	silent := options.Silent
+	if options.FlowName == "" {
+		options.FlowName = interfaces.DefaultFlowName
+	}
+	options.ReplicaCount = 0
+	options.Silent = true
+	options.FixedNumberOfReplicas = false
+	options.MinReplicaCount = 0
+	options.MaxReplicaCount = 0
+
+	if !silent {
+		log.Println("Getting status of flow", options.FlowName)
+	}
+	sched := New(client, selector, 0)
+	graph, err := sched.BuildDependencyGraph(options)
+	if err != nil {
+		return interfaces.Empty, nil, err
+	}
+	status, report := graph.GetStatus()
+	return status, report, nil
+}
