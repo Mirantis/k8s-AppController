@@ -1,0 +1,13 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Flow
+metadata:
+  name: test-flow
+
+exported: true
+construction:
+  flow: test
+
+parameters:
+  prefix:
+    description: flow resources prefix
+
