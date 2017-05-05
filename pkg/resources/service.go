@@ -29,6 +29,10 @@ import (
 	"k8s.io/client-go/pkg/labels"
 )
 
+var serviceParamFields = []string{
+	"Spec.Selector",
+}
+
 type Service struct {
 	Base
 	Service   *v1.Service
@@ -53,7 +57,7 @@ func (serviceTemplateFactory) Kind() string {
 
 // New returns Service controller for new resource based on resource definition
 func (serviceTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	service := parametrizeResource(def.Service, gc).(*v1.Service)
+	service := parametrizeResource(def.Service, gc, serviceParamFields).(*v1.Service)
 	return report.SimpleReporter{BaseResource: Service{Base: Base{def.Meta}, Service: service, Client: c.Services(), APIClient: c}}
 }
 

@@ -25,6 +25,11 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+var serviceAccountParamFields = []string{
+	"Secrets",
+	"ImagePullSecrets",
+}
+
 type ServiceAccount struct {
 	Base
 	ServiceAccount *v1.ServiceAccount
@@ -54,7 +59,7 @@ func (serviceAccountTemplateFactory) Kind() string {
 
 // New returns ServiceAccount controller for new resource based on resource definition
 func (serviceAccountTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	serviceAccount := parametrizeResource(def.ServiceAccount, gc).(*v1.ServiceAccount)
+	serviceAccount := parametrizeResource(def.ServiceAccount, gc, serviceAccountParamFields).(*v1.ServiceAccount)
 	return report.SimpleReporter{
 		BaseResource: ServiceAccount{Base: Base{def.Meta}, ServiceAccount: serviceAccount, Client: c.ServiceAccounts()},
 	}

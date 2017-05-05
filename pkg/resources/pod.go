@@ -25,6 +25,13 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+var podParamFields = []string{
+	"Spec.Containers.Env",
+	"Spec.Containers.Name",
+	"Spec.InitContainers.Env",
+	"Spec.InitContainers.Name",
+}
+
 type Pod struct {
 	Base
 	Pod    *v1.Pod
@@ -48,9 +55,7 @@ func (podTemplateFactory) Kind() string {
 
 // New returns Pod controller for new resource based on resource definition
 func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	pod := parametrizeResource(def.Pod, gc,
-		"Spec.Containers.Env",
-		"Spec.InitContainers.Env").(*v1.Pod)
+	pod := parametrizeResource(def.Pod, gc, podParamFields).(*v1.Pod)
 	return newPod(pod, c.Pods(), def.Meta)
 }
 
