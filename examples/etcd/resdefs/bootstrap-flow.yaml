@@ -1,0 +1,17 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Flow
+metadata:
+  name: etcd-bootstrap
+
+exported: true
+construction:
+  flow: etcd-bootstrap
+destruction:
+  flow: cleanup
+
+replicaSpace: etcd-$clusterName-node
+
+parameters:
+  clusterName:
+    description: etcd cluster name
+    default: etcd

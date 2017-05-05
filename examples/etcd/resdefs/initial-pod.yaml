@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: initial-etcd-pod-$AC_NAME
+  labels:
+    app: etcd
+    etcd_node: etcd-$AC_NAME
+    cluster: $clusterName
+spec:
+  containers:
+  - image: etcd-custom
+    imagePullPolicy: IfNotPresent
+    name: etcd-$AC_NAME
+    env:
+    - name: HOSTNAME
+      value: etcd-$AC_NAME
+    - name: CLUSTERNAME
+      value: $clusterName
+    command:
+    - "/bin/sh"
+    - "-ec"
+    - |
+      INITIAL_CLUSTER=$(kubectl get services -l=app=etcd,serviceRole=node,cluster="$CLUSTERNAME" --template \
+         '{{range .items}}{{.metadata.name}}=http://{{.metadata.name}}{{":2380\n"}}{{end}}' | awk -F'\n' '{if(NR == 1) {printf $0} else {printf ","$0}}')
+      exec etcd --name $HOSTNAME \
+        --initial-advertise-peer-urls "http://$HOSTNAME:2380" \
+        --listen-peer-urls http://0.0.0.0:2380 \
+        --listen-client-urls http://0.0.0.0:2379 \
+        --advertise-client-urls "http://$HOSTNAME:2379" \
+        --initial-cluster "$INITIAL_CLUSTER" \
+        --initial-cluster-state new
+    ports:
+    - containerPort: 2379
+      name: client
+      protocol: TCP
+    - containerPort: 2380
+      name: server
+      protocol: TCP
+  restartPolicy: Never

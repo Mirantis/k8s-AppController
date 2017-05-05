@@ -1,0 +1,35 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-bootstrap
+parent: flow/etcd-bootstrap
+child: service/etcd-$AC_NAME
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-bootstrap
+parent: service/etcd-$AC_NAME
+child: service/$clusterName-client
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-bootstrap
+parent: service/$clusterName-client
+child: pod/initial-etcd-pod-$AC_NAME
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: cleanup
+parent: flow/etcd-bootstrap
+child: job/delete-node-$AC_NAME-job
