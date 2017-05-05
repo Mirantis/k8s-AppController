@@ -59,6 +59,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		SchemeGroupVersion,
 		&Dependency{},
 		&DependencyList{},
+		&Replica{},
+		&ReplicaList{},
 	)
 	return nil
 }
@@ -94,6 +96,7 @@ type Interface interface {
 
 	Dependencies() DependenciesInterface
 	ResourceDefinitions() ResourceDefinitionsInterface
+	Replicas() ReplicasInterface
 
 	IsEnabled(version unversioned.GroupVersion) bool
 	Namespace() string
@@ -104,6 +107,7 @@ type Client struct {
 	alphaApps           v1alpha1.AppsInterface
 	dependencies        DependenciesInterface
 	resourceDefinitions ResourceDefinitionsInterface
+	replicas            ReplicasInterface
 	namespace           string
 	apiVersions         *unversioned.APIGroupList
 }
@@ -179,7 +183,12 @@ func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 	return c.clientset.Core().PersistentVolumeClaims(c.namespace)
 }
 
-// Namespace returns current namespace for the client
+// Replicas return interface to access flow deployments
+func (c Client) Replicas() ReplicasInterface {
+	return c.replicas
+}
+
+// Returns AC namespace
 func (c Client) Namespace() string {
 	return c.namespace
 }
@@ -211,6 +220,10 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+	replicas, err := newReplicas(c, namespace)
+	if err != nil {
+		return nil, err
+	}
 	cl, err := kubernetes.NewForConfig(&c)
 	if err != nil {
 		return nil, err
@@ -224,7 +237,7 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 		return nil, err
 	}
 
-	return NewClient(cl, apps, deps, resdefs, namespace, versions), nil
+	return NewClient(cl, apps, deps, resdefs, replicas, namespace, versions), nil
 }
 
 // Client class constructor
@@ -233,6 +246,7 @@ func NewClient(
 	alphaApps v1alpha1.AppsInterface,
 	dependencies DependenciesInterface,
 	resourceDefinitions ResourceDefinitionsInterface,
+	replicas ReplicasInterface,
 	namespace string,
 	apiVersions *unversioned.APIGroupList) Interface {
 
@@ -241,6 +255,7 @@ func NewClient(
 		alphaApps:           alphaApps,
 		dependencies:        dependencies,
 		resourceDefinitions: resourceDefinitions,
+		replicas:            replicas,
 		namespace:           namespace,
 		apiVersions:         apiVersions,
 	}

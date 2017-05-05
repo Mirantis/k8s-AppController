@@ -42,6 +42,10 @@ func deploy(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	deleteExternal, err := cmd.Flags().GetBool("delete-external")
+	if err != nil {
+		log.Fatal(err)
+	}
 	url, err := cmd.Flags().GetString("url")
 	if err != nil {
 		log.Fatal(err)
@@ -64,8 +68,6 @@ func deploy(cmd *cobra.Command, args []string) {
 		}
 		flowArgMap[key] = value
 	}
-	log.Println("Using concurrency:", concurrency)
-
 	flowName := interfaces.DefaultFlowName
 
 	if len(args) > 1 {
@@ -85,16 +87,36 @@ func deploy(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	replicasString, err := cmd.Flags().GetString("replicas")
+	if err != nil {
+		log.Fatal(err)
+	}
+	replicasString = strings.TrimSpace(replicasString)
+	replicas := 0
+	minReplicaCount := 1
+	if replicasString != "" {
+		replicas, err = strconv.Atoi(replicasString)
+		if err != nil {
+			log.Fatal("Invalid replica count format")
+		}
+		minReplicaCount = 0
+	}
+
 	log.Println("Using concurrency:", concurrency)
 	log.Println("Using label selector:", labelSelector)
 
 	sched := scheduler.New(c, sel, concurrency)
 	options := interfaces.DependencyGraphOptions{
-		FlowName:            flowName,
-		ExportedOnly:        true,
-		Args:                flowArgMap,
-		AllowUndeclaredArgs: anyArgs,
+		FlowName:                     flowName,
+		ExportedOnly:                 true,
+		Args:                         flowArgMap,
+		AllowUndeclaredArgs:          anyArgs,
+		ReplicaCount:                 replicas,
+		FixedNumberOfReplicas:        replicasString != "" && !strings.ContainsAny(replicasString, "+-"),
+		MinReplicaCount:              minReplicaCount,
+		AllowDeleteExternalResources: deleteExternal,
 	}
+
 	log.Println("Going to deploy flow:", flowName)
 	depGraph, err := sched.BuildDependencyGraph(options)
 	if err != nil {
@@ -132,13 +154,12 @@ func InitRunCommand() (*cobra.Command, error) {
 		Run:   deploy,
 	}
 
-	var labelSelector string
-	run.Flags().StringVarP(&labelSelector, "label", "l", "", "Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
+	run.Flags().StringP("label", "l", "",
+		"Label selector. Overrides KUBERNETES_AC_LABEL_SELECTOR env variable in AppController pod.")
 
 	run.Flags().Bool("undeclared-args", false, "Allow undeclared arguments")
 
-	var args []string
-	run.Flags().StringArrayVar(&args, "arg", []string{}, "Flow arguments (key=value)")
+	run.Flags().StringArray("arg", []string{}, "Flow arguments (key=value)")
 
 	concurrencyString := os.Getenv("KUBERNETES_AC_CONCURRENCY")
 
@@ -152,11 +173,13 @@ func InitRunCommand() (*cobra.Command, error) {
 			concurrencyDefault = 0
 		}
 	}
-	var concurrency int
-	run.Flags().IntVarP(&concurrency, "concurrency", "c", concurrencyDefault, "concurrency")
+	run.Flags().IntP("concurrency", "c", concurrencyDefault, "concurrency")
 
-	var clusterUrl string
-	run.Flags().StringVar(&clusterUrl, "url", os.Getenv("KUBERNETES_CLUSTER_URL"),
+	run.Flags().String("url", os.Getenv("KUBERNETES_CLUSTER_URL"),
 		"URL of the Kubernetes cluster. Overrides KUBERNETES_CLUSTER_URL env variable in AppController pod.")
+
+	run.Flags().StringP("replicas", "n", "", "number of flow replicas: [+|-]number")
+	run.Flags().Bool("delete-external", false, "permit delete of external resources")
+
 	return run, err
 }

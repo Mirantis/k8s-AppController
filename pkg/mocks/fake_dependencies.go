@@ -23,7 +23,7 @@ import (
 	"k8s.io/client-go/testing"
 )
 
-// FakeFlows implements DependenciesInterface
+// FakeDeps implements DependenciesInterface
 type FakeDeps struct {
 	fake *testing.Fake
 	ns   string

@@ -32,5 +32,8 @@ type DataExtractor struct {
 }
 
 func normalizeName(name string) string {
-	return strings.ToLower(strings.Replace(name, "$", "", -1))
+	for k, v := range map[string]string{"$": "", "_": "-"} {
+		name = strings.Replace(name, k, v, -1)
+	}
+	return strings.ToLower(name)
 }

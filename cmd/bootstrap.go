@@ -115,7 +115,7 @@ func bootstrap(cmd *cobra.Command, args []string) {
 
 	checkVersion(c)
 
-	manifests := [...]string{"dependencies.json", "resdefs.json"}
+	manifests := [...]string{"dependencies.json", "resdefs.json", "replicas.json"}
 
 	for _, manifest := range manifests {
 		dependency := getDependencyFromPath(thirdPartyResourcesPath + "/" + manifest)

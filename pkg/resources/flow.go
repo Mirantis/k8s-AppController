@@ -15,10 +15,9 @@
 package resources
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	"sync/atomic"
+	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -35,8 +34,6 @@ type Flow struct {
 }
 
 type flowTemplateFactory struct{}
-
-var counter uint32
 
 // Returns wrapped resource name if it was a flow
 func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) string {
@@ -55,13 +52,19 @@ func (flowTemplateFactory) Kind() string {
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newFlow := parametrizeResource(def.Flow, gc).(*client.Flow)
 
+	deps := gc.Dependencies()
+	var depName string
+	if len(deps) > 0 {
+		depName = strings.Replace(deps[0].Name, deps[0].GenerateName, "", 1)
+	}
+
 	return report.SimpleReporter{
 		BaseResource: &Flow{
 			Base:          Base{def.Meta},
 			flow:          newFlow,
 			context:       gc,
 			status:        interfaces.ResourceNotReady,
-			generatedName: fmt.Sprintf("%s-%v", newFlow.Name, atomic.AddUint32(&counter, 1)),
+			generatedName: fmt.Sprintf("%s-%s%s", newFlow.Name, depName, gc.GetArg("AC_NAME")),
 			originalName:  def.Flow.Name,
 		}}
 }
@@ -77,8 +80,7 @@ func (f Flow) Key() string {
 	return "flow/" + f.generatedName
 }
 
-// Triggers the flow deployment like it was the resource creation
-func (f *Flow) Create() error {
+func (f *Flow) buildDependencyGraph(decreaseReplicaCount bool) (interfaces.DependencyGraph, error) {
 	args := map[string]string{}
 	for arg := range f.flow.Parameters {
 		val := f.context.GetArg(arg)
@@ -87,10 +89,36 @@ func (f *Flow) Create() error {
 		}
 	}
 	options := interfaces.DependencyGraphOptions{
-		FlowName: f.originalName,
-		Args:     args,
+		FlowName:         f.originalName,
+		Args:             args,
+		FlowInstanceName: f.generatedName,
 	}
+
+	if decreaseReplicaCount {
+		// Delete one replica
+		options.ReplicaCount = -1
+	} else {
+		// Recheck existing replica resources or create one replica if none exist
+		options.ReplicaCount = 0
+		options.MinReplicaCount = 1
+	}
+
 	graph, err := f.context.Scheduler().BuildDependencyGraph(options)
+	if err != nil {
+		return nil, err
+	}
+	return graph, nil
+
+}
+
+// Create triggers the flow deployment
+// Since flow doesn't have any state of its own call to Create() doesn't produce any new Kubernetes resources
+// on its own, but instead triggers deployment of resources that belong to the flow
+// Create ensures that at least one flow replica exists. It will create first flow replica upon first call, but
+// all subsequent calls will do nothing but check the state of the resources from this replica (and recreate them,
+// if they were deleted manually between the calls), which makes Create() be idempotent
+func (f *Flow) Create() error {
+	graph, err := f.buildDependencyGraph(false)
 	if err != nil {
 		return err
 	}
@@ -102,9 +130,19 @@ func (f *Flow) Create() error {
 	return nil
 }
 
-// Deletes resources allocated to the flow
+// Delete releases resources allocated to the last flow replica (i.e. decreases replica count by 1)
+// Note, that unlike Create() method Delete() is not idempotent. However, it doesn't create any issues since
+// Delete is called during dlow destruction which can happen only once while Create ensures that at least one flow
+// replica exists, and as such can be called any number of times
 func (f Flow) Delete() error {
-	return errors.New("Not supported yet")
+	graph, err := f.buildDependencyGraph(true)
+	if err != nil {
+		return err
+	}
+	stopChan := make(chan struct{})
+	graph.Deploy(stopChan)
+	f.status = interfaces.ResourceReady
+	return nil
 }
 
 // Current status of the flow deployment

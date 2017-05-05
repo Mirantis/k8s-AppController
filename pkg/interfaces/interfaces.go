@@ -75,13 +75,21 @@ type GraphContext interface {
 	Scheduler() Scheduler
 	GetArg(string) string
 	Graph() DependencyGraph
+	Dependencies() []client.Dependency
 }
 
 type DependencyGraphOptions struct {
-	FlowName            string
-	Args                map[string]string
-	ExportedOnly        bool
-	AllowUndeclaredArgs bool
+	FlowName                     string
+	Args                         map[string]string
+	ExportedOnly                 bool
+	AllowUndeclaredArgs          bool
+	ReplicaCount                 int
+	FixedNumberOfReplicas        bool
+	MinReplicaCount              int
+	MaxReplicaCount              int
+	AllowDeleteExternalResources bool
+	FlowInstanceName             string
+	Silent                       bool
 }
 
 type Scheduler interface {
