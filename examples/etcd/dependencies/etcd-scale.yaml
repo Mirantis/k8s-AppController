@@ -1,0 +1,36 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-scale
+parent: flow/etcd-scale
+child: job/add-etcd-node-$AC_NAME-job
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-scale
+parent: job/add-etcd-node-$AC_NAME-job
+child: service/etcd-$AC_NAME
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-scale
+parent: service/etcd-$AC_NAME
+child: pod/etcd-pod-$AC_NAME
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: cleanup
+parent: flow/etcd-scale
+child: job/delete-node-$AC_NAME-job
+
