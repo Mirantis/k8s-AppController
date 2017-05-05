@@ -26,6 +26,14 @@ import (
 	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
+var daemonSetParamFields = []string{
+	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.Containers.Env",
+	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.Spec.InitContainers.Env",
+	"Spec.Template.ObjectMeta",
+}
+
 // DaemonSet is wrapper for K8s DaemonSet object
 type DaemonSet struct {
 	Base
@@ -50,9 +58,7 @@ func (daemonSetTemplateFactory) Kind() string {
 
 // New returns new DaemonSet based on resource definition
 func (d daemonSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newDaemonSet := parametrizeResource(def.DaemonSet, gc,
-		"Spec.Template.Spec.Containers.Env",
-		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.DaemonSet)
+	newDaemonSet := parametrizeResource(def.DaemonSet, gc, daemonSetParamFields).(*extbeta1.DaemonSet)
 	return NewDaemonSet(newDaemonSet, c.DaemonSets(), def.Meta)
 }
 

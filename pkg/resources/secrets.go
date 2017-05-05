@@ -25,6 +25,11 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+var secretParamFields = []string{
+	"Data.Keys",
+	"StringData.Keys",
+}
+
 type Secret struct {
 	Base
 	Secret *v1.Secret
@@ -53,7 +58,7 @@ func (secretTemplateFactory) Kind() string {
 }
 
 func (secretTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewSecret(parametrizeResource(def.Secret, gc).(*v1.Secret), ci.Secrets(), def.Meta)
+	return NewSecret(parametrizeResource(def.Secret, gc, secretParamFields).(*v1.Secret), ci.Secrets(), def.Meta)
 }
 
 func (secretTemplateFactory) NewExisting(name string, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {

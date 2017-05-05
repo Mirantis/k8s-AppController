@@ -26,6 +26,14 @@ import (
 	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
+var replicaSetParamFields = []string{
+	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.Containers.Env",
+	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.Spec.InitContainers.Env",
+	"Spec.Template.ObjectMeta",
+}
+
 const SuccessFactorKey = "success_factor"
 
 type ReplicaSet struct {
@@ -51,9 +59,7 @@ func (replicaSetTemplateFactory) Kind() string {
 
 // New returns new ReplicaSet based on resource definition
 func (replicaSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newReplicaSet := parametrizeResource(def.ReplicaSet, gc,
-		"Spec.Template.Spec.Containers.Env",
-		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.ReplicaSet)
+	newReplicaSet := parametrizeResource(def.ReplicaSet, gc, replicaSetParamFields).(*extbeta1.ReplicaSet)
 	return NewReplicaSet(newReplicaSet, c.ReplicaSets(), def.Meta)
 }
 
