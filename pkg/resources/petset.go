@@ -24,6 +24,13 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
+var petSetParamFields = []string{
+	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.Containers.Env",
+	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.Spec.InitContainers.Env",
+}
+
 // PetSet is a wrapper for K8s PetSet object
 type PetSet struct {
 	Base
@@ -49,9 +56,7 @@ func (petSetTemplateFactory) Kind() string {
 
 // New returns new PetSet based on resource definition
 func (petSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newPetSet := parametrizeResource(def.PetSet, gc,
-		"Spec.Template.Spec.Containers.Env",
-		"Spec.Template.Spec.InitContainers.Env").(*appsalpha1.PetSet)
+	newPetSet := parametrizeResource(def.PetSet, gc, petSetParamFields).(*appsalpha1.PetSet)
 	return NewPetSet(newPetSet, c.PetSets(), c, def.Meta)
 }
 

@@ -50,7 +50,7 @@ func (flowTemplateFactory) Kind() string {
 
 // New returns a new object wrapped as Resource
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newFlow := parametrizeResource(def.Flow, gc, "*").(*client.Flow)
+	newFlow := parametrizeResource(def.Flow, gc, []string{"*"}).(*client.Flow)
 
 	deps := gc.Dependencies()
 	var depName string

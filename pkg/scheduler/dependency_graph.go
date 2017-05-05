@@ -286,6 +286,7 @@ func (sched Scheduler) newResource(kind, name string, resDefs map[string]client.
 	if !silent {
 		log.Printf("Resource definition for '%s/%s' not found, so it is expected to exist already", kind, name)
 	}
+	name = copier.EvaluateString(name, getArgFunc(gc))
 	r := resourceTemplate.NewExisting(name, sched.client, *gc)
 	if r == nil {
 		return nil, true, fmt.Errorf("existing resource %s/%s cannot be reffered", kind, name)
@@ -312,6 +313,16 @@ func NewDependencyGraph(sched *Scheduler, options interfaces.DependencyGraphOpti
 	}
 }
 
+func getArgFunc(gc *GraphContext) func(string) string {
+	return func(p string) string {
+		value := gc.GetArg(p)
+		if value == "" {
+			return "$" + p
+		}
+		return value
+	}
+}
+
 func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependencies []client.Dependency, replica string) *GraphContext {
 	context := &GraphContext{
 		scheduler:    sched,
@@ -324,7 +335,7 @@ func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependencies
 	context.args = make(map[string]string)
 	for _, dependency := range dependencies {
 		for key, value := range dependency.Args {
-			context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
+			context.args[key] = copier.EvaluateString(value, getArgFunc(parentContext))
 		}
 	}
 	return context
@@ -411,7 +422,14 @@ func getReplicaSpace(flow *client.Flow, options interfaces.DependencyGraphOption
 			name = flow.Name
 		}
 	}
-	return name
+	return copier.EvaluateString(name,
+		func(p string) string {
+			value := options.Args[p]
+			if value == "" {
+				return "$" + p
+			}
+			return value
+		})
 }
 
 // allocateReplicas allocates Replica objects for either creation or deletion.

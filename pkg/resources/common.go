@@ -206,7 +206,7 @@ func GetStringMeta(r interfaces.BaseResource, paramName string, defaultValue str
 }
 
 // Substitutes flow arguments into resource structure. Returns modified copy of the resource
-func parametrizeResource(resource interface{}, context interfaces.GraphContext, replaceIn ...string) interface{} {
+func parametrizeResource(resource interface{}, context interfaces.GraphContext, replaceIn []string) interface{} {
 	return copier.CopyWithReplacements(resource, func(p string) string {
 		value := context.GetArg(p)
 		if value == "" {

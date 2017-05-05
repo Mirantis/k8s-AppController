@@ -25,6 +25,10 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+var persistentVolumeClaimParamFields = []string{
+	"Spec",
+}
+
 type PersistentVolumeClaim struct {
 	Base
 	PersistentVolumeClaim *v1.PersistentVolumeClaim
@@ -48,7 +52,7 @@ func (persistentVolumeClaimTemplateFactory) Kind() string {
 
 // New returns new PersistentVolumeClaim based on resource definition
 func (persistentVolumeClaimTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewPersistentVolumeClaim(parametrizeResource(def.PersistentVolumeClaim, gc).(*v1.PersistentVolumeClaim),
+	return NewPersistentVolumeClaim(parametrizeResource(def.PersistentVolumeClaim, gc, persistentVolumeClaimParamFields).(*v1.PersistentVolumeClaim),
 		c.PersistentVolumeClaims(), def.Meta)
 }
 
