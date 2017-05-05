@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: etcd
+    etcd_node: etcd-$AC_NAME
+    cluster: $clusterName
+    serviceRole: node
+  name: etcd-$AC_NAME
+spec:
+  ports:
+  - name: client
+    port: 2379
+    protocol: TCP
+    targetPort: 2379
+  - name: server
+    port: 2380
+    protocol: TCP
+    targetPort: 2380
+  selector:
+    app: etcd
+    etcd_node: etcd-$AC_NAME
+    cluster: $clusterName
