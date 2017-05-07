@@ -714,16 +714,21 @@ func getResourceDestructors(construction, destruction *DependencyGraph, replicaM
 				}
 			}
 			if resourceCanBeDeleted {
-				destructors = append(destructors, getDestructorFunc(resource))
+				destructors = append(destructors, getDestructorFunc(resource, failed))
 			}
 		}
 	}
 	return destructors
 }
 
-func getDestructorFunc(resource *ScheduledResource) func() bool {
+func getDestructorFunc(resource *ScheduledResource, failed *chan *ScheduledResource) func() bool {
 	return func() bool {
-		return deleteResource(resource) != nil
+		res := deleteResource(resource)
+		if res != nil {
+			*failed <- resource
+			return false
+		}
+		return true
 	}
 }
 
@@ -731,8 +736,11 @@ func getDestructorFunc(resource *ScheduledResource) func() bool {
 func deleteReplicaResources(sched *Scheduler, destructors []func() bool, replicaMap map[string]client.Replica, failed *chan *ScheduledResource) {
 	*failed = make(chan *ScheduledResource, len(destructors))
 	defer close(*failed)
-	runConcurrently(destructors, sched.concurrency)
+	deleted := runConcurrently(destructors, sched.concurrency)
 	failedReplicas := map[string]bool{}
+	if !deleted {
+		log.Println("Some of resources were not deleted")
+	}
 
 readFailed:
 	for {
@@ -761,11 +769,10 @@ readFailed:
 			}
 			return true
 		})
-
 	}
 
-	if deleteReplicaFuncs != nil {
-		runConcurrently(deleteReplicaFuncs, sched.concurrency)
+	if deleteReplicaFuncs != nil && !runConcurrently(deleteReplicaFuncs, sched.concurrency){
+		log.Println("Some of flow replicas were not deleted")
 	}
 }
 

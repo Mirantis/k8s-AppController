@@ -436,11 +436,11 @@ func deleteResource(resource *ScheduledResource) error {
 		log.Printf("%s flow: Deleting resource %s", resource.Context.flow.Name, resource.Key())
 		err := resource.Delete()
 		if err != nil {
-			log.Println(err)
 			statusError, ok := err.(*errors.StatusError)
 			if ok && statusError.Status().Reason == unversioned.StatusReasonNotFound {
 				return nil
 			}
+			log.Printf("cannot delete resource %s: %v", resource.Key(), err)
 		}
 		return err
 	} else {
