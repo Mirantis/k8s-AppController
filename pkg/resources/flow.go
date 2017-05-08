@@ -35,7 +35,7 @@ type Flow struct {
 
 type flowTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a flow
+// ShortName returns wrapped resource name if it was a flow
 func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Flow == nil {
 		return ""
@@ -43,12 +43,12 @@ func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) strin
 	return definition.Flow.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (flowTemplateFactory) Kind() string {
 	return "flow"
 }
 
-// New returns a new object wrapped as Resource
+// New returns Flow controller for new resource based on resource definition
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newFlow := parametrizeResource(def.Flow, gc, "*").(*client.Flow)
 
@@ -68,13 +68,14 @@ func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface
 		}}
 }
 
-// NewExisting returns a new object based on existing one wrapped as Resource
+// NewExisting returns Flow controller for existing resource by its name. Since flow is not a real k8s resource
+// this case is not possible
 func (flowTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	log.Fatal("Cannot depend on flow that has no resource definition")
 	return nil
 }
 
-// Identifier of the object
+// Key return Flow identifier
 func (f Flow) Key() string {
 	return "flow/" + f.generatedName
 }
@@ -142,7 +143,7 @@ func (f Flow) Delete() error {
 	return nil
 }
 
-// Current status of the flow deployment
+// Status returns current status of the flow deployment
 func (f Flow) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	graph := f.currentGraph
 	if graph == nil {

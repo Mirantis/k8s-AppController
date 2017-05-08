@@ -35,7 +35,7 @@ type Deployment struct {
 
 type deploymentTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a deployment
+// ShortName returns wrapped resource name if it was a deployment
 func (deploymentTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Deployment == nil {
 		return ""
@@ -43,22 +43,22 @@ func (deploymentTemplateFactory) ShortName(definition client.ResourceDefinition)
 	return definition.Deployment.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (deploymentTemplateFactory) Kind() string {
 	return "deployment"
 }
 
-// New returns new Deployment based on resource definition
+// New returns Deployment controller for new resource based on resource definition
 func (deploymentTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newDeployment := parametrizeResource(def.Deployment, gc,
 		"Spec.Template.Spec.Containers.Env",
 		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.Deployment)
-	return NewDeployment(newDeployment, c.Deployments(), def.Meta)
+	return report.SimpleReporter{BaseResource: Deployment{Base: Base{def.Meta}, Deployment: newDeployment, Client: c.Deployments()}}
 }
 
-// NewExisting returns new ExistingDeployment based on resource definition
+// NewExisting returns Deployment controller for existing resource by its name
 func (deploymentTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingDeployment(name, c.Deployments())
+	return report.SimpleReporter{BaseResource: ExistingDeployment{Name: name, Client: c.Deployments()}}
 }
 
 func deploymentKey(name string) string {
@@ -77,7 +77,7 @@ func deploymentStatus(d v1beta1.DeploymentInterface, name string) (interfaces.Re
 	return interfaces.ResourceNotReady, nil
 }
 
-// Key return Deployment key
+// Key return Deployment name
 func (d Deployment) Key() string {
 	return deploymentKey(d.Deployment.Name)
 }
@@ -87,7 +87,7 @@ func (d Deployment) Status(meta map[string]string) (interfaces.ResourceStatus, e
 	return deploymentStatus(d.Client, d.Deployment.Name)
 }
 
-// Create looks for Deployment in K8s and creates it if not present
+// Create looks for the Deployment in K8s and creates it if not present
 func (d Deployment) Create() error {
 	log.Println("Looking for deployment", d.Deployment.Name)
 	status, err := d.Status(nil)
@@ -104,11 +104,6 @@ func (d Deployment) Create() error {
 // Delete deletes Deployment from the cluster
 func (d Deployment) Delete() error {
 	return d.Client.Delete(d.Deployment.Name, nil)
-}
-
-// NewDeployment is a constructor
-func NewDeployment(deployment *extbeta1.Deployment, client v1beta1.DeploymentInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Deployment{Base: Base{meta}, Deployment: deployment, Client: client}}
 }
 
 // ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
@@ -150,9 +145,4 @@ func (d ExistingDeployment) Create() error {
 // Delete deletes Deployment from the cluster
 func (d ExistingDeployment) Delete() error {
 	return d.Client.Delete(d.Name, nil)
-}
-
-// NewExistingDeployment is a constructor
-func NewExistingDeployment(name string, client v1beta1.DeploymentInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingDeployment{Name: name, Client: client}}
 }

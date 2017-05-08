@@ -33,7 +33,7 @@ type Pod struct {
 
 type podTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a pod
+// ShortName returns wrapped resource name if it was a pod
 func (podTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Pod == nil {
 		return ""
@@ -41,28 +41,29 @@ func (podTemplateFactory) ShortName(definition client.ResourceDefinition) string
 	return definition.Pod.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (podTemplateFactory) Kind() string {
 	return "pod"
 }
 
-// New returns new Pod based on resource definition
+// New returns Pod controller for new resource based on resource definition
 func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newPod := parametrizeResource(def.Pod, gc,
+	pod := parametrizeResource(def.Pod, gc,
 		"Spec.Containers.Env",
 		"Spec.InitContainers.Env").(*v1.Pod)
-	return NewPod(newPod, c.Pods(), def.Meta)
+	return newPod(pod, c.Pods(), def.Meta)
 }
 
-// NewExisting returns new ExistingPod based on resource definition
+// NewExisting returns Pod controller for existing resource by its name
 func (podTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingPod(name, c.Pods())
+	return report.SimpleReporter{BaseResource: ExistingPod{Name: name, Client: c.Pods()}}
 }
 
 func podKey(name string) string {
 	return "pod/" + name
 }
 
+// Key returns Pod name
 func (p Pod) Key() string {
 	return podKey(p.Pod.Name)
 }
@@ -94,6 +95,7 @@ func isReady(pod *v1.Pod) bool {
 	return false
 }
 
+// Create looks for the Pod in k8s and creates it if not present
 func (p Pod) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
@@ -113,13 +115,7 @@ func (p Pod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return podStatus(p.Client, p.Pod.Name)
 }
 
-// NameMatches gets resource definition and a name and checks if
-// the Pod part of resource definition has matching name.
-func (p Pod) NameMatches(def client.ResourceDefinition, name string) bool {
-	return def.Pod != nil && def.Pod.Name == name
-}
-
-func NewPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {
+func newPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: Pod{Base: Base{meta}, Pod: pod, Client: client}}
 }
 
@@ -129,10 +125,12 @@ type ExistingPod struct {
 	Client corev1.PodInterface
 }
 
+// Key returns Pod name
 func (p ExistingPod) Key() string {
 	return podKey(p.Name)
 }
 
+// Create looks for existing Pod and returns error if there is no such Pod
 func (p ExistingPod) Create() error {
 	return createExistingResource(p)
 }
@@ -145,8 +143,4 @@ func (p ExistingPod) Status(meta map[string]string) (interfaces.ResourceStatus, 
 // Delete deletes pod from the cluster
 func (p ExistingPod) Delete() error {
 	return p.Client.Delete(p.Name, nil)
-}
-
-func NewExistingPod(name string, client corev1.PodInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingPod{Name: name, Client: client}}
 }

@@ -35,7 +35,7 @@ type StatefulSet struct {
 
 type statefulSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a statefulset
+// ShortName returns wrapped resource name if it was a StatefulSet
 func (statefulSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.StatefulSet == nil {
 		return ""
@@ -43,26 +43,26 @@ func (statefulSetTemplateFactory) ShortName(definition client.ResourceDefinition
 	return definition.StatefulSet.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (statefulSetTemplateFactory) Kind() string {
 	return "statefulset"
 }
 
-// New returns new StatefulSet based on resource definition
+// New returns StatefulSet controller for new resource based on resource definition
 func (statefulSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newStatefulSet := parametrizeResource(def.StatefulSet, gc,
+	statefulSet := parametrizeResource(def.StatefulSet, gc,
 	"Spec.Template.Spec.Containers.Env",
 		"Spec.Template.Spec.InitContainers.Env").(*appsbeta1.StatefulSet)
-	return NewStatefulSet(newStatefulSet, c.StatefulSets(), c, def.Meta)
+	return newStatefulSet(statefulSet, c.StatefulSets(), c, def.Meta)
 }
 
-// NewExisting returns new ExistingStatefulSet based on resource definition
+// NewExisting returns StatefulSet controller for existing resource by its name
 func (statefulSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingStatefulSet(name, c.StatefulSets(), c)
+	return report.SimpleReporter{BaseResource: ExistingStatefulSet{Name: name, Client: c.StatefulSets(), APIClient: c}}
 }
 
 func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
-	// Use label from statefulset spec to get needed pods
+	// Use label from StatefulSet spec to get needed pods
 	ps, err := p.Get(name)
 	if err != nil {
 		return interfaces.ResourceError, err
@@ -79,7 +79,7 @@ func (p StatefulSet) Key() string {
 	return statefulsetKey(p.StatefulSet.Name)
 }
 
-// Create looks for a StatefulSet in Kubernetes cluster and creates it if it's not there
+// Create looks for the StatefulSet in Kubernetes cluster and creates it if it's not there
 func (p StatefulSet) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
@@ -99,12 +99,11 @@ func (p StatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, 
 	return statefulsetStatus(p.Client, p.StatefulSet.Name, p.APIClient)
 }
 
-// NewStatefulSet is a constructor
-func NewStatefulSet(statefulset *appsbeta1.StatefulSet, client v1beta1.StatefulSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
+func newStatefulSet(statefulset *appsbeta1.StatefulSet, client v1beta1.StatefulSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: StatefulSet{Base: Base{meta}, StatefulSet: statefulset, Client: client, APIClient: apiClient}}
 }
 
-// ExistingStatefulSet is a wrapper for K8s StatefulSet object which is meant to already be in a cluster bofer AppController execution
+// ExistingStatefulSet is a wrapper for K8s StatefulSet object which is meant to already be in a cluster before AppController execution
 type ExistingStatefulSet struct {
 	Base
 	Name      string
@@ -117,7 +116,7 @@ func (p ExistingStatefulSet) Key() string {
 	return statefulsetKey(p.Name)
 }
 
-// Create looks for existing StatefulSet and returns an error if there is no such StatefulSet in a cluster
+// Create looks for existing StatefulSet and returns error if there is no such StatefulSet
 func (p ExistingStatefulSet) Create() error {
 	return createExistingResource(p)
 }
@@ -130,9 +129,4 @@ func (p ExistingStatefulSet) Status(meta map[string]string) (interfaces.Resource
 // Delete deletes StatefulSet from the cluster
 func (p ExistingStatefulSet) Delete() error {
 	return p.Client.Delete(p.Name, nil)
-}
-
-// NewExistingStatefulSet is a constructor
-func NewExistingStatefulSet(name string, client v1beta1.StatefulSetInterface, apiClient client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingStatefulSet{Name: name, Client: client, APIClient: apiClient}}
 }

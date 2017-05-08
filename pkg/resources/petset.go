@@ -34,7 +34,7 @@ type PetSet struct {
 
 type petSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a petset
+// ShortName returns wrapped resource name if it was a petset
 func (petSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.PetSet == nil {
 		return ""
@@ -42,22 +42,22 @@ func (petSetTemplateFactory) ShortName(definition client.ResourceDefinition) str
 	return definition.PetSet.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (petSetTemplateFactory) Kind() string {
 	return "petset"
 }
 
-// New returns new PetSet based on resource definition
+// New returns PetSet controller for new resource based on resource definition
 func (petSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newPetSet := parametrizeResource(def.PetSet, gc,
+	petSet := parametrizeResource(def.PetSet, gc,
 		"Spec.Template.Spec.Containers.Env",
 		"Spec.Template.Spec.InitContainers.Env").(*appsalpha1.PetSet)
-	return NewPetSet(newPetSet, c.PetSets(), c, def.Meta)
+	return newPetSet(petSet, c.PetSets(), c, def.Meta)
 }
 
-// NewExisting returns new ExistingPetSet based on resource definition
+// NewExisting returns PetSet controller for existing resource by its name
 func (petSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingPetSet(name, c.PetSets(), c)
+	return report.SimpleReporter{BaseResource: ExistingPetSet{Name: name, Client: c.PetSets(), APIClient: c}}
 }
 
 func petsetStatus(p v1alpha1.PetSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
@@ -78,7 +78,7 @@ func (p PetSet) Key() string {
 	return petsetKey(p.PetSet.Name)
 }
 
-// Create looks for a PetSet in Kubernetes cluster and creates it if it's not there
+// Create looks for the PetSet in Kubernetes cluster and creates it if it's not there
 func (p PetSet) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
@@ -98,8 +98,8 @@ func (p PetSet) Status(meta map[string]string) (interfaces.ResourceStatus, error
 	return petsetStatus(p.Client, p.PetSet.Name, p.APIClient)
 }
 
-// NewPetSet is a constructor
-func NewPetSet(petset *appsalpha1.PetSet, client v1alpha1.PetSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
+// newPetSet is a constructor
+func newPetSet(petset *appsalpha1.PetSet, client v1alpha1.PetSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
 	return report.SimpleReporter{BaseResource: PetSet{Base: Base{meta}, PetSet: petset, Client: client, APIClient: apiClient}}
 }
 
@@ -116,7 +116,7 @@ func (p ExistingPetSet) Key() string {
 	return petsetKey(p.Name)
 }
 
-// Create looks for existing PetSet and returns an error if there is no such PetSet in a cluster
+// Create looks for existing PetSet and returns error if there is no such PetSet
 func (p ExistingPetSet) Create() error {
 	return createExistingResource(p)
 }
@@ -129,9 +129,4 @@ func (p ExistingPetSet) Status(meta map[string]string) (interfaces.ResourceStatu
 // Delete deletes PetSet from the cluster
 func (p ExistingPetSet) Delete() error {
 	return p.Client.Delete(p.Name, nil)
-}
-
-// NewExistingPetSet is a constructor
-func NewExistingPetSet(name string, client v1alpha1.PetSetInterface, apiClient client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingPetSet{Name: name, Client: client, APIClient: apiClient}}
 }
