@@ -67,11 +67,6 @@ func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.BaseR
 	return NewResource(name, "ready")
 }
 
-// StatusIsCacheable is true
-func (c *Resource) StatusIsCacheable(meta map[string]string) bool {
-	return true
-}
-
 // NewResource creates new instance of Resource
 func NewResource(key string, status interfaces.ResourceStatus) *Resource {
 	return NewResourceWithMeta(key, status, nil)
