@@ -150,20 +150,6 @@ func (a *AppControllerManager) AfterEach() {
 	}
 	By("Removing namespace")
 	DeleteNS(a.Clientset, a.Namespace)
-	By("Removing all resource definitions")
-	resDefs, err := a.Client.ResourceDefinitions().List(api.ListOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	for _, resDef := range resDefs.Items {
-		err := a.Client.ResourceDefinitions().Delete(resDef.Name, nil)
-		Expect(err).NotTo(HaveOccurred())
-	}
-	By("Removing all dependencies")
-	deps, err := a.Client.Dependencies().List(api.ListOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	for _, dep := range deps.Items {
-		err := a.Client.Dependencies().Delete(dep.Name, nil)
-		Expect(err).NotTo(HaveOccurred())
-	}
 }
 
 func NewAppControllerManager() *AppControllerManager {
