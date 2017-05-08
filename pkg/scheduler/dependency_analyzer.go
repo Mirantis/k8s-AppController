@@ -23,14 +23,17 @@ import (
 	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 )
 
 // detectCycles implements Kosaraju's algorithm https://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
 // for detecting cycles in graph.
 // We are depending on the fact that any strongly connected component of a graph is a cycle
 // if it consists of more than one vertex
-func detectCycles(dependencies []client.Dependency) [][]string {
-	graph := groupDependentResources(dependencies)
+func detectCycles(dependencies []client.Dependency,
+	flows map[string]*client.Flow, flow *client.Flow, useDestructionSelector bool) [][]string {
+
+	graph := groupDependentResources(dependencies, flows, flow, useDestructionSelector)
 
 	// is vertex visited in first phase of the algorithm
 	visited := make(map[string]bool)
@@ -76,9 +79,20 @@ func detectCycles(dependencies []client.Dependency) [][]string {
 	return cycles
 }
 
-func groupDependentResources(dependencies []client.Dependency) (result map[string][]string) {
+func groupDependentResources(dependencies []client.Dependency,
+	flows map[string]*client.Flow, flow *client.Flow, useDestructionSelector bool) (result map[string][]string) {
+
 	result = map[string][]string{}
 	for _, dependency := range dependencies {
+		if !canDependencyBelongToFlow(&dependency, flow, useDestructionSelector) {
+			continue
+		}
+		parentFlow := flows[dependency.Parent]
+		if parentFlow != nil && parentFlow != flow && (canDependencyBelongToFlow(&dependency, parentFlow, true) ||
+			canDependencyBelongToFlow(&dependency, parentFlow, false)) {
+			continue
+		}
+
 		group := result[dependency.Parent]
 		if group == nil {
 			group = []string{dependency.Child}
@@ -133,8 +147,23 @@ func assignVertex(vertex, root string, assigned map[string]bool, components map[
 	}
 }
 
-func EnsureNoCycles(dependencies []client.Dependency) error {
-	cycles := detectCycles(dependencies)
+func EnsureNoCycles(dependencies []client.Dependency, resdefs map[string]client.ResourceDefinition) error {
+	flows := map[string]*client.Flow{}
+	if _, found := resdefs["flow/"+interfaces.DefaultFlowName]; !found {
+		flows["flow/"+interfaces.DefaultFlowName] = newDefaultFlowObject()
+	}
+	for _, v := range resdefs {
+		if v.Flow != nil {
+			flows["flow/"+v.Flow.Name] = v.Flow
+		}
+	}
+
+	var cycles [][]string
+	for _, flow := range flows {
+		for useDestructionSelection := false; !useDestructionSelection; useDestructionSelection = !useDestructionSelection {
+			cycles = append(cycles, detectCycles(dependencies, flows, flow, useDestructionSelection)...)
+		}
+	}
 	if len(cycles) > 0 {
 		message := "Invalid resource graph. The following cycles were detected:\n"
 		for _, cycle := range cycles {
