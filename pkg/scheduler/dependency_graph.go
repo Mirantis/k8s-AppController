@@ -627,6 +627,7 @@ func (sched *Scheduler) fillDependencyGraph(rootContext *GraphContext,
 
 	for _, replica := range replicas {
 		replicaName := replica.ReplicaName()
+		replicaContext := sched.prepareContext(rootContext, nil, replicaName)
 		queue := list.New()
 		queue.PushFront(&Block{dependency: client.Dependency{Child: "flow/" + flow.Name}})
 
@@ -643,7 +644,7 @@ func (sched *Scheduler) fillDependencyGraph(rootContext *GraphContext,
 						continue
 					}
 				}
-				parentContext := rootContext
+				parentContext := replicaContext
 				if parent.scheduledResource != nil {
 					parentContext = parent.scheduledResource.Context
 				}
