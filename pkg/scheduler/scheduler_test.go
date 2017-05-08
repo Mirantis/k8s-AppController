@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -534,4 +535,49 @@ func TestGraph(t *testing.T) {
 			}
 		}
 	}
+}
+
+func makeTaskFunc(i int32, res bool, acc *int32) func() bool {
+	return func() bool {
+		time.Sleep(time.Second / 10)
+		atomic.AddInt32(acc, i)
+		return res
+	}
+}
+
+func runTaskFuncs(t *testing.T, funcs []func() bool, concurrency int, expectedSum int32, expectedResult bool, threshold float64, acc *int32) {
+	*acc = 0
+	before := time.Now()
+	res := runConcurrently(funcs, concurrency)
+	after := time.Now()
+	if *acc != expectedSum {
+		t.Errorf("runConcurrently failed: %d != %d", expectedSum, acc)
+	}
+	if res != expectedResult {
+		t.Error("runConcurrently returned unexpected result")
+	}
+	if after.Sub(before).Seconds() < threshold-0.01 {
+		t.Error("runConcurrently finished too fast")
+	}
+	if after.Sub(before).Seconds() > threshold+0.05 {
+		t.Error("runConcurrently was running too long")
+	}
+}
+
+// TestRunConcurrently tests runConcurrently function which runs list of concurrent tasks
+func TestRunConcurrently(t *testing.T) {
+	var acc int32
+	var funcs []func() bool
+	for i := int32(1); i <= 50; i++ {
+		funcs = append(funcs, makeTaskFunc(i, true, &acc))
+	}
+	var expected int32 = (1 + 50) * 50 / 2
+	runTaskFuncs(t, funcs, 0, expected, true, 0.1,  &acc)
+	runTaskFuncs(t, funcs, 10, expected, true, 0.5, &acc)
+	runTaskFuncs(t, funcs, 25, expected, true, 0.2, &acc)
+	runTaskFuncs(t, funcs, 50, expected, true, 0.1, &acc)
+	runTaskFuncs(t, funcs, 100, expected, true, 0.1, &acc)
+
+	funcs = append(funcs, makeTaskFunc(100, false, &acc))
+	runTaskFuncs(t, funcs, 100, expected+100, false, 0.1, &acc)
 }

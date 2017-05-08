@@ -37,10 +37,18 @@ type FakeReplicas struct {
 var replicaResource = unversioned.GroupVersionResource{
 	Group:    "appcontroller.k8s",
 	Version:  "v1alpha1",
-	Resource: "deployments",
+	Resource: "replica",
 }
 
 func (fr *FakeReplicas) Create(replica *client.Replica) (result *client.Replica, err error) {
+	if replica.GenerateName != "" {
+		uuid, _ := newUUID()
+		replica.Name = replica.GenerateName + uuid
+	}
+	replica.SetCreationTimestamp(unversioned.Time{time.Now()})
+	uuid, _ := newUUID()
+	replica.SetUID(types.UID(uuid))
+
 	obj, err := fr.fake.
 		Invokes(testing.NewCreateAction(replicaResource, fr.ns, replica), &client.Replica{})
 
@@ -48,10 +56,6 @@ func (fr *FakeReplicas) Create(replica *client.Replica) (result *client.Replica,
 		return nil, err
 	}
 	res := obj.(*client.Replica)
-	res.SetCreationTimestamp(unversioned.Time{time.Now()})
-	uuid, _ := newUUID()
-	res.SetUID(types.UID(uuid))
-
 	return res, err
 }
 
