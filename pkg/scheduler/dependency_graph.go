@@ -60,6 +60,8 @@ func (gc GraphContext) GetArg(name string) string {
 	switch name {
 	case "AC_NAME":
 		return gc.replica
+	case "AC_FLOW_NAME":
+		return gc.flow.Name
 	default:
 		val, ok := gc.args[name]
 		if ok {
@@ -312,10 +314,10 @@ func NewDependencyGraph(sched *Scheduler, options interfaces.DependencyGraphOpti
 
 func (sched *Scheduler) prepareContext(parentContext *GraphContext, dependencies []client.Dependency, replica string) *GraphContext {
 	context := &GraphContext{
-		scheduler:  sched,
-		graph:      parentContext.graph,
-		flow:       parentContext.flow,
-		replica:    replica,
+		scheduler:    sched,
+		graph:        parentContext.graph,
+		flow:         parentContext.flow,
+		replica:      replica,
 		dependencies: dependencies,
 	}
 
@@ -400,16 +402,25 @@ func (rl SortableReplicaList) Swap(i, j int) {
 	rl[i], rl[j] = rl[j], rl[i]
 }
 
+func getReplicaSpace(flow *client.Flow, options interfaces.DependencyGraphOptions) string {
+	name := flow.ReplicaSpace
+	if name == "" {
+		if options.FlowInstanceName != "" {
+			name = options.FlowInstanceName
+		} else {
+			name = flow.Name
+		}
+	}
+	return name
+}
+
 // allocateReplicas allocates Replica objects for either creation or deletion.
 // it returns list of replicas to be constructed, list of replicas to be destructed and an error.
 // new Replica objects are created in this function as a side effect, but not deleted since this can happen only after
 // graph replica destruction
 func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.DependencyGraphOptions) ([]client.Replica, []client.Replica, error) {
-	name := flow.Name
-	if options.FlowInstanceName != "" {
-		name = options.FlowInstanceName
-	}
-	label := labels.Set{"flow": name}
+	replicaSpace := getReplicaSpace(flow, options)
+	label := labels.Set{"replicaspace": replicaSpace}
 	existingReplicas, err := sched.client.Replicas().List(api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label),
 	})
@@ -429,7 +440,7 @@ func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.D
 		targetCount = options.MaxReplicaCount
 	}
 
-	adjustedReplicas, err := sched.createReplicas(existingReplicas.Items, targetCount, flow.Name, label)
+	adjustedReplicas, err := sched.createReplicas(existingReplicas.Items, targetCount, flow.Name, replicaSpace, label)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -446,7 +457,7 @@ func (sched *Scheduler) allocateReplicas(flow *client.Flow, options interfaces.D
 
 // createReplicas creates missing flow replicas up to desiredCount
 func (sched *Scheduler) createReplicas(
-	existingReplicas []client.Replica, desiredCount int, flowName string, replicasLabel labels.Set) ([]client.Replica, error) {
+	existingReplicas []client.Replica, desiredCount int, flowName, replicaSpace string, replicasLabel labels.Set) ([]client.Replica, error) {
 
 	var maxCurrentTime time.Time
 	for _, item := range existingReplicas {
@@ -464,6 +475,7 @@ func (sched *Scheduler) createReplicas(
 				Namespace:    sched.client.Namespace(),
 			},
 			FlowName: flowName,
+			ReplicaSpace: replicaSpace,
 		}
 		replica, err := sched.client.Replicas().Create(replica)
 		if err != nil {
@@ -580,7 +592,6 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 
 	return depGraph, nil
 }
-
 
 // getDryRunDependencyGraphOptions returns dependency graph options that will not produce side effects
 // (i.e. no new or deleted replicas and no logging)
@@ -714,7 +725,7 @@ func deleteReplicaResources(sched *Scheduler, destructors []func() bool, replica
 readFailed:
 	for {
 		select {
-		case res := <- *failed:
+		case res := <-*failed:
 			for _, replicaName := range res.usedInReplicas {
 				failedReplicas[replicaName] = true
 			}
@@ -738,6 +749,7 @@ readFailed:
 			}
 			return true
 		})
+
 	}
 
 	if deleteReplicaFuncs != nil {

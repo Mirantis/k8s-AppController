@@ -48,6 +48,14 @@ type Flow struct {
 
 	// Parameters that the flow can accept (i.e. valid inputs for the flow)
 	Parameters map[string]FlowParameter `json:"parameters,omitempty"`
+
+	// ReplicaSpace name allows to share replicas across flows. Replicas of different flows with the same ReplicaSpace
+	// name are treated as replicas of each of those flows. Thus replicas created by one flow can be deleted by another
+	// or there might be several different ways to create replicas (e.g. two flows that represent two ways to deploy
+	// something, but no matter what flow was used, the result would be one more application instance (cluster node)
+	// represented by created replica
+	// By default, replica space name equal to the flow name
+	ReplicaSpace string `json:"replicaSpace,omitempty"`
 }
 
 // FlowParameter represents declaration of a parameter that flow can accept (its description, default value etc)
@@ -70,6 +78,8 @@ type Replica struct {
 	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	FlowName string `json:"flowName,omitempty"`
+
+	ReplicaSpace string `json:"replicaSpace,omitempty"`
 }
 
 // ReplicaList is a list of replicas
