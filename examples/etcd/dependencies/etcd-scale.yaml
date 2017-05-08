@@ -30,7 +30,9 @@ kind: Dependency
 metadata:
   generateName: dependency-
   labels:
-    flow: cleanup
+    flow: etcd-scale-cleanup
 parent: flow/etcd-scale
-child: job/delete-node-$AC_NAME-job
+child: job/delete-node-$NAME-job
+args:
+  NAME: $AC_NAME
 

@@ -11,7 +11,5 @@ do
   cat $file | $KUBECTL_NAME exec -i $AC_POD_NAME kubeac wrap | $KUBECTL_NAME create -f-
 done
 
-for file in dependencies/*.yaml
-do 
-  cat $file | $KUBECTL_NAME create -f-
-done
+$KUBECTL_NAME create -f dependencies/
+$KUBECTL_NAME create -f resources/
