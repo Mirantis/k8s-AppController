@@ -80,7 +80,7 @@ func (f Flow) Key() string {
 	return "flow/" + f.generatedName
 }
 
-func (f *Flow) buildDependencyGraph(replicaCountDelta, minReplicaCount int, silent bool) (interfaces.DependencyGraph, error) {
+func (f *Flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.DependencyGraph, error) {
 	args := map[string]string{}
 	for arg := range f.flow.Parameters {
 		val := f.context.GetArg(arg)
@@ -88,13 +88,17 @@ func (f *Flow) buildDependencyGraph(replicaCountDelta, minReplicaCount int, sile
 			args[arg] = val
 		}
 	}
+	fixedNumberOfReplicas := false
+	if replicaCount > 0 {
+		fixedNumberOfReplicas = f.context.Graph().Options().FixedNumberOfReplicas
+	}
 	options := interfaces.DependencyGraphOptions{
-		FlowName:         f.originalName,
-		Args:             args,
-		FlowInstanceName: f.generatedName,
-		ReplicaCount:     replicaCountDelta,
-		MinReplicaCount:  minReplicaCount,
-		Silent:           silent,
+		FlowName:              f.originalName,
+		Args:                  args,
+		FlowInstanceName:      f.generatedName,
+		ReplicaCount:          replicaCount,
+		Silent:                silent,
+		FixedNumberOfReplicas: fixedNumberOfReplicas,
 	}
 
 	graph, err := f.context.Scheduler().BuildDependencyGraph(options)
@@ -116,7 +120,7 @@ func (f *Flow) Create() error {
 
 	if graph == nil {
 		var err error
-		graph, err = f.buildDependencyGraph(0, 1, false)
+		graph, err = f.buildDependencyGraph(1, false)
 		if err != nil {
 			return err
 		}
@@ -134,7 +138,7 @@ func (f *Flow) Create() error {
 // Delete is called during dlow destruction which can happen only once while Create ensures that at least one flow
 // replica exists, and as such can be called any number of times
 func (f Flow) Delete() error {
-	graph, err := f.buildDependencyGraph(-1, 0, false)
+	graph, err := f.buildDependencyGraph(-1, false)
 	if err != nil {
 		return err
 	}
@@ -148,7 +152,7 @@ func (f Flow) Status(meta map[string]string) (interfaces.ResourceStatus, error) 
 	graph := f.currentGraph
 	if graph == nil {
 		var err error
-		graph, err = f.buildDependencyGraph(0, 0, true)
+		graph, err = f.buildDependencyGraph(0, true)
 		if err != nil {
 			return interfaces.ResourceError, err
 		}
