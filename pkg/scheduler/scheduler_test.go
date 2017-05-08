@@ -157,6 +157,14 @@ func TestIsBlocked(t *testing.T) {
 	}
 }
 
+func detectCyclesHelper(dependencies []client.Dependency) [][]string {
+	defFlow := newDefaultFlowObject()
+	flows := map[string]*client.Flow{
+		"flow" + interfaces.DefaultFlowName: defFlow,
+	}
+	return detectCycles(dependencies, flows, defFlow, false)
+}
+
 func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	depGraph := NewDependencyGraph(nil, interfaces.DependencyGraphOptions{})
 	context := &GraphContext{graph: depGraph}
@@ -197,7 +205,7 @@ func TestDetectCyclesAcyclic(t *testing.T) {
 		*mocks.MakeDependency("pod/ready-1", "pod/ready-2"),
 	}
 
-	cycles := detectCycles(dependencies)
+	cycles := detectCyclesHelper(dependencies)
 
 	if len(cycles) != 0 {
 		t.Errorf("cycles detected in an acyclic graph: %v", cycles)
@@ -210,7 +218,7 @@ func TestDetectCyclesSimpleCycle(t *testing.T) {
 		*mocks.MakeDependency("pod/ready-2", "pod/ready-1"),
 	}
 
-	cycles := detectCycles(dependencies)
+	cycles := detectCyclesHelper(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("expected %d cycles, got %d", 1, len(cycles))
@@ -223,7 +231,7 @@ func TestDetectCyclesSelf(t *testing.T) {
 		*mocks.MakeDependency("pod/ready-1", "pod/ready-1"),
 	}
 
-	cycles := detectCycles(dependencies)
+	cycles := detectCyclesHelper(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("expected %d cycles, got %d", 1, len(cycles))
@@ -250,7 +258,7 @@ func TestDetectCyclesLongCycle(t *testing.T) {
 		*mocks.MakeDependency("pod/4", "pod/1"),
 	}
 
-	cycles := detectCycles(dependencies)
+	cycles := detectCyclesHelper(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("expected %d cycles, got %d", 1, len(cycles))
@@ -272,7 +280,7 @@ func TestDetectCyclesComplex(t *testing.T) {
 		*mocks.MakeDependency("pod/5", "pod/4"),
 	}
 
-	cycles := detectCycles(dependencies)
+	cycles := detectCyclesHelper(dependencies)
 
 	if len(cycles) != 1 {
 		t.Errorf("expected %d cycles, got %d", 1, len(cycles))
@@ -296,7 +304,7 @@ func TestDetectCyclesMultiple(t *testing.T) {
 		*mocks.MakeDependency("pod/7", "pod/5"),
 	}
 
-	cycles := detectCycles(dependencies)
+	cycles := detectCyclesHelper(dependencies)
 
 	if len(cycles) != 2 {
 		t.Errorf("expected %d cycles, got %d", 2, len(cycles))
@@ -573,7 +581,7 @@ func TestRunConcurrently(t *testing.T) {
 		funcs = append(funcs, makeTaskFunc(i, true, &acc))
 	}
 	var expected int32 = (1 + 50) * 50 / 2
-	runTaskFuncs(t, funcs, 0, expected, true, 0.1,  &acc)
+	runTaskFuncs(t, funcs, 0, expected, true, 0.1, &acc)
 	runTaskFuncs(t, funcs, 10, expected, true, 0.5, &acc)
 	runTaskFuncs(t, funcs, 25, expected, true, 0.2, &acc)
 	runTaskFuncs(t, funcs, 50, expected, true, 0.1, &acc)
