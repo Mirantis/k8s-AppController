@@ -1,0 +1,42 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Definition
+metadata:
+  name: delete-node-name-job
+meta:
+  on-error: ignore
+job:
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: delete-node-$NAME-job
+  spec:
+    template:
+      metadata:
+        name: delete-node-$NAME-job
+      spec:
+        containers:
+        - name: delete-node-$NAME
+          image: etcd-kubectl
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MEMBER_NAME
+              value: etcd-$NAME
+            - name: CLUSTERNAME
+              value: $clusterName
+            - name: REPLICA_NAME
+              value: $NAME
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              # find member ID by the name
+              MEMBER_ID=$(etcdctl --endpoint "http://$CLUSTERNAME-client:2379" member list | grep name="$MEMBER_NAME" | cut -d':' -f1)
+              # remove member
+              etcdctl --endpoint "http://$CLUSTERNAME-client:2379" member remove "$MEMBER_ID"
+              kubectl delete pod "initial-etcd-pod-$REPLICA_NAME" --force --grace-period=0
+              kubectl delete pod "etcd-pod-$REPLICA_NAME" --force --grace-period=0
+              kubectl delete replica "replica-$REPLICA_NAME"
+              kubectl delete service "etcd-$REPLICA_NAME"
+              kubectl delete replica -l"replicaspace=etcd-recover-$CLUSTERNAME"
+              kubectl delete job "delete-node-$REPLICA_NAME-job"
+        restartPolicy: Never

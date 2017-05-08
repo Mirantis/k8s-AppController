@@ -1,0 +1,48 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Definition
+metadata:
+  name: monitor-clustername-job
+meta:
+  timeout: 0
+job:
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: monitor-$clusterName-job
+  spec:
+    template:
+      metadata:
+        name: monitor-$clusterName
+      spec:
+        containers:
+        - name: monitor-$clusterName
+          image: etcd-kubectl
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CLUSTERNAME
+              value: $clusterName
+            - name: CHECK_INTERVAL
+              value: $livenessProbeInterval
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              while :
+              do
+
+                etcdctl --endpoint "http://$CLUSTERNAME-client:2379" cluster-health |
+                  grep -v "got healthy" |
+                  grep -o "^member.*etcd-[^:]*" |
+                  cut -d- -f2 |
+                  while read suffix
+                  do
+                    CMNAME="etcd-recover-$CLUSTERNAME-$suffix"
+                    kubectl create configmap "$CMNAME" \
+                        --from-literal=flowName=etcd-recover \
+                        --from-literal=replicaCount=1 \
+                        --from-literal=arg.nodeSuffix="$suffix"
+                    kubectl label cm "$CMNAME" AppController=FlowDeployment
+                  done
+                sleep $CHECK_INTERVAL
+              done
+        restartPolicy: OnFailure

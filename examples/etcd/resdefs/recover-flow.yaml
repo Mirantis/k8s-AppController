@@ -1,17 +1,17 @@
 apiVersion: appcontroller.k8s/v1alpha1
 kind: Flow
 metadata:
-  name: etcd-scale
+  name: etcd-recover
 
 exported: true
 construction:
-  flow: etcd-scale
-destruction:
-  flow: etcd-scale-cleanup
+  flow: etcd-recover
 
-replicaSpace: etcd-$clusterName-node
+replicaSpace: etcd-recover-$clusterName
 
 parameters:
   clusterName:
     description: etcd cluster name
     default: etcd
+  nodeSuffix:
+    description: node name suffix (X in http://etcd-X:2379)
