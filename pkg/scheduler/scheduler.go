@@ -197,7 +197,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 			onError := resources.GetStringMeta(r.Resource, "on-error", "")
 
 			waitTimeout := WaitTimeout
-			if timeoutInSeconds > 0 {
+			if timeoutInSeconds >= 0 {
 				waitTimeout = time.Second * time.Duration(timeoutInSeconds)
 			}
 

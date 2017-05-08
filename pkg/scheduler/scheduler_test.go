@@ -26,6 +26,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 	"github.com/Mirantis/k8s-AppController/pkg/report"
+	"github.com/Mirantis/k8s-AppController/pkg/resources"
 )
 
 func TestBuildDependencyGraph(t *testing.T) {
@@ -580,4 +581,37 @@ func TestRunConcurrently(t *testing.T) {
 
 	funcs = append(funcs, makeTaskFunc(100, false, &acc))
 	runTaskFuncs(t, funcs, 100, expected+100, false, 0.1, &acc)
+}
+
+// TestWaitWithZeroTimeout tests resource status wait method with zero timeout value
+func TestWaitWithZeroTimeout(t *testing.T) {
+	pod := mocks.MakePod("fail")
+	resdef := client.ResourceDefinition{Pod: pod}
+	options := interfaces.DependencyGraphOptions{FlowName: "test"}
+	graph := &DependencyGraph{graphOptions: options}
+	gc := &GraphContext{graph: graph}
+	resource := resources.KindToResourceTemplate["pod"].New(resdef, mocks.NewClient(pod), gc)
+	sr := newScheduledResourceFor(resource, gc, false)
+	stopChan := make(chan struct{})
+	defer close(stopChan)
+
+	now := time.Now()
+	res, err := sr.Wait(CheckInterval, 0, stopChan)
+	if res {
+		t.Error("Wait() succeded")
+	}
+	if err == nil {
+		t.Error("No error was returned")
+	} else {
+		expectedMessage := "test flow: timeout waiting for resource pod/fail"
+		if err.Error() != expectedMessage {
+			t.Error("Got unexpected error:", err)
+		}
+		if sr.Error != err {
+			t.Error("ScheduledResource was not marked as permanently failed")
+		}
+	}
+	if time.Now().Sub(now) >= time.Second {
+		t.Error("Wait() was running for too long")
+	}
 }
