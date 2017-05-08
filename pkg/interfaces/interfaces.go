@@ -94,4 +94,6 @@ type DependencyGraphOptions struct {
 
 type Scheduler interface {
 	BuildDependencyGraph(options DependencyGraphOptions) (DependencyGraph, error)
+	Serialize(options DependencyGraphOptions) map[string]string
+	CreateDeployment(options DependencyGraphOptions) (string, error)
 }
