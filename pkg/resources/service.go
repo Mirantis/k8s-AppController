@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
@@ -74,59 +73,52 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 	}
 
 	log.Printf("Checking service status for selector %v", service.Spec.Selector)
-	for k, v := range service.Spec.Selector {
-		stringSelector := fmt.Sprintf("%s=%s", k, v)
-		log.Printf("Checking status for %s", stringSelector)
-		selector, err := labels.Parse(stringSelector)
-		if err != nil {
-			return interfaces.ResourceError, err
-		}
+	selector := labels.SelectorFromSet(service.Spec.Selector)
 
-		options := v1.ListOptions{LabelSelector: selector.String()}
+	options := v1.ListOptions{LabelSelector: selector.String()}
 
-		pods, err := apiClient.Pods().List(options)
+	pods, err := apiClient.Pods().List(options)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+	jobs, err := apiClient.Jobs().List(options)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+	replicasets, err := apiClient.ReplicaSets().List(options)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+	resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
+	for _, pod := range pods.Items {
+		resources = append(resources, newPod(&pod, apiClient.Pods(), nil))
+	}
+	for _, j := range jobs.Items {
+		resources = append(resources, newJob(&j, apiClient.Jobs(), nil))
+	}
+	for _, r := range replicasets.Items {
+		resources = append(resources, newReplicaSet(&r, apiClient.ReplicaSets(), nil))
+	}
+	if apiClient.IsEnabled(v1beta1.SchemeGroupVersion) {
+		statefulsets, err := apiClient.StatefulSets().List(options)
 		if err != nil {
 			return interfaces.ResourceError, err
 		}
-		jobs, err := apiClient.Jobs().List(options)
+		for _, ps := range statefulsets.Items {
+			resources = append(resources, newStatefulSet(&ps, apiClient.StatefulSets(), apiClient, nil))
+		}
+	} else {
+		petsets, err := apiClient.PetSets().List(api.ListOptions{LabelSelector: selector})
 		if err != nil {
 			return interfaces.ResourceError, err
 		}
-		replicasets, err := apiClient.ReplicaSets().List(options)
-		if err != nil {
-			return interfaces.ResourceError, err
+		for _, ps := range petsets.Items {
+			resources = append(resources, newPetSet(&ps, apiClient.PetSets(), apiClient, nil))
 		}
-		resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
-		for _, pod := range pods.Items {
-			resources = append(resources, newPod(&pod, apiClient.Pods(), nil))
-		}
-		for _, j := range jobs.Items {
-			resources = append(resources, newJob(&j, apiClient.Jobs(), nil))
-		}
-		for _, r := range replicasets.Items {
-			resources = append(resources, newReplicaSet(&r, apiClient.ReplicaSets(), nil))
-		}
-		if apiClient.IsEnabled(v1beta1.SchemeGroupVersion) {
-			statefulsets, err := apiClient.StatefulSets().List(options)
-			if err != nil {
-				return interfaces.ResourceError, err
-			}
-			for _, ps := range statefulsets.Items {
-				resources = append(resources, newStatefulSet(&ps, apiClient.StatefulSets(), apiClient, nil))
-			}
-		} else {
-			petsets, err := apiClient.PetSets().List(api.ListOptions{LabelSelector: selector})
-			if err != nil {
-				return interfaces.ResourceError, err
-			}
-			for _, ps := range petsets.Items {
-				resources = append(resources, newPetSet(&ps, apiClient.PetSets(), apiClient, nil))
-			}
-		}
-		status, err := resourceListStatus(resources)
-		if status != interfaces.ResourceReady || err != nil {
-			return status, err
-		}
+	}
+	status, err := resourceListStatus(resources)
+	if status != interfaces.ResourceReady || err != nil {
+		return status, err
 	}
 
 	return interfaces.ResourceReady, nil

@@ -14,14 +14,20 @@
 
 package mocks
 
-import extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+import (
+	"strings"
+
+	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+)
 
 func MakeReplicaSet(name string) *extbeta1.ReplicaSet {
+	status := strings.Split(name, "-")[0]
+
 	replicaSet := &extbeta1.ReplicaSet{}
 	replicaSet.Name = name
 	replicaSet.Namespace = "testing"
 	replicaSet.Spec.Replicas = pointer(int32(2))
-	if name != "fail" {
+	if status != "fail" {
 		replicaSet.Status.Replicas = int32(3)
 	}
 
