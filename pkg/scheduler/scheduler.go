@@ -300,6 +300,11 @@ func ignoreAll(top *ScheduledResource) {
 	}
 }
 
+// Options method returns options that were used to build the dependency graph
+func (depGraph DependencyGraph) Options() interfaces.DependencyGraphOptions {
+	return depGraph.graphOptions
+}
+
 // Deploy starts the deployment of a DependencyGraph
 func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
 
