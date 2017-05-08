@@ -6,16 +6,13 @@ go:
   - 1.6
   - 1.7
 env:
-  - K8S_VERSION=v1.6
   - K8S_VERSION=v1.5 PUBLISH=1
   - K8S_VERSION=v1.4
 matrix:
   exclude:
     - go: 1.6
-      env: K8S_VERSION=v1.6
-    - go: 1.6
       env: K8S_VERSION=v1.5 PUBLISH=1
-    - go: 1.7
+    - go: 1.6
       env: K8S_VERSION=v1.4
 script:
   - go get github.com/Masterminds/glide
