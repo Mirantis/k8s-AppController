@@ -18,20 +18,21 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"regexp"
+	"strings"
 
+	"github.com/Mirantis/k8s-AppController/pkg/client"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
-	"strings"
-
-	"github.com/Mirantis/k8s-AppController/pkg/client"
 )
+
+var yamlDocumentDelimiter = regexp.MustCompile("(?m)^---")
 
 type TContext struct {
 	Examples string
@@ -123,4 +124,14 @@ func dumpLogs(clientset *kubernetes.Clientset, pod *v1.Pod) {
 	Logf("\n Dumping logs for %v:%v \n", pod.Namespace, pod.Name)
 	_, err = io.Copy(GinkgoWriter, readCloser)
 	Expect(err).NotTo(HaveOccurred())
+}
+
+func ForEachYamlDocument(data []byte, action func([]byte)) {
+	matches := yamlDocumentDelimiter.FindAllIndex(data, -1)
+	lastStart := 0
+	for _, doc := range matches {
+		action(data[lastStart: doc[0]])
+		lastStart = doc[1]
+	}
+	action(data[lastStart:])
 }
