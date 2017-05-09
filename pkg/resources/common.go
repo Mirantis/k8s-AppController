@@ -88,7 +88,6 @@ func getKeys(m map[string]interfaces.ResourceTemplate) (keys []string) {
 
 func resourceListStatus(resources []interfaces.BaseResource) (interfaces.ResourceStatus, error) {
 	for _, r := range resources {
-		log.Printf("Checking status for resource %s", r.Key())
 		status, err := r.Status(nil)
 		if err != nil {
 			return interfaces.ResourceError, err
@@ -155,7 +154,7 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		p := pod
-		resources = append(resources, NewPod(&p, apiClient.Pods(), nil))
+		resources = append(resources, newPod(&p, apiClient.Pods(), nil))
 	}
 
 	status, err := resourceListStatus(resources)

@@ -112,16 +112,13 @@ func (f *ExamplesFramework) VerifyStatus(task string) {
 			if err == nil {
 				return false
 			}
-			depGraph, err := scheduler.New(f.Client, nil, 0).BuildDependencyGraph(
-				interfaces.DependencyGraphOptions{})
+			status, r, err := scheduler.GetStatus(f.Client, nil, interfaces.DependencyGraphOptions{})
 			if err != nil {
 				return false
 			}
-			var status interfaces.DeploymentStatus
-			status, r := depGraph.GetStatus()
 			depReport = r.(report.DeploymentReport)
 			utils.Logf("STATUS: %s\n", status)
-			return status == interfaces.Finished
+			return status == interfaces.Finished || status == interfaces.Empty
 		},
 		240*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(depReport.AsText(0), "\n"))
 }

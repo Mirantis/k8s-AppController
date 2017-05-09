@@ -39,7 +39,7 @@ type ExistingSecret struct {
 
 type secretTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a secret
+// ShortName returns wrapped resource name if it was a secret
 func (secretTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Secret == nil {
 		return ""
@@ -47,27 +47,32 @@ func (secretTemplateFactory) ShortName(definition client.ResourceDefinition) str
 	return definition.Secret.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (secretTemplateFactory) Kind() string {
 	return "secret"
 }
 
-func (secretTemplateFactory) New(def client.ResourceDefinition, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewSecret(parametrizeResource(def.Secret, gc).(*v1.Secret), ci.Secrets(), def.Meta)
+// New returns Secret controller for new resource based on resource definition
+func (secretTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	secret := parametrizeResource(def.Secret, gc).(*v1.Secret)
+	return report.SimpleReporter{BaseResource: Secret{Base: Base{def.Meta}, Secret: secret, Client: c.Secrets()}}
 }
 
-func (secretTemplateFactory) NewExisting(name string, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingSecret(name, ci.Secrets())
+// NewExisting returns Secret controller for existing resource by its name
+func (secretTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: ExistingSecret{Name: name, Client: c.Secrets()}}
 }
 
 func secretKey(name string) string {
 	return "secret/" + name
 }
 
+// Key returns the Secret object identifier
 func (s Secret) Key() string {
 	return secretKey(s.Secret.Name)
 }
 
+// Key returns the Secret object identifier
 func (s ExistingSecret) Key() string {
 	return secretKey(s.Name)
 }
@@ -86,6 +91,7 @@ func (s Secret) Status(meta map[string]string) (interfaces.ResourceStatus, error
 	return secretStatus(s.Client, s.Secret.Name)
 }
 
+// Create looks for the Secret in k8s and creates it if not present
 func (s Secret) Create() error {
 	if err := checkExistence(s); err != nil {
 		log.Println("Creating", s.Key())
@@ -95,16 +101,9 @@ func (s Secret) Create() error {
 	return nil
 }
 
+// Delete deletes Secret from the cluster
 func (s Secret) Delete() error {
 	return s.Client.Delete(s.Secret.Name, nil)
-}
-
-func NewSecret(s *v1.Secret, client corev1.SecretInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Secret{Base: Base{meta}, Secret: s, Client: client}}
-}
-
-func NewExistingSecret(name string, client corev1.SecretInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingSecret{Name: name, Client: client}}
 }
 
 // Status returns interfaces.ResourceReady if the secret is available in cluster
@@ -112,10 +111,12 @@ func (s ExistingSecret) Status(meta map[string]string) (interfaces.ResourceStatu
 	return secretStatus(s.Client, s.Name)
 }
 
+// Create looks for existing Secret and returns error if there is no such Secret
 func (s ExistingSecret) Create() error {
 	return createExistingResource(s)
 }
 
+// Delete deletes Secret from the cluster
 func (s ExistingSecret) Delete() error {
 	return s.Client.Delete(s.Name, nil)
 }

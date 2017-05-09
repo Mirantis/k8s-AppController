@@ -36,7 +36,7 @@ type ReplicaSet struct {
 
 type replicaSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a replicaset
+// ShortName returns wrapped resource name if it was a replicaset
 func (replicaSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.ReplicaSet == nil {
 		return ""
@@ -44,22 +44,22 @@ func (replicaSetTemplateFactory) ShortName(definition client.ResourceDefinition)
 	return definition.ReplicaSet.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (replicaSetTemplateFactory) Kind() string {
 	return "replicaset"
 }
 
-// New returns new ReplicaSet based on resource definition
+// New returns ReplicaSet controller for new resource based on resource definition
 func (replicaSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newReplicaSet := parametrizeResource(def.ReplicaSet, gc,
+	replicaSet := parametrizeResource(def.ReplicaSet, gc,
 		"Spec.Template.Spec.Containers.Env",
 		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.ReplicaSet)
-	return NewReplicaSet(newReplicaSet, c.ReplicaSets(), def.Meta)
+	return newReplicaSet(replicaSet, c.ReplicaSets(), def.Meta)
 }
 
-// NewExisting returns new ExistingReplicaSet based on resource definition
+// NewExisting returns ReplicaSet controller for existing resource by its name
 func (replicaSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingReplicaSet(name, c.ReplicaSets())
+	return ExistingReplicaSet{Name: name, Client: c.ReplicaSets()}
 }
 
 func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) (interfaces.ResourceStatus, error) {
@@ -119,10 +119,12 @@ func replicaSetKey(name string) string {
 	return "replicaset/" + name
 }
 
+// Key returns ReplicaSet name
 func (r ReplicaSet) Key() string {
 	return replicaSetKey(r.ReplicaSet.Name)
 }
 
+// Create looks for the ReplicaSet in k8s and creates it if not present
 func (r ReplicaSet) Create() error {
 	if err := checkExistence(r); err != nil {
 		log.Println("Creating", r.Key())
@@ -142,12 +144,12 @@ func (r ReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, e
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
 }
 
-// GetDependencyReport returns a DependencyReport for this replicaset
+// GetDependencyReport returns a DependencyReport for this ReplicaSet
 func (r ReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
 	return replicaSetReport(r.Client, r.ReplicaSet.Name, meta)
 }
 
-func NewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) ReplicaSet {
+func newReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) ReplicaSet {
 	return ReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
 }
 
@@ -157,10 +159,12 @@ type ExistingReplicaSet struct {
 	Client v1beta1.ReplicaSetInterface
 }
 
+// Key returns ReplicaSet name
 func (r ExistingReplicaSet) Key() string {
 	return replicaSetKey(r.Name)
 }
 
+// Create looks for existing ReplicaSet and returns error if there is no such ReplicaSet
 func (r ExistingReplicaSet) Create() error {
 	return createExistingResource(r)
 }
@@ -175,11 +179,7 @@ func (r ExistingReplicaSet) Delete() error {
 	return r.Client.Delete(r.Name, nil)
 }
 
-func NewExistingReplicaSet(name string, client v1beta1.ReplicaSetInterface) ExistingReplicaSet {
-	return ExistingReplicaSet{Name: name, Client: client}
-}
-
-// GetDependencyReport returns a DependencyReport for this replicaset
+// GetDependencyReport returns a DependencyReport for this ReplicaSet
 func (r ExistingReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
 	return replicaSetReport(r.Client, r.Name, meta)
 }

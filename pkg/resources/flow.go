@@ -28,14 +28,14 @@ type Flow struct {
 	Base
 	flow          *client.Flow
 	context       interfaces.GraphContext
-	status        interfaces.ResourceStatus
 	generatedName string
 	originalName  string
+	currentGraph  interfaces.DependencyGraph
 }
 
 type flowTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a flow
+// ShortName returns wrapped resource name if it was a flow
 func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.Flow == nil {
 		return ""
@@ -43,12 +43,12 @@ func (flowTemplateFactory) ShortName(definition client.ResourceDefinition) strin
 	return definition.Flow.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (flowTemplateFactory) Kind() string {
 	return "flow"
 }
 
-// New returns a new object wrapped as Resource
+// New returns Flow controller for new resource based on resource definition
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newFlow := parametrizeResource(def.Flow, gc, "*").(*client.Flow)
 
@@ -63,24 +63,24 @@ func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface
 			Base:          Base{def.Meta},
 			flow:          newFlow,
 			context:       gc,
-			status:        interfaces.ResourceNotReady,
 			generatedName: fmt.Sprintf("%s-%s%s", newFlow.Name, depName, gc.GetArg("AC_NAME")),
 			originalName:  def.Flow.Name,
 		}}
 }
 
-// NewExisting returns a new object based on existing one wrapped as Resource
+// NewExisting returns Flow controller for existing resource by its name. Since flow is not a real k8s resource
+// this case is not possible
 func (flowTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	log.Fatal("Cannot depend on flow that has no resource definition")
 	return nil
 }
 
-// Identifier of the object
+// Key return Flow identifier
 func (f Flow) Key() string {
 	return "flow/" + f.generatedName
 }
 
-func (f *Flow) buildDependencyGraph(decreaseReplicaCount bool) (interfaces.DependencyGraph, error) {
+func (f *Flow) buildDependencyGraph(replicaCountDelta, minReplicaCount int, silent bool) (interfaces.DependencyGraph, error) {
 	args := map[string]string{}
 	for arg := range f.flow.Parameters {
 		val := f.context.GetArg(arg)
@@ -92,15 +92,9 @@ func (f *Flow) buildDependencyGraph(decreaseReplicaCount bool) (interfaces.Depen
 		FlowName:         f.originalName,
 		Args:             args,
 		FlowInstanceName: f.generatedName,
-	}
-
-	if decreaseReplicaCount {
-		// Delete one replica
-		options.ReplicaCount = -1
-	} else {
-		// Recheck existing replica resources or create one replica if none exist
-		options.ReplicaCount = 0
-		options.MinReplicaCount = 1
+		ReplicaCount:     replicaCountDelta,
+		MinReplicaCount:  minReplicaCount,
+		Silent:           silent,
 	}
 
 	graph, err := f.context.Scheduler().BuildDependencyGraph(options)
@@ -118,14 +112,19 @@ func (f *Flow) buildDependencyGraph(decreaseReplicaCount bool) (interfaces.Depen
 // all subsequent calls will do nothing but check the state of the resources from this replica (and recreate them,
 // if they were deleted manually between the calls), which makes Create() be idempotent
 func (f *Flow) Create() error {
-	graph, err := f.buildDependencyGraph(false)
-	if err != nil {
-		return err
+	graph := f.currentGraph
+
+	if graph == nil {
+		var err error
+		graph, err = f.buildDependencyGraph(0, 1, false)
+		if err != nil {
+			return err
+		}
+		f.currentGraph = graph
 	}
 	go func() {
 		stopChan := make(chan struct{})
 		graph.Deploy(stopChan)
-		f.status = interfaces.ResourceReady
 	}()
 	return nil
 }
@@ -135,17 +134,38 @@ func (f *Flow) Create() error {
 // Delete is called during dlow destruction which can happen only once while Create ensures that at least one flow
 // replica exists, and as such can be called any number of times
 func (f Flow) Delete() error {
-	graph, err := f.buildDependencyGraph(true)
+	graph, err := f.buildDependencyGraph(-1, 0, false)
 	if err != nil {
 		return err
 	}
 	stopChan := make(chan struct{})
 	graph.Deploy(stopChan)
-	f.status = interfaces.ResourceReady
 	return nil
 }
 
-// Current status of the flow deployment
+// Status returns current status of the flow deployment
 func (f Flow) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return f.status, nil
+	graph := f.currentGraph
+	if graph == nil {
+		var err error
+		graph, err = f.buildDependencyGraph(0, 0, true)
+		if err != nil {
+			return interfaces.ResourceError, err
+		}
+	}
+
+	status, _ := graph.GetStatus()
+
+	switch status {
+	case interfaces.Empty:
+		fallthrough
+	case interfaces.Finished:
+		return interfaces.ResourceReady, nil
+	case interfaces.Prepared:
+		fallthrough
+	case interfaces.Running:
+		return interfaces.ResourceNotReady, nil
+	default:
+		return interfaces.ResourceError, nil
+	}
 }

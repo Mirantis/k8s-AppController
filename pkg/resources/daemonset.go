@@ -35,7 +35,7 @@ type DaemonSet struct {
 
 type daemonSetTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a daemonset
+// ShortName returns wrapped resource name if it was a daemonset
 func (daemonSetTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.DaemonSet == nil {
 		return ""
@@ -43,20 +43,20 @@ func (daemonSetTemplateFactory) ShortName(definition client.ResourceDefinition) 
 	return definition.DaemonSet.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (daemonSetTemplateFactory) Kind() string {
 	return "daemonset"
 }
 
-// New returns new DaemonSet based on resource definition
+// New returns DaemonSets controller for new resource based on resource definition
 func (d daemonSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newDaemonSet := parametrizeResource(def.DaemonSet, gc,
 		"Spec.Template.Spec.Containers.Env",
 		"Spec.Template.Spec.InitContainers.Env").(*extbeta1.DaemonSet)
-	return NewDaemonSet(newDaemonSet, c.DaemonSets(), def.Meta)
+	return report.SimpleReporter{BaseResource: DaemonSet{Base: Base{def.Meta}, DaemonSet: newDaemonSet, Client: c.DaemonSets()}}
 }
 
-// NewExisting returns new ExistingDaemonSet based on resource definition
+// NewExisting returns DaemonSets controller for existing resource by its name
 func (d daemonSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	return NewExistingDaemonSet(name, c.DaemonSets())
 }
@@ -76,7 +76,7 @@ func daemonSetStatus(d v1beta1.DaemonSetInterface, name string) (interfaces.Reso
 	return interfaces.ResourceNotReady, nil
 }
 
-// Key return DaemonSet key
+// Key return DaemonSet name
 func (d DaemonSet) Key() string {
 	return daemonSetKey(d.DaemonSet.Name)
 }
@@ -86,7 +86,7 @@ func (d DaemonSet) Status(meta map[string]string) (interfaces.ResourceStatus, er
 	return daemonSetStatus(d.Client, d.DaemonSet.Name)
 }
 
-// Create looks for DaemonSet in K8s and creates it if not present
+// Create looks for DaemonSet in k8s and creates it if not present
 func (d DaemonSet) Create() error {
 	if err := checkExistence(d); err != nil {
 		log.Println("Creating", d.Key())
@@ -99,11 +99,6 @@ func (d DaemonSet) Create() error {
 // Delete deletes DaemonSet from the cluster
 func (d DaemonSet) Delete() error {
 	return d.Client.Delete(d.DaemonSet.Name, &v1.DeleteOptions{})
-}
-
-// NewDaemonSet is a constructor
-func NewDaemonSet(daemonset *extbeta1.DaemonSet, client v1beta1.DaemonSetInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: DaemonSet{Base: Base{meta}, DaemonSet: daemonset, Client: client}}
 }
 
 // ExistingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController

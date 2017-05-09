@@ -33,7 +33,7 @@ type PersistentVolumeClaim struct {
 
 type persistentVolumeClaimTemplateFactory struct{}
 
-// Returns wrapped resource name if it was a persistentvolumeclaim
+// ShortName returns wrapped resource name if it was a persistentvolumeclaim
 func (persistentVolumeClaimTemplateFactory) ShortName(definition client.ResourceDefinition) string {
 	if definition.PersistentVolumeClaim == nil {
 		return ""
@@ -41,26 +41,31 @@ func (persistentVolumeClaimTemplateFactory) ShortName(definition client.Resource
 	return definition.PersistentVolumeClaim.Name
 }
 
-// k8s resource kind that this fabric supports
+// Kind returns a k8s resource kind that this fabric supports
 func (persistentVolumeClaimTemplateFactory) Kind() string {
 	return "persistentvolumeclaim"
 }
 
-// New returns new PersistentVolumeClaim based on resource definition
+// New returns PVC controller for new resource based on resource definition
 func (persistentVolumeClaimTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewPersistentVolumeClaim(parametrizeResource(def.PersistentVolumeClaim, gc).(*v1.PersistentVolumeClaim),
-		c.PersistentVolumeClaims(), def.Meta)
+	return report.SimpleReporter{
+		BaseResource: PersistentVolumeClaim{
+			Base: Base{def.Meta},
+			PersistentVolumeClaim: parametrizeResource(def.PersistentVolumeClaim, gc).(*v1.PersistentVolumeClaim),
+			Client: c.PersistentVolumeClaims(),
+		}}
 }
 
-// NewExisting returns new ExistingPersistentVolumeClaim based on resource definition
+// NewExisting returns PVC controller for existing resource by its name
 func (persistentVolumeClaimTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingPersistentVolumeClaim(name, c.PersistentVolumeClaims())
+	return report.SimpleReporter{BaseResource: ExistingPersistentVolumeClaim{Name: name, Client: c.PersistentVolumeClaims()}}
 }
 
 func persistentVolumeClaimKey(name string) string {
 	return "persistentvolumeclaim/" + name
 }
 
+// Key returns the PersistentVolumeClaim object identifier
 func (p PersistentVolumeClaim) Key() string {
 	return persistentVolumeClaimKey(p.PersistentVolumeClaim.Name)
 }
@@ -78,6 +83,7 @@ func persistentVolumeClaimStatus(p corev1.PersistentVolumeClaimInterface, name s
 	return interfaces.ResourceNotReady, nil
 }
 
+// Create looks for the PersistentVolumeClaim in k8s and creates it if not present
 func (p PersistentVolumeClaim) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
@@ -97,20 +103,18 @@ func (p PersistentVolumeClaim) Status(meta map[string]string) (interfaces.Resour
 	return persistentVolumeClaimStatus(p.Client, p.PersistentVolumeClaim.Name)
 }
 
-func NewPersistentVolumeClaim(persistentVolumeClaim *v1.PersistentVolumeClaim, client corev1.PersistentVolumeClaimInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: PersistentVolumeClaim{Base: Base{meta}, PersistentVolumeClaim: persistentVolumeClaim, Client: client}}
-}
-
 type ExistingPersistentVolumeClaim struct {
 	Base
 	Name   string
 	Client corev1.PersistentVolumeClaimInterface
 }
 
+// Key returns the PersistentVolumeClaim object identifier
 func (p ExistingPersistentVolumeClaim) Key() string {
 	return persistentVolumeClaimKey(p.Name)
 }
 
+// Create looks for existing PVC and returns error if there is no such PVC
 func (p ExistingPersistentVolumeClaim) Create() error {
 	return createExistingResource(p)
 }
@@ -123,8 +127,4 @@ func (p ExistingPersistentVolumeClaim) Status(meta map[string]string) (interface
 // Delete deletes persistentVolumeClaim from the cluster
 func (p ExistingPersistentVolumeClaim) Delete() error {
 	return p.Client.Delete(p.Name, nil)
-}
-
-func NewExistingPersistentVolumeClaim(name string, client corev1.PersistentVolumeClaimInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingPersistentVolumeClaim{Name: name, Client: client}}
 }
