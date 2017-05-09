@@ -15,11 +15,11 @@
 package utils
 
 import (
-	"os/exec"
-	"regexp"
 	"time"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
+	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -32,7 +32,6 @@ import (
 const (
 	appcontrollerPod = "k8s-appcontroller"
 )
-var scheduledTaskRegexp = regexp.MustCompile("(?mi)scheduled deployment task (.*)$")
 
 type AppControllerManager struct {
 	Client    client.Interface
@@ -44,30 +43,14 @@ type AppControllerManager struct {
 }
 
 func (a *AppControllerManager) Run() string {
-	cmd := exec.Command(
-		"kubectl",
-		"--namespace",
-		a.Namespace.Name,
-		"exec",
-		"k8s-appcontroller",
-		"--",
-		"kubeac",
-		"run",
-	)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		switch err.(type) {
-		case *exec.ExitError:
-			Fail(string(out))
-		default:
-			Expect(err).NotTo(HaveOccurred())
-		}
-	}
-	var task string
-	res := scheduledTaskRegexp.FindSubmatch(out)
-	if len(res) > 1 {
-		task = string(res[1])
-	}
+	return a.RunWithOptions(interfaces.DependencyGraphOptions{MinReplicaCount: 1})
+}
+
+func (a *AppControllerManager) RunWithOptions(options interfaces.DependencyGraphOptions) string {
+	sched := scheduler.New(a.Client, nil, 0)
+
+	task, err := scheduler.Deploy(sched, options, false, nil)
+	Expect(err).NotTo(HaveOccurred())
 	return task
 }
 

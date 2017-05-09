@@ -16,22 +16,25 @@ package integration
 
 import (
 	testutils "github.com/Mirantis/k8s-AppController/e2e/utils"
+	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
+
 	. "github.com/onsi/ginkgo"
 )
 
 var _ = Describe("Examples Suite", func() {
+	options := interfaces.DependencyGraphOptions{ReplicaCount: 1}
 	framework := ExamplesFramework{testutils.NewAppControllerManager()}
 
 	It("Example 'simple' should finish", func() {
-		framework.CreateRunAndVerify("simple")
+		framework.CreateRunAndVerify("simple", options)
 	})
 
 	It("Example 'services' should finish", func() {
-		framework.CreateRunAndVerify("services")
+		framework.CreateRunAndVerify("services", options)
 	})
 
 	It("Example 'extended' should finish", func() {
 		testutils.SkipIf14()
-		framework.CreateRunAndVerify("extended")
+		framework.CreateRunAndVerify("extended", options)
 	})
 })
