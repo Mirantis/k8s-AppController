@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: delete-node-$AC_NAME-job
+spec:
+  template:
+    metadata:
+      name: delete-node-$AC_NAME-job
+    spec:
+      containers:
+      - name: delete-node-$AC_NAME
+        image: etcd-kubectl
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: MEMBER_NAME
+            value: etcd-$AC_NAME
+          - name: CLUSTERNAME
+            value: $clusterName
+        command:
+          - "/bin/sh"
+          - "-ec"
+          - |
+            # find member ID by the name
+            MEMBER_ID=$(etcdctl --endpoint "http://$CLUSTERNAME-client:2379" member list | grep name="$MEMBER_NAME" | cut -d':' -f1)
+            # remove member
+            etcdctl --endpoint "http://$CLUSTERNAME-client:2379" member remove "$MEMBER_ID"
+      restartPolicy: Never

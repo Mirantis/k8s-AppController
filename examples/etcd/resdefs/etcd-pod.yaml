@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: etcd-pod-$AC_NAME
+  labels:
+    app: etcd
+    etcd_node: etcd-$AC_NAME
+    cluster: $clusterName
+spec:
+  containers:
+  - image: etcd-kubectl
+    imagePullPolicy: IfNotPresent
+    name: etcd-$AC_NAME
+    env:
+      - name: HOSTNAME
+        value: etcd-$AC_NAME
+      - name: ETCD_NAME
+        valueFrom:
+          configMapKeyRef:
+            name: etcd-node-etcd-$AC_NAME
+            key: ETCD_NAME
+      - name: ETCD_INITIAL_CLUSTER
+        valueFrom:
+          configMapKeyRef:
+            name: etcd-node-etcd-$AC_NAME
+            key: ETCD_INITIAL_CLUSTER
+      - name: ETCD_INITIAL_CLUSTER_STATE
+        valueFrom:
+          configMapKeyRef:
+            name: etcd-node-etcd-$AC_NAME
+            key: ETCD_INITIAL_CLUSTER_STATE
+    command:
+    - "/bin/sh"
+    - "-ec"
+    - |
+      kubectl delete cm "etcd-node-$HOSTNAME"
+      exec etcd --initial-advertise-peer-urls "http://$HOSTNAME:2380" \
+           --listen-peer-urls http://0.0.0.0:2380 \
+           --listen-client-urls http://0.0.0.0:2379 \
+           --advertise-client-urls "http://$HOSTNAME:2379"
+    ports:
+    - containerPort: 2379
+      name: client
+      protocol: TCP
+    - containerPort: 2380
+      name: server
+      protocol: TCP
+  restartPolicy: Never

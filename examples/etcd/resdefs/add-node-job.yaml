@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: add-etcd-node-$AC_NAME-job
+spec:
+  template:
+    metadata:
+      name: add-etcd-node-$AC_NAME-job
+    spec:
+      containers:
+      - name: add-etcd-node-$AC_NAME
+        image: etcd-kubectl
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: HOSTNAME
+            value: etcd-$AC_NAME
+          - name: CLUSTERNAME
+            value: $clusterName
+        command:
+          - "/bin/sh"
+          - "-ec"
+          - "-x"
+          - |
+            # register new node.
+            # This sets ETCD_NAME, ETCD_INITIAL_CLUSTER and ETCD_INITIAL_CLUSTER_STATE variables
+            eval $(etcdctl --endpoint "http://$CLUSTERNAME-client:2379" member add $HOSTNAME "http://$HOSTNAME:2380" | grep "^ETCD_")
+            # store them in ConfigMap
+            kubectl create configmap "etcd-node-$HOSTNAME" \
+              --from-literal=ETCD_NAME="$ETCD_NAME" \
+              --from-literal=ETCD_INITIAL_CLUSTER="$ETCD_INITIAL_CLUSTER" \
+              --from-literal=ETCD_INITIAL_CLUSTER_STATE="$ETCD_INITIAL_CLUSTER_STATE"
+
+      restartPolicy: Never
