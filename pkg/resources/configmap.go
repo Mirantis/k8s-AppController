@@ -25,6 +25,10 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+var configMapParamFields = []string{
+	"Data.Keys",
+}
+
 type ConfigMap struct {
 	Base
 	ConfigMap *v1.ConfigMap
@@ -54,7 +58,7 @@ func (configMapTemplateFactory) Kind() string {
 
 // New returns ConfigMap controller for new resource based on resource definition
 func (configMapTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	cm := parametrizeResource(def.ConfigMap, gc).(*v1.ConfigMap)
+	cm := parametrizeResource(def.ConfigMap, gc, configMapParamFields).(*v1.ConfigMap)
 	return report.SimpleReporter{BaseResource: ConfigMap{Base: Base{def.Meta}, ConfigMap: cm, Client: c.ConfigMaps()}}
 }
 

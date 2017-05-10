@@ -28,7 +28,8 @@ func TestAllocateReplicas(t *testing.T) {
 	flow := mocks.MakeFlow("flow").Flow
 	c := mocks.NewClient()
 	sched := New(c, nil, 0).(*Scheduler)
-	newReplicas1, deleteReplicas, err := sched.allocateReplicas(flow, interfaces.DependencyGraphOptions{ReplicaCount: 3})
+	newReplicas1, deleteReplicas, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 3}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,8 @@ func TestAllocateReplicas(t *testing.T) {
 	}
 	ensureReplicas(c, t, 0, 3)
 
-	newReplicas2, deleteReplicas, err := sched.allocateReplicas(flow, interfaces.DependencyGraphOptions{ReplicaCount: 1})
+	newReplicas2, deleteReplicas, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 1}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,10 +56,8 @@ func TestAllocateReplicas(t *testing.T) {
 	}
 	ensureReplicas(c, t, 0, 4)
 
-	allReplicas, deleteReplicas, err := sched.allocateReplicas(flow, interfaces.DependencyGraphOptions{
-		ReplicaCount:          5,
-		FixedNumberOfReplicas: true,
-	})
+	allReplicas, deleteReplicas, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 5, FixedNumberOfReplicas: true}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,8 @@ func TestAllocateReplicas(t *testing.T) {
 		t.Error("replica list is not stable")
 	}
 
-	allReplicas2, deleteReplicas, err := sched.allocateReplicas(flow, interfaces.DependencyGraphOptions{ReplicaCount: 0})
+	allReplicas2, deleteReplicas, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 0}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,8 @@ func TestDeallocateReplicas(t *testing.T) {
 	flow := mocks.MakeFlow("flow").Flow
 	c := mocks.NewClient()
 	sched := New(c, nil, 0).(*Scheduler)
-	newReplicas1, deleteReplicas1, err := sched.allocateReplicas(flow, interfaces.DependencyGraphOptions{ReplicaCount: 5})
+	newReplicas1, deleteReplicas1, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 5}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +112,8 @@ func TestDeallocateReplicas(t *testing.T) {
 	}
 	ensureReplicas(c, t, 0, 5)
 
-	newReplicas2, deleteReplicas2, err := sched.allocateReplicas(flow, interfaces.DependencyGraphOptions{ReplicaCount: -2})
+	newReplicas2, deleteReplicas2, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: -2}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,13 +134,17 @@ func TestDeallocateReplicas(t *testing.T) {
 	ensureReplicas(c, t, 0, 5)
 }
 
+func toContext(options interfaces.DependencyGraphOptions) *GraphContext {
+	return &GraphContext{graph: &DependencyGraph{graphOptions: options}}
+}
+
 // TestAllocateReplicasMinMax tests replica allocation with min/max constraints applied
 func TestAllocateReplicasMinMax(t *testing.T) {
 	flow := mocks.MakeFlow("flow").Flow
 	c := mocks.NewClient()
 	sched := New(c, nil, 0).(*Scheduler)
 	newReplicas, deleteReplicas, err := sched.allocateReplicas(flow,
-		interfaces.DependencyGraphOptions{ReplicaCount: 3, MinReplicaCount: 5, MaxReplicaCount: 10})
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 3, MinReplicaCount: 5, MaxReplicaCount: 10}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +158,7 @@ func TestAllocateReplicasMinMax(t *testing.T) {
 	ensureReplicas(c, t, 0, 5)
 
 	newReplicas, deleteReplicas, _ = sched.allocateReplicas(flow,
-		interfaces.DependencyGraphOptions{ReplicaCount: 9, MinReplicaCount: 5, MaxReplicaCount: 10})
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 9, MinReplicaCount: 5, MaxReplicaCount: 10}))
 
 	if len(newReplicas) != 5 {
 		t.Fatal("unexpected new replica count", len(newReplicas))
@@ -162,7 +169,7 @@ func TestAllocateReplicasMinMax(t *testing.T) {
 	ensureReplicas(c, t, 0, 10)
 
 	newReplicas, deleteReplicas, err = sched.allocateReplicas(flow,
-		interfaces.DependencyGraphOptions{ReplicaCount: -6, MinReplicaCount: 5, MaxReplicaCount: 10})
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: -6, MinReplicaCount: 5, MaxReplicaCount: 10}))
 	if err != nil {
 		t.Fatal(err)
 	}

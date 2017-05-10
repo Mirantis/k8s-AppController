@@ -25,6 +25,14 @@ import (
 	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
+var statefulSetParamFields = []string{
+	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.Containers.Env",
+	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.Spec.InitContainers.Env",
+	"Spec.Template.ObjectMeta",
+}
+
 // StatefulSet is a wrapper for K8s StatefulSet object
 type StatefulSet struct {
 	Base
@@ -50,9 +58,7 @@ func (statefulSetTemplateFactory) Kind() string {
 
 // New returns StatefulSet controller for new resource based on resource definition
 func (statefulSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	statefulSet := parametrizeResource(def.StatefulSet, gc,
-	"Spec.Template.Spec.Containers.Env",
-		"Spec.Template.Spec.InitContainers.Env").(*appsbeta1.StatefulSet)
+	statefulSet := parametrizeResource(def.StatefulSet, gc, statefulSetParamFields).(*appsbeta1.StatefulSet)
 	return newStatefulSet(statefulSet, c.StatefulSets(), c, def.Meta)
 }
 

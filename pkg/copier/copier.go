@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-var varsRe, _ = regexp.Compile("\\$\\w+\\b")
+var varsRe = regexp.MustCompile("\\$\\w+\\b")
 
 // Copy creates a deep copy of whatever is passed to it and returns the copy
 // in an interface{}.  The returned value will need to be asserted to the
@@ -47,8 +47,13 @@ func CopyWithReplacements(src interface{}, replacementsFunc func(string) string,
 	// Make a copy of the same type as the original.
 	cpy := reflect.New(original.Type()).Elem()
 
+	_, found := addToPath("", "", replaceIn...)
 	// Recursively copy the original.
-	copyRecursive(original, cpy, replacementsFunc, "", replaceIn...)
+	if found {
+		copyRecursive(original, cpy, replacementsFunc, "", "*")
+	} else {
+		copyRecursive(original, cpy, replacementsFunc, "", replaceIn...)
+	}
 
 	// Return the copy as an interface.
 	return cpy.Interface()
@@ -98,19 +103,7 @@ func copyRecursive(original, cpy reflect.Value, replacementsFunc func(string) st
 				continue
 			}
 			name := original.Type().Field(i).Name
-			var newPath string
-			if path == "" {
-				newPath = name
-			} else {
-				newPath = path + "." + name
-			}
-			found := false
-			for _, r := range replaceIn {
-				if r == newPath || r == "*" {
-					found = true
-					break
-				}
-			}
+			newPath, found := addToPath(path, name, replaceIn...)
 			if found {
 				copyRecursive(original.Field(i), cpy.Field(i), replacementsFunc, newPath, "*")
 			} else {
@@ -134,10 +127,23 @@ func copyRecursive(original, cpy reflect.Value, replacementsFunc func(string) st
 		}
 		cpy.Set(reflect.MakeMap(original.Type()))
 		for _, key := range original.MapKeys() {
-			originalValue := original.MapIndex(key)
-			copyValue := reflect.New(originalValue.Type()).Elem()
-			copyRecursive(originalValue, copyValue, replacementsFunc, path, replaceIn...)
-			cpy.SetMapIndex(key, copyValue)
+			value := original.MapIndex(key)
+			copyValue := reflect.New(value.Type()).Elem()
+			newPath, found := addToPath(path, "Values", replaceIn...)
+			if found {
+				copyRecursive(value, copyValue, replacementsFunc, newPath, "*")
+			} else {
+				copyRecursive(value, copyValue, replacementsFunc, newPath, replaceIn...)
+			}
+			newPath, found = addToPath(path, "Keys", replaceIn...)
+			copyKey := reflect.New(key.Type()).Elem()
+			if found {
+				copyRecursive(key, copyKey, replacementsFunc, newPath, "*")
+			} else {
+				copyRecursive(key, copyKey, replacementsFunc, newPath, replaceIn...)
+			}
+
+			cpy.SetMapIndex(copyKey, copyValue)
 		}
 	case reflect.String:
 		for _, r := range replaceIn {
@@ -150,6 +156,21 @@ func copyRecursive(original, cpy reflect.Value, replacementsFunc func(string) st
 	default:
 		cpy.Set(original)
 	}
+}
+
+func addToPath(path, name string, replaceIn ...string) (string, bool) {
+	var newPath string
+	if path == "" {
+		newPath = name
+	} else {
+		newPath = path + "." + name
+	}
+	for _, r := range replaceIn {
+		if r == newPath || r == "*" {
+			return newPath, true
+		}
+	}
+	return newPath, false
 }
 
 func EvaluateString(template string, replacementsFunc func(string) string) string {

@@ -25,6 +25,14 @@ import (
 	"k8s.io/client-go/pkg/apis/batch/v1"
 )
 
+var jobParamFields = []string{
+	"Spec.Template.Spec.Containers.Env",
+	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.InitContainers.Env",
+	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.ObjectMeta",
+}
+
 type Job struct {
 	Base
 	Job    *v1.Job
@@ -52,9 +60,7 @@ func (jobTemplateFactory) Kind() string {
 
 // New returns Job controller for new resource based on resource definition
 func (jobTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	job := parametrizeResource(def.Job, gc,
-		"Spec.Template.Spec.Containers.Env",
-		"Spec.Template.Spec.InitContainers.Env").(*v1.Job)
+	job := parametrizeResource(def.Job, gc, jobParamFields).(*v1.Job)
 	return newJob(job, c.Jobs(), def.Meta)
 }
 
