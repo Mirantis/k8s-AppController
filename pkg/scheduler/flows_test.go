@@ -15,6 +15,7 @@
 package scheduler
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -1024,4 +1025,46 @@ func TestDeleteExistingResources(t *testing.T) {
 	depGraph.Deploy(stopChan)
 
 	ensureReplicas(c, t, 0, 0, "valid attempt to delete external resources")
+}
+
+// TestCleanupResourcesErrorHandling tests that replica can only be deleted when all of it resources are deleted
+func TestCleanupResourcesErrorHandling(t *testing.T) {
+	c, fake := mocks.NewClientWithFake(
+		mocks.MakeFlow("test"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME"),
+		mocks.MakeDependency("flow/test", "job/ready-$AC_NAME", "flow=test"),
+	)
+
+	prevented := false
+	// this makes fail the first attempt to delete a job
+	fake.PrependReactor("delete", "jobs",
+		func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			if !prevented {
+				prevented = true
+				return true, nil, errors.New("resouce cannot be deleted")
+			}
+			return false, nil, nil
+		})
+
+	sched := New(c, nil, 0)
+	depGraph, err := sched.BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 2, FlowName: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	ensureReplicas(c, t, 2, 2)
+
+	depGraph, err = sched.BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: -2, FlowName: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	depGraph.Deploy(stopChan)
+
+	ensureReplicas(c, t, 1, 1)
 }
