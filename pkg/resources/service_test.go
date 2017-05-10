@@ -100,3 +100,55 @@ func TestCheckServiceStatusReplicaSetNotReady(t *testing.T) {
 		t.Errorf("service should be `not ready`, is `%s` instead", status)
 	}
 }
+
+// TestCheckServiceStatusOnPartialSelector tests that resources that match only part of selector don't affect service status
+func TestCheckServiceStatusOnPartialSelector(t *testing.T) {
+	svc := mocks.MakeService("svc")
+	svc.Spec.Selector = map[string]string{
+		"a": "x",
+		"b": "y",
+	}
+	rs := mocks.MakeReplicaSet("fail")
+	rs.Labels = map[string]string{
+		"a": "x",
+	}
+
+	pod := mocks.MakePod("fail")
+	pod.Labels = map[string]string{
+		"b": "y",
+	}
+	job := mocks.MakeJob("ready")
+	job.Labels = map[string]string{
+		"a": "x",
+		"b": "y",
+	}
+
+	c := mocks.NewClient(svc, rs, pod, job)
+	status, err := serviceStatus(c.Services(), "svc", c)
+
+	if err != nil {
+		t.Fatalf("error should be nil, got %v", err)
+	}
+
+	rs2 := mocks.MakeReplicaSet("fail-2")
+	rs2.Labels = map[string]string{
+		"a": "x",
+		"b": "y",
+		"c": "z",
+	}
+	c.ReplicaSets().Create(rs2)
+
+	status, err = serviceStatus(c.Services(), "svc", c)
+
+	if err == nil {
+		t.Fatal("error should be returned, got nil")
+	}
+	expectedError := fmt.Sprintf("resource replicaset/%s is not ready", rs2.Name)
+	if err.Error() != expectedError {
+		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
+	}
+
+	if status != interfaces.ResourceNotReady {
+		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	}
+}
