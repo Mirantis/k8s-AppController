@@ -348,7 +348,7 @@ func (sched *Scheduler) updateContext(context, parentContext *GraphContext, depe
 	context.dependencies = append(context.dependencies, dependency)
 }
 
-func (sched *Scheduler) newDefaultFlowObject() *client.Flow {
+func newDefaultFlowObject() *client.Flow {
 	return &client.Flow{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Flow",
@@ -356,7 +356,6 @@ func (sched *Scheduler) newDefaultFlowObject() *client.Flow {
 		},
 		ObjectMeta: api.ObjectMeta{
 			Name:      interfaces.DefaultFlowName,
-			Namespace: sched.client.Namespace(),
 		},
 		Exported: true,
 	}
@@ -529,7 +528,7 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 
 	flow := flowResDef.Flow
 	if flow == nil {
-		flow = sched.newDefaultFlowObject()
+		flow = newDefaultFlowObject()
 	}
 
 	if !flow.Exported && options.ExportedOnly {
@@ -552,7 +551,7 @@ func (sched *Scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	if !options.Silent {
 		log.Println("Making sure there is no cycles in the dependency graph")
 	}
-	if err = EnsureNoCycles(depList); err != nil {
+	if err = EnsureNoCycles(depList, resDefs); err != nil {
 		return nil, err
 	}
 
