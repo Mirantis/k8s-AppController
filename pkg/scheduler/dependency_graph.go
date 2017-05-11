@@ -253,7 +253,6 @@ func isMapContainedIn(contained, containing map[string]string) bool {
 // newScheduledResource is a constructor for ScheduledResource
 func (sched Scheduler) newScheduledResource(kind, name string, resDefs map[string]client.ResourceDefinition,
 	gc *GraphContext, silent bool) (*ScheduledResource, error) {
-
 	var r interfaces.Resource
 
 	resourceTemplate, ok := resources.KindToResourceTemplate[kind]
@@ -355,7 +354,7 @@ func newDefaultFlowObject() *client.Flow {
 			APIVersion: client.GroupName + "/" + client.Version,
 		},
 		ObjectMeta: api.ObjectMeta{
-			Name:      interfaces.DefaultFlowName,
+			Name: interfaces.DefaultFlowName,
 		},
 		Exported: true,
 	}
@@ -415,11 +414,7 @@ func (rl SortableReplicaList) Swap(i, j int) {
 func getReplicaSpace(flow *client.Flow, gc *GraphContext) string {
 	name := flow.ReplicaSpace
 	if name == "" {
-		if gc.graph.graphOptions.FlowInstanceName != "" {
-			name = gc.graph.graphOptions.FlowInstanceName
-		} else {
-			name = flow.Name
-		}
+		name = flow.Name
 	}
 	return copier.EvaluateString(name, getArgFunc(gc))
 }
@@ -432,6 +427,9 @@ func (sched *Scheduler) allocateReplicas(flow *client.Flow, gc *GraphContext) ([
 	options := gc.graph.graphOptions
 	replicaSpace := getReplicaSpace(flow, gc)
 	label := labels.Set{"replicaspace": replicaSpace}
+	if options.FlowInstanceName != "" {
+		label["context"] = options.FlowInstanceName
+	}
 	existingReplicas, err := sched.client.Replicas().List(api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label),
 	})
@@ -468,7 +466,7 @@ func (sched *Scheduler) allocateReplicas(flow *client.Flow, gc *GraphContext) ([
 
 // createReplicas creates missing flow replicas up to desiredCount
 func (sched *Scheduler) createReplicas(
-	existingReplicas []client.Replica, desiredCount int, flowName, replicaSpace string, replicasLabel labels.Set) ([]client.Replica, error) {
+	existingReplicas []client.Replica, desiredCount int, flowName, replicaSpace string, label labels.Set) ([]client.Replica, error) {
 
 	var maxCurrentTime time.Time
 	for _, item := range existingReplicas {
@@ -481,11 +479,11 @@ func (sched *Scheduler) createReplicas(
 	for len(sortableReplicaList) < desiredCount {
 		replica := &client.Replica{
 			ObjectMeta: api.ObjectMeta{
-				GenerateName: strings.ToLower(flowName) + "-",
-				Labels:       replicasLabel,
+				GenerateName: "replica-",
+				Labels:       label,
 				Namespace:    sched.client.Namespace(),
 			},
-			FlowName: flowName,
+			FlowName:     flowName,
 			ReplicaSpace: replicaSpace,
 		}
 		replica, err := sched.client.Replicas().Create(replica)

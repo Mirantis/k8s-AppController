@@ -68,6 +68,7 @@ type DeploymentReport interface {
 type DependencyGraph interface {
 	GetStatus() (DeploymentStatus, DeploymentReport)
 	Deploy(<-chan struct{})
+	Options() DependencyGraphOptions
 }
 
 type GraphContext interface {

@@ -50,8 +50,8 @@ var _ = Describe("Flows Suite", func() {
 			return framework.countPods("test-pod", true)
 		}).Should(Equal(1), "1 test-pod should have been created")
 		Eventually(func() int {
-			return framework.countReplicas("test-flow-", false)
-		}).Should(Equal(2), "2 test-flow* replicas should have been created")
+			return framework.countReplicas("test-flow", true)
+		}).Should(Equal(2), "2 test-flow replicas should have been created")
 		Eventually(func() int {
 			return framework.countReplicas("DEFAULT", true)
 		}).Should(Equal(1), "1 DEFAULT flow replica should have been created")
@@ -78,8 +78,8 @@ var _ = Describe("Flows Suite", func() {
 			return framework.countPods("test-pod", true)
 		}).Should(Equal(1), "1 test-pod should have been created")
 		Eventually(func() int {
-			return framework.countReplicas("test-flow-", false)
-		}).Should(Equal(4), "2 test-flow* replicas should have been created")
+			return framework.countReplicas("test-flow", true)
+		}).Should(Equal(4), "2 test-flow replicas should have been created")
 		Eventually(func() int {
 			return framework.countReplicas("DEFAULT", true)
 		}).Should(Equal(2), "1 DEFAULT flow replica should have been created")
@@ -140,10 +140,10 @@ func (ff FlowFramework) countJobs(prefix string, equal bool) int {
 }
 
 func (ff FlowFramework) countReplicas(prefix string, equal bool) int {
-	jobs, err := ff.Client.Replicas().List(api.ListOptions{})
+	replicas, err := ff.Client.Replicas().List(api.ListOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	count := 0
-	for _, item := range jobs.Items {
+	for _, item := range replicas.Items {
 		if equal && item.ReplicaSpace == prefix ||
 			!equal && strings.HasPrefix(item.ReplicaSpace, prefix) && len(item.ReplicaSpace) > len(prefix) {
 			count++
