@@ -370,6 +370,56 @@ func TestParametrizedFlow(t *testing.T) {
 	}
 }
 
+// TestAcNameParameter tests ability to pass $AC_NAME of one flow as an argument for another
+func TestAcNameParameter(t *testing.T) {
+	flow := mocks.MakeFlow("flow2")
+	flow.Flow.Parameters = map[string]client.FlowParameter{
+		"name": mocks.MakeFlowParameter(""),
+	}
+
+	dep := mocks.MakeDependency("flow/flow1", "flow/flow2", "flow=flow1")
+	dep.Args = map[string]string{"name": "$AC_NAME"}
+
+	c := mocks.NewClient(
+		mocks.MakeFlow("flow1"),
+		flow,
+		dep,
+		mocks.MakeResourceDefinition("job/ready-$name"),
+		mocks.MakeDependency("flow/flow2", "job/ready-$name", "flow=flow2"),
+	)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{
+			ReplicaCount: 1,
+			FlowName:     "flow1",
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	replicas, err := c.Replicas().List(api.ListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(replicas.Items) != 2 {
+		t.Fatalf("there should be 2 replicas - 1 for each flow. Found %d replicas", len(replicas.Items))
+	}
+	for _, replica := range replicas.Items {
+		if replica.FlowName == "flow1" {
+			acName := replica.ReplicaName()
+			jobName := "ready-" + acName
+			_, err := c.Jobs().Get(jobName)
+			if err != nil {
+				t.Error(err)
+			}
+			return
+		}
+	}
+	t.Error("no flow1 replica found")
+}
+
 // TestUseUndeclaredFlowParameter tests that undeclared flow parameters are not evaluated and thus $something
 // remains intact. Note, that with real k8s this would cause deployment error since $ is not a valid character  in
 // resource name, which is expected behavior since usage of undeclared parameter is an error that should not be masked
