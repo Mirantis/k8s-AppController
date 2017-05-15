@@ -7,7 +7,7 @@ exported: true
 construction:
   flow: etcd-bootstrap
 destruction:
-  flow: cleanup
+  flow: etcd-bootstrap-cleanup
 
 replicaSpace: etcd-$clusterName-node
 
@@ -15,3 +15,6 @@ parameters:
   clusterName:
     description: etcd cluster name
     default: etcd
+  livenessProbeInterval:
+    description: how often monitoring job examines cluster health (in seconds)
+    default: "30"

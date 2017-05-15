@@ -1,0 +1,21 @@
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-recover
+parent: flow/etcd-recover
+child: job/delete-node-$NAME-job
+args:
+  NAME: $nodeSuffix
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-recover
+parent: job/delete-node-$NAME-job
+child: flow/etcd-scale
+args:
+  clusterName: $clusterName

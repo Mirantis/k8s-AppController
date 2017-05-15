@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// ProcessDeploymentTasks peeks deployment taksks (ConfigMap objects) one by one in chronological order,
+// ProcessDeploymentTasks picks deployment tasks (ConfigMap objects) one by one in chronological order,
 // restores graph options from it and deploys the graph. This is the main function of long-running deployment process
 func ProcessDeploymentTasks(client client.Interface, stopChan <-chan struct{}) {
 	added := make(chan *v1.ConfigMap)

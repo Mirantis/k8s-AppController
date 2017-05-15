@@ -30,6 +30,17 @@ kind: Dependency
 metadata:
   generateName: dependency-
   labels:
-    flow: cleanup
+    flow: etcd-bootstrap
+parent: pod/initial-etcd-pod-$AC_NAME
+child: job/monitor-$clusterName-job
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  generateName: dependency-
+  labels:
+    flow: etcd-bootstrap-cleanup
 parent: flow/etcd-bootstrap
-child: job/delete-node-$AC_NAME-job
+child: job/delete-node-$NAME-job
+args:
+  NAME: $AC_NAME
