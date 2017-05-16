@@ -15,12 +15,12 @@
 package scheduler
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
+	"k8s.io/client-go/pkg/api"
 )
 
 // TestAllocateReplicas tests replica allocation in different configurations
@@ -41,6 +41,7 @@ func TestAllocateReplicas(t *testing.T) {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas))
 	}
 	ensureReplicas(c, t, 0, 3)
+	acknowledgeReplicas(c, t)
 
 	newReplicas2, deleteReplicas, err := sched.allocateReplicas(flow,
 		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 1}))
@@ -55,6 +56,7 @@ func TestAllocateReplicas(t *testing.T) {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas))
 	}
 	ensureReplicas(c, t, 0, 4)
+	acknowledgeReplicas(c, t)
 
 	allReplicas, deleteReplicas, err := sched.allocateReplicas(flow,
 		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 5, FixedNumberOfReplicas: true}))
@@ -69,9 +71,15 @@ func TestAllocateReplicas(t *testing.T) {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas))
 	}
 	ensureReplicas(c, t, 0, 5)
+	acknowledgeReplicas(c, t)
 
-	if !reflect.DeepEqual(newReplicas2[0], allReplicas[3]) || !reflect.DeepEqual(newReplicas1, allReplicas[:3]) {
+	if newReplicas2[0].Name != allReplicas[3].Name {
 		t.Error("replica list is not stable")
+	}
+	for i, r := range newReplicas1 {
+		if r.Name != allReplicas[i].Name {
+			t.Error("replica list is not stable")
+		}
 	}
 
 	allReplicas2, deleteReplicas, err := sched.allocateReplicas(flow,
@@ -88,8 +96,10 @@ func TestAllocateReplicas(t *testing.T) {
 	}
 	ensureReplicas(c, t, 0, 5)
 
-	if !reflect.DeepEqual(allReplicas, allReplicas2) {
-		t.Error("replica list is not stable")
+	for i, r := range allReplicas {
+		if r.Name != allReplicas2[i].Name {
+			t.Error("replica list is not stable")
+		}
 	}
 }
 
@@ -111,6 +121,7 @@ func TestDeallocateReplicas(t *testing.T) {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas1))
 	}
 	ensureReplicas(c, t, 0, 5)
+	acknowledgeReplicas(c, t)
 
 	newReplicas2, deleteReplicas2, err := sched.allocateReplicas(flow,
 		toContext(interfaces.DependencyGraphOptions{ReplicaCount: -2}))
@@ -125,10 +136,11 @@ func TestDeallocateReplicas(t *testing.T) {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas2))
 	}
 
-	if !reflect.DeepEqual(deleteReplicas2, newReplicas1[3:]) {
-		t.Error("last created replicas should have been scheduled for deletion")
+	for i, replica := range deleteReplicas2 {
+		if replica.Name != newReplicas1[3+i].Name {
+			t.Error("last created replicas should have been scheduled for deletion")
+		}
 	}
-
 	// allocateReplicas can only create new Replica objects in k8s, but not delete existing
 	// replicas can only be deleted when all the resources belonging to it are deleted which happens after deployment
 	ensureReplicas(c, t, 0, 5)
@@ -156,17 +168,19 @@ func TestAllocateReplicasMinMax(t *testing.T) {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas))
 	}
 	ensureReplicas(c, t, 0, 5)
+	acknowledgeReplicas(c, t)
 
 	newReplicas, deleteReplicas, _ = sched.allocateReplicas(flow,
-		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 9, MinReplicaCount: 5, MaxReplicaCount: 10}))
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 9, MinReplicaCount: 5, MaxReplicaCount: 11}))
 
-	if len(newReplicas) != 5 {
+	if len(newReplicas) != 6 {
 		t.Fatal("unexpected new replica count", len(newReplicas))
 	}
 	if len(deleteReplicas) != 0 {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas))
 	}
-	ensureReplicas(c, t, 0, 10)
+	ensureReplicas(c, t, 0, 11)
+	acknowledgeReplicas(c, t)
 
 	newReplicas, deleteReplicas, err = sched.allocateReplicas(flow,
 		toContext(interfaces.DependencyGraphOptions{ReplicaCount: -6, MinReplicaCount: 5, MaxReplicaCount: 10}))
@@ -177,10 +191,60 @@ func TestAllocateReplicasMinMax(t *testing.T) {
 	if len(newReplicas) != 0 {
 		t.Fatal("unexpected new replica count", len(newReplicas))
 	}
-	if len(deleteReplicas) != 5 {
+	if len(deleteReplicas) != 6 {
 		t.Fatal("unexpected doomed replica count", len(deleteReplicas))
 	}
-	ensureReplicas(c, t, 0, 10)
+	ensureReplicas(c, t, 0, 11)
+}
+
+// TestRepeatRelativeReplicaAllocation tests that repeated allocation of the same relative amount of replica
+// creates replicas on the first call only
+func TestRepeatRelativeReplicaAllocation(t *testing.T) {
+	flow := mocks.MakeFlow("flow").Flow
+	c := mocks.NewClient()
+	sched := New(c, nil, 0).(*Scheduler)
+	newReplicas, deleteReplicas, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 3}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(newReplicas) != 3 {
+		t.Fatal("unexpected new replica count", len(newReplicas))
+	}
+	if len(deleteReplicas) != 0 {
+		t.Fatal("unexpected doomed replica count", len(deleteReplicas))
+	}
+
+	newReplicas2, deleteReplicas2, err := sched.allocateReplicas(flow,
+		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 3}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(deleteReplicas2) != 0 {
+		t.Fatal("unexpected doomed replica count", len(deleteReplicas2))
+	}
+	if len(newReplicas2) != 3 {
+		t.Fatal("unexpected new replica count", len(newReplicas2))
+	}
+	for i := range newReplicas {
+		if newReplicas[i].Name != newReplicas2[i].Name {
+			t.Errorf("replica list differs: %s != %s", newReplicas[i].Name, newReplicas2[i].Name)
+		}
+	}
+}
+
+func acknowledgeReplicas(c client.Interface, t *testing.T) {
+	iface := c.Replicas()
+	list, err := iface.List(api.ListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range list.Items {
+		r.Deployed = true
+		iface.Update(&r)
+	}
 }
 
 // TestDependencyToFlowMatching tests how AC identifies if dependency belongs to a given flow path or not

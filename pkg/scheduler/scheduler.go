@@ -344,7 +344,6 @@ func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
 		}
 	}
 	if depGraph.finalizer != nil {
-		log.Print("Performing resource cleanup")
 		depGraph.finalizer()
 	}
 	// TODO Make sure every KO gets created eventually

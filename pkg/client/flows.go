@@ -70,16 +70,21 @@ type FlowParameter struct {
 
 // Replica resource represents one instance of the replicated flow. Since the only difference between replicas is their
 // $AC_NAME value which is replica name this resource is only needed to generate unique name for each replica and make
-// those name persistent so that we could do CRD (CRUD without "U") on the list of replica names
+// those name persistent so that we could do CRUD on the list of replica names
 type Replica struct {
 	unversioned.TypeMeta `json:",inline"`
 
 	// Standard object metadata
 	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
+	// flow name
 	FlowName string `json:"flowName,omitempty"`
 
+	// replica-space name
 	ReplicaSpace string `json:"replicaSpace,omitempty"`
+
+	// AC sets this field to true after deployment of the dependency graph for this replica
+	Deployed bool `json:"deployed,omitempty"`
 }
 
 // ReplicaList is a list of replicas
@@ -97,6 +102,7 @@ type ReplicasInterface interface {
 	List(opts api.ListOptions) (*ReplicaList, error)
 	Create(replica *Replica) (*Replica, error)
 	Delete(name string) error
+	Update(replica *Replica) error
 }
 
 type replicas struct {
@@ -156,6 +162,17 @@ func (r *replicas) Delete(name string) error {
 		Name(name).
 		Do().
 		Error()
+}
+
+func (r *replicas) Update(replica *Replica) error {
+	//result := &Replica{}
+	_, err := r.rc.Put().
+		Namespace(r.namespace).
+		Resource("replicas").
+		Name(replica.Name).
+		Body(replica).
+		DoRaw()
+	return err
 }
 
 // ReplicaName returns replica name (which then goes into $AC_NAME var) encoded in Replica k8s object name

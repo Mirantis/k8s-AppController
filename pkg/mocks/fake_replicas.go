@@ -59,14 +59,11 @@ func (fr *FakeReplicas) Create(replica *client.Replica) (result *client.Replica,
 	return res, err
 }
 
-func (fr *FakeReplicas) Update(replica *client.Replica) (result *client.Replica, err error) {
-	obj, err := fr.fake.
+func (fr *FakeReplicas) Update(replica *client.Replica) error {
+	_, err := fr.fake.
 		Invokes(testing.NewUpdateAction(replicaResource, fr.ns, replica), &client.Replica{})
 
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*client.Replica), err
+	return err
 }
 
 func (fr *FakeReplicas) Delete(name string) error {
