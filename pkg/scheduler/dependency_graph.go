@@ -40,12 +40,12 @@ type dependencyGraph struct {
 }
 
 type graphContext struct {
-	args         map[string]string
-	graph        *dependencyGraph
-	scheduler    *scheduler
-	flow         *client.Flow
-	replica      string
-	dependencies []client.Dependency
+	args       map[string]string
+	graph      *dependencyGraph
+	scheduler  *scheduler
+	flow       *client.Flow
+	dependency *client.Dependency
+	replica    string
 }
 
 var _ interfaces.GraphContext = &graphContext{}
@@ -84,13 +84,13 @@ func (gc graphContext) Graph() interfaces.DependencyGraph {
 	return gc.graph
 }
 
-// Dependencies method returns list of incoming dependencies for the node on which operation is performed
-func (gc graphContext) Dependencies() []client.Dependency {
-	return gc.dependencies
+// Dependency returns Dependency for which child is the resource being created with this context
+func (gc graphContext) Dependency() *client.Dependency {
+	return gc.dependency
 }
 
 // newScheduledResourceFor returns new scheduled resource for given resource in init state
-func newScheduledResourceFor(r interfaces.Resource, context *graphContext, existing bool) *ScheduledResource {
+func newScheduledResourceFor(r interfaces.Resource, suffix string, context *graphContext, existing bool) *ScheduledResource {
 	return &ScheduledResource{
 		Started:  false,
 		Ignored:  false,
@@ -99,6 +99,7 @@ func newScheduledResourceFor(r interfaces.Resource, context *graphContext, exist
 		Meta:     map[string]map[string]string{},
 		context:  context,
 		Existing: existing,
+		suffix:   copier.EvaluateString(suffix, getArgFunc(context)),
 	}
 }
 
@@ -252,7 +253,7 @@ func isMapContainedIn(contained, containing map[string]string) bool {
 }
 
 // newScheduledResource is a constructor for ScheduledResource
-func (sched scheduler) newScheduledResource(kind, name string, resDefs map[string]client.ResourceDefinition,
+func (sched scheduler) newScheduledResource(kind, name, suffix string, resDefs map[string]client.ResourceDefinition,
 	gc *graphContext, silent bool) (*ScheduledResource, error) {
 	var r interfaces.Resource
 
@@ -266,7 +267,7 @@ func (sched scheduler) newScheduledResource(kind, name string, resDefs map[strin
 		return nil, err
 	}
 
-	return newScheduledResourceFor(r, gc, existing), nil
+	return newScheduledResourceFor(r, suffix, gc, existing), nil
 }
 
 // newResource returns creates a resource controller for a given resources name and factory.
@@ -294,14 +295,17 @@ func (sched scheduler) newResource(kind, name string, resDefs map[string]client.
 	return r, true, nil
 }
 
-func keyParts(key string) (kind, name string, err error) {
-	parts := strings.Split(key, "/")
+func keyParts(key string) (kind, name, suffix string, err error) {
+	parts := strings.SplitN(key, "/", 31)
 
 	if len(parts) < 2 {
-		return "", "", fmt.Errorf("not a proper resource key: %s. Expected KIND/NAME", key)
+		return "", "", "", fmt.Errorf("not a proper resource key: %s. Expected KIND/NAME", key)
+	}
+	if len(parts) == 3 {
+		suffix = parts[2]
 	}
 
-	return parts[0], parts[1], nil
+	return parts[0], parts[1], suffix, nil
 }
 
 func newDependencyGraph(sched *scheduler, options interfaces.DependencyGraphOptions) *dependencyGraph {
@@ -322,17 +326,17 @@ func getArgFunc(gc interfaces.GraphContext) func(string) string {
 	}
 }
 
-func (sched *scheduler) prepareContext(parentContext *graphContext, dependencies []client.Dependency, replica string) *graphContext {
+func (sched *scheduler) prepareContext(parentContext *graphContext, dependency *client.Dependency, replica string) *graphContext {
 	context := &graphContext{
-		scheduler:    sched,
-		graph:        parentContext.graph,
-		flow:         parentContext.flow,
-		replica:      replica,
-		dependencies: dependencies,
+		scheduler:  sched,
+		graph:      parentContext.graph,
+		flow:       parentContext.flow,
+		replica:    replica,
+		dependency: dependency,
 	}
 
 	context.args = make(map[string]string)
-	for _, dependency := range dependencies {
+	if dependency != nil {
 		for key, value := range dependency.Args {
 			context.args[key] = copier.EvaluateString(value, getArgFunc(parentContext))
 		}
@@ -344,7 +348,6 @@ func (sched *scheduler) updateContext(context, parentContext *graphContext, depe
 	for key, value := range dependency.Args {
 		context.args[key] = copier.EvaluateString(value, parentContext.GetArg)
 	}
-	context.dependencies = append(context.dependencies, dependency)
 }
 
 func newDefaultFlowObject() *client.Flow {
@@ -695,10 +698,10 @@ func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 					parentContext = parent.scheduledResource.context
 				}
 
-				kind, name, err := keyParts(dep.Child)
+				kind, name, suffix, err := keyParts(dep.Child)
 
-				context := sched.prepareContext(parentContext, []client.Dependency{dep}, replicaName)
-				sr, err := sched.newScheduledResource(kind, name, resDefs, context, silent)
+				context := sched.prepareContext(parentContext, &dep, replicaName)
+				sr, err := sched.newScheduledResource(kind, name, suffix, resDefs, context, silent)
 				if err != nil {
 					return err
 				}
