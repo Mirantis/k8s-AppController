@@ -32,7 +32,7 @@ var podParamFields = []string{
 	"Spec.InitContainers.Name",
 }
 
-type Pod struct {
+type newPod struct {
 	Base
 	Pod    *v1.Pod
 	Client corev1.PodInterface
@@ -56,12 +56,12 @@ func (podTemplateFactory) Kind() string {
 // New returns Pod controller for new resource based on resource definition
 func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	pod := parametrizeResource(def.Pod, gc, podParamFields).(*v1.Pod)
-	return newPod(pod, c.Pods(), def.Meta)
+	return createNewPod(pod, c.Pods(), def.Meta)
 }
 
 // NewExisting returns Pod controller for existing resource by its name
 func (podTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingPod{Name: name, Client: c.Pods()}}
+	return report.SimpleReporter{BaseResource: existingPod{Name: name, Client: c.Pods()}}
 }
 
 func podKey(name string) string {
@@ -69,7 +69,7 @@ func podKey(name string) string {
 }
 
 // Key returns Pod name
-func (p Pod) Key() string {
+func (p newPod) Key() string {
 	return podKey(p.Pod.Name)
 }
 
@@ -101,7 +101,7 @@ func isReady(pod *v1.Pod) bool {
 }
 
 // Create looks for the Pod in k8s and creates it if not present
-func (p Pod) Create() error {
+func (p newPod) Create() error {
 	if err := checkExistence(p); err != nil {
 		log.Println("Creating", p.Key())
 		p.Pod, err = p.Client.Create(p.Pod)
@@ -111,41 +111,41 @@ func (p Pod) Create() error {
 }
 
 // Delete deletes pod from the cluster
-func (p Pod) Delete() error {
+func (p newPod) Delete() error {
 	return p.Client.Delete(p.Pod.Name, nil)
 }
 
 // Status returns pod status. It returns interfaces.ResourceReady if the pod is succeeded or running with succeeding readiness probe.
-func (p Pod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (p newPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return podStatus(p.Client, p.Pod.Name)
 }
 
-func newPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Pod{Base: Base{meta}, Pod: pod, Client: client}}
+func createNewPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: newPod{Base: Base{meta}, Pod: pod, Client: client}}
 }
 
-type ExistingPod struct {
+type existingPod struct {
 	Base
 	Name   string
 	Client corev1.PodInterface
 }
 
 // Key returns Pod name
-func (p ExistingPod) Key() string {
+func (p existingPod) Key() string {
 	return podKey(p.Name)
 }
 
 // Create looks for existing Pod and returns error if there is no such Pod
-func (p ExistingPod) Create() error {
+func (p existingPod) Create() error {
 	return createExistingResource(p)
 }
 
 // Status returns pod status. It returns interfaces.ResourceReady if the pod is succeeded or running with succeeding readiness probe.
-func (p ExistingPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (p existingPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return podStatus(p.Client, p.Name)
 }
 
 // Delete deletes pod from the cluster
-func (p ExistingPod) Delete() error {
+func (p existingPod) Delete() error {
 	return p.Client.Delete(p.Name, nil)
 }

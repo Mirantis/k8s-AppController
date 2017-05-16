@@ -23,27 +23,38 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// Dependency represents dependency between two resources / resource definitions
 type Dependency struct {
 	unversioned.TypeMeta `json:",inline"`
 
 	// Standard object metadata
 	api.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Parent string            `json:"parent"`
-	Child  string            `json:"child"`
-	Meta   map[string]string `json:"meta,omitempty"`
-	Args   map[string]string `json:"args,omitempty"`
+	// Depending resource name
+	Parent string `json:"parent"`
+
+	// Dependent resource name
+	Child string `json:"child"`
+
+	// Dependency metadata
+	Meta map[string]string `json:"meta,omitempty"`
+
+	// Arguments passed to dependent resource
+	Args map[string]string `json:"args,omitempty"`
 }
 
+// DependencyList is a k8s object representing list of dependencies
 type DependencyList struct {
 	unversioned.TypeMeta `json:",inline"`
 
 	// Standard list metadata.
 	unversioned.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
+	// List of dependencies
 	Items []Dependency `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
+// DependenciesInterface is an interface to access Dependency objects in k8s
 type DependenciesInterface interface {
 	List(opts api.ListOptions) (*DependencyList, error)
 	Create(*Dependency) (*Dependency, error)
@@ -64,6 +75,7 @@ func newDependencies(c rest.Config, ns string) (*dependencies, error) {
 	return &dependencies{rc, ns}, nil
 }
 
+// List returns Dependency objects stored in K8s
 func (c dependencies) List(opts api.ListOptions) (*DependencyList, error) {
 	resp, err := c.rc.Get().
 		Namespace(c.namespace).
@@ -84,6 +96,7 @@ func (c dependencies) List(opts api.ListOptions) (*DependencyList, error) {
 	return result, nil
 }
 
+// Create creates new Dependency object in K8s
 func (c dependencies) Create(d *Dependency) (result *Dependency, err error) {
 	result = &Dependency{}
 	err = c.rc.Post().
@@ -95,6 +108,7 @@ func (c dependencies) Create(d *Dependency) (result *Dependency, err error) {
 	return
 }
 
+// Delete deletes Dependency object from K8s
 func (c *dependencies) Delete(name string, opts *api.DeleteOptions) error {
 	return c.rc.Delete().
 		Namespace(c.namespace).

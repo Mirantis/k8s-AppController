@@ -24,7 +24,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
-type Flow struct {
+type flow struct {
 	Base
 	flow          *client.Flow
 	context       interfaces.GraphContext
@@ -59,7 +59,7 @@ func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface
 	}
 
 	return report.SimpleReporter{
-		BaseResource: &Flow{
+		BaseResource: &flow{
 			Base:          Base{def.Meta},
 			flow:          newFlow,
 			context:       gc,
@@ -76,11 +76,11 @@ func (flowTemplateFactory) NewExisting(name string, c client.Interface, gc inter
 }
 
 // Key return Flow identifier
-func (f Flow) Key() string {
+func (f flow) Key() string {
 	return "flow/" + f.generatedName
 }
 
-func (f *Flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.DependencyGraph, error) {
+func (f *flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.DependencyGraph, error) {
 	args := map[string]string{}
 	for arg := range f.flow.Parameters {
 		val := f.context.GetArg(arg)
@@ -115,7 +115,7 @@ func (f *Flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.D
 // Create ensures that at least one flow replica exists. It will create first flow replica upon first call, but
 // all subsequent calls will do nothing but check the state of the resources from this replica (and recreate them,
 // if they were deleted manually between the calls), which makes Create() be idempotent
-func (f *Flow) Create() error {
+func (f *flow) Create() error {
 	graph := f.currentGraph
 
 	if graph == nil {
@@ -137,7 +137,7 @@ func (f *Flow) Create() error {
 // Note, that unlike Create() method Delete() is not idempotent. However, it doesn't create any issues since
 // Delete is called during dlow destruction which can happen only once while Create ensures that at least one flow
 // replica exists, and as such can be called any number of times
-func (f Flow) Delete() error {
+func (f flow) Delete() error {
 	graph, err := f.buildDependencyGraph(-1, false)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (f Flow) Delete() error {
 }
 
 // Status returns current status of the flow deployment
-func (f Flow) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (f flow) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	graph := f.currentGraph
 	if graph == nil {
 		var err error

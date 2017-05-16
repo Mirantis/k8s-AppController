@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+// MakePod generates sample Pod object
 func MakePod(name string) *v1.Pod {
 	status := strings.Split(name, "-")[0]
 	pod := &v1.Pod{}

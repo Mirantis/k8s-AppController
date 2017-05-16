@@ -147,6 +147,7 @@ func assignVertex(vertex, root string, assigned map[string]bool, components map[
 	}
 }
 
+// EnsureNoCycles ensures that dependency graph has no cycles
 func EnsureNoCycles(dependencies []client.Dependency, resdefs map[string]client.ResourceDefinition) error {
 	flows := map[string]*client.Flow{}
 	if _, found := resdefs["flow/"+interfaces.DefaultFlowName]; !found {

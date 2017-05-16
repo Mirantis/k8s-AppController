@@ -23,8 +23,7 @@ import (
 	"k8s.io/client-go/testing"
 )
 
-// FakeDeps implements DependenciesInterface
-type FakeDeps struct {
+type fakeDeps struct {
 	fake *testing.Fake
 	ns   string
 }
@@ -35,7 +34,8 @@ var dependencyResource = unversioned.GroupVersionResource{
 	Resource: "dependencies",
 }
 
-func (c *FakeDeps) Create(dependency *client.Dependency) (result *client.Dependency, err error) {
+// Create creates new Dependency object in fake K8s
+func (c *fakeDeps) Create(dependency *client.Dependency) (result *client.Dependency, err error) {
 	obj, err := c.fake.
 		Invokes(testing.NewCreateAction(dependencyResource, c.ns, dependency), &client.Dependency{})
 
@@ -45,41 +45,16 @@ func (c *FakeDeps) Create(dependency *client.Dependency) (result *client.Depende
 	return obj.(*client.Dependency), err
 }
 
-func (c *FakeDeps) Update(dependency *client.Dependency) (result *client.Dependency, err error) {
-	obj, err := c.fake.
-		Invokes(testing.NewUpdateAction(dependencyResource, c.ns, dependency), &client.Dependency{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*client.Dependency), err
-}
-
-func (c *FakeDeps) Delete(name string, options *api.DeleteOptions) error {
+// Delete deletes Dependency from fake K8s
+func (c *fakeDeps) Delete(name string, options *api.DeleteOptions) error {
 	_, err := c.fake.
 		Invokes(testing.NewDeleteAction(dependencyResource, c.ns, name), &client.Dependency{})
 
 	return err
 }
 
-func (c *FakeDeps) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dependencyResource, c.ns, listOptions)
-
-	_, err := c.fake.Invokes(action, &client.DependencyList{})
-	return err
-}
-
-func (c *FakeDeps) Get(name string) (result *client.Dependency, err error) {
-	obj, err := c.fake.
-		Invokes(testing.NewGetAction(dependencyResource, c.ns, name), &client.Dependency{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*client.Dependency), err
-}
-
-func (c *FakeDeps) List(opts api.ListOptions) (result *client.DependencyList, err error) {
+// List returns Dependency objects stored in fake K8s
+func (c *fakeDeps) List(opts api.ListOptions) (result *client.DependencyList, err error) {
 	obj, err := c.fake.
 		Invokes(testing.NewListAction(dependencyResource, c.ns, opts), &client.DependencyList{})
 

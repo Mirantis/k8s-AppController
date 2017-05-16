@@ -33,7 +33,7 @@ var jobParamFields = []string{
 	"Spec.Template.ObjectMeta",
 }
 
-type Job struct {
+type newJob struct {
 	Base
 	Job    *v1.Job
 	Client batchv1.JobInterface
@@ -61,12 +61,12 @@ func (jobTemplateFactory) Kind() string {
 // New returns Job controller for new resource based on resource definition
 func (jobTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	job := parametrizeResource(def.Job, gc, jobParamFields).(*v1.Job)
-	return newJob(job, c.Jobs(), def.Meta)
+	return createNewJob(job, c.Jobs(), def.Meta)
 }
 
 // NewExisting returns Job controller for existing resource by its name
 func (jobTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingJob{Name: name, Client: c.Jobs()}}
+	return report.SimpleReporter{BaseResource: existingJob{Name: name, Client: c.Jobs()}}
 }
 
 func jobStatus(j batchv1.JobInterface, name string) (interfaces.ResourceStatus, error) {
@@ -85,17 +85,17 @@ func jobStatus(j batchv1.JobInterface, name string) (interfaces.ResourceStatus, 
 }
 
 // Key returns job name
-func (j Job) Key() string {
+func (j newJob) Key() string {
 	return jobKey(j.Job.Name)
 }
 
 // Status returns job status
-func (j Job) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (j newJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return jobStatus(j.Client, j.Job.Name)
 }
 
 // Create looks for the Job in k8s and creates it if not present
-func (j Job) Create() error {
+func (j newJob) Create() error {
 	if err := checkExistence(j); err != nil {
 		log.Println("Creating", j.Key())
 		j.Job, err = j.Client.Create(j.Job)
@@ -105,36 +105,36 @@ func (j Job) Create() error {
 }
 
 // Delete deletes Job from the cluster
-func (j Job) Delete() error {
+func (j newJob) Delete() error {
 	return j.Client.Delete(j.Job.Name, nil)
 }
 
-func newJob(job *v1.Job, client batchv1.JobInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: Job{Base: Base{meta}, Job: job, Client: client}}
+func createNewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]interface{}) interfaces.Resource {
+	return report.SimpleReporter{BaseResource: newJob{Base: Base{meta}, Job: job, Client: client}}
 }
 
-type ExistingJob struct {
+type existingJob struct {
 	Base
 	Name   string
 	Client batchv1.JobInterface
 }
 
 // Key return Job name
-func (j ExistingJob) Key() string {
+func (j existingJob) Key() string {
 	return jobKey(j.Name)
 }
 
 // Status returns job status
-func (j ExistingJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (j existingJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return jobStatus(j.Client, j.Name)
 }
 
 // Create looks for existing Job and returns error if there is no such Job
-func (j ExistingJob) Create() error {
+func (j existingJob) Create() error {
 	return createExistingResource(j)
 }
 
 // Delete deletes Job from the cluster
-func (j ExistingJob) Delete() error {
+func (j existingJob) Delete() error {
 	return j.Client.Delete(j.Name, nil)
 }

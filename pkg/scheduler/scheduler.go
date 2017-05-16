@@ -42,7 +42,7 @@ type ScheduledResource struct {
 	Ignored        bool
 	Error          error
 	Existing       bool
-	Context        *GraphContext
+	context        *graphContext
 	usedInReplicas []string
 	status         interfaces.ResourceStatus
 	interfaces.Resource
@@ -92,7 +92,7 @@ func isResourceFinished(sr *ScheduledResource, ch chan error) bool {
 func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Duration, stopChan <-chan struct{}) (bool, error) {
 	ch := make(chan error, 1)
 	go func(ch chan error) {
-		log.Printf("%s flow: waiting for %v to be created", sr.Context.graph.graphOptions.FlowName, sr.Key())
+		log.Printf("%s flow: waiting for %v to be created", sr.context.graph.graphOptions.FlowName, sr.Key())
 		if isResourceFinished(sr, ch) {
 			return
 		}
@@ -116,7 +116,7 @@ func (sr *ScheduledResource) Wait(checkInterval time.Duration, timeout time.Dura
 	case err := <-ch:
 		return false, err
 	case <-time.After(timeout):
-		e := fmt.Errorf("%s flow: timeout waiting for resource %s", sr.Context.graph.graphOptions.FlowName, sr.Key())
+		e := fmt.Errorf("%s flow: timeout waiting for resource %s", sr.context.graph.graphOptions.FlowName, sr.Key())
 		sr.Lock()
 		defer sr.Unlock()
 		sr.Error = e
@@ -148,7 +148,7 @@ func (sr *ScheduledResource) IsBlocked() bool {
 	for _, reqKey := range sr.Requires {
 		meta := sr.Meta[reqKey]
 		_, onErrorSet := meta["on-error"]
-		req := sr.Context.graph.graph[reqKey]
+		req := sr.context.graph.graph[reqKey]
 
 		status, err := req.Status(meta)
 
@@ -212,7 +212,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 				// could have metadata defining their own readiness condition
 				if attemptNo == 1 {
 					for _, reqKey := range r.RequiredBy {
-						req := r.Context.graph.graph[reqKey]
+						req := r.context.graph.graph[reqKey]
 						go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
 							ticker := time.NewTicker(CheckInterval)
 							log.Printf("Requesting creation of dependency %v", req.Key())
@@ -231,7 +231,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 					}
 				}
 
-				if attemptNo > 1 && (!r.Existing || r.Context.graph.graphOptions.AllowDeleteExternalResources) {
+				if attemptNo > 1 && (!r.Existing || r.context.graph.graphOptions.AllowDeleteExternalResources) {
 					log.Printf("Trying to delete resource %s after previous unsuccessful attempt", r.Key())
 					err = r.Delete()
 					if err != nil {
@@ -295,18 +295,18 @@ func ignoreAll(top *ScheduledResource) {
 	log.Printf("Marking resource %s as ignored", top.Key())
 
 	for _, childKey := range top.RequiredBy {
-		child := top.Context.graph.graph[childKey]
+		child := top.context.graph.graph[childKey]
 		ignoreAll(child)
 	}
 }
 
 // Options method returns options that were used to build the dependency graph
-func (depGraph DependencyGraph) Options() interfaces.DependencyGraphOptions {
+func (depGraph dependencyGraph) Options() interfaces.DependencyGraphOptions {
 	return depGraph.graphOptions
 }
 
 // Deploy starts the deployment of a DependencyGraph
-func (depGraph DependencyGraph) Deploy(stopChan <-chan struct{}) {
+func (depGraph dependencyGraph) Deploy(stopChan <-chan struct{}) {
 
 	depCount := len(depGraph.graph)
 	concurrency := depGraph.scheduler.concurrency
@@ -363,7 +363,7 @@ func (sr *ScheduledResource) GetNodeReport(name string) report.NodeReport {
 		ready = status == "ready"
 	}
 	for _, rKey := range sr.Requires {
-		r := sr.Context.graph.graph[rKey]
+		r := sr.context.graph.graph[rKey]
 		r.RLock()
 		meta := r.Meta[sr.Key()]
 		depReport := r.GetDependencyReport(meta)
@@ -384,7 +384,7 @@ func (sr *ScheduledResource) GetNodeReport(name string) report.NodeReport {
 // GetStatus generates data for getting the status of deployment. Returns
 // a DeploymentStatus and a human readable report string
 // TODO: Allow for other formats of report (e.g. json for visualisations)
-func (depGraph DependencyGraph) GetStatus() (interfaces.DeploymentStatus, interfaces.DeploymentReport) {
+func (depGraph dependencyGraph) GetStatus() (interfaces.DeploymentStatus, interfaces.DeploymentReport) {
 	var readyExist, nonReadyExist bool
 	var status interfaces.DeploymentStatus
 	deploymentReport := make(report.DeploymentReport, 0, len(depGraph.graph))
@@ -437,8 +437,8 @@ func runConcurrently(funcs []func() bool, concurrency int) bool {
 }
 
 func deleteResource(resource *ScheduledResource) error {
-	if !resource.Existing || resource.Context.graph.graphOptions.AllowDeleteExternalResources {
-		log.Printf("%s flow: Deleting resource %s", resource.Context.flow.Name, resource.Key())
+	if !resource.Existing || resource.context.graph.graphOptions.AllowDeleteExternalResources {
+		log.Printf("%s flow: Deleting resource %s", resource.context.flow.Name, resource.Key())
 		err := resource.Delete()
 		if err != nil {
 			statusError, ok := err.(*errors.StatusError)
@@ -448,8 +448,7 @@ func deleteResource(resource *ScheduledResource) error {
 			log.Printf("cannot delete resource %s: %v", resource.Key(), err)
 		}
 		return err
-	} else {
-		log.Printf("%s: Won't delete external resource %s", resource.Context.flow.Name, resource.Key())
 	}
+	log.Printf("%s: Won't delete external resource %s", resource.context.flow.Name, resource.Key())
 	return nil
 }

@@ -20,6 +20,7 @@ import (
 	batchapiv1 "k8s.io/client-go/pkg/apis/batch/v1"
 )
 
+// MakeJob generates sample Job object
 func MakeJob(name string) *batchapiv1.Job {
 	status := strings.Split(name, "-")[0]
 

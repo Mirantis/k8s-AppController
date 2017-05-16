@@ -54,7 +54,7 @@ func TestFlowResourcesIdentified(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	graph := depGraph.(*DependencyGraph).graph
+	graph := depGraph.(*dependencyGraph).graph
 
 	expectedLength := 2
 	if len(graph) != expectedLength {
@@ -97,7 +97,7 @@ func TestTopLevelResourcesAssignedToDefaultFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	graph := depGraph.(*DependencyGraph).graph
+	graph := depGraph.(*dependencyGraph).graph
 
 	expectedLength := 2
 	if len(graph) != expectedLength {

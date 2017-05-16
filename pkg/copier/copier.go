@@ -173,6 +173,7 @@ func addToPath(path, name string, replaceIn ...string) (string, bool) {
 	return newPath, false
 }
 
+// EvaluateString expands all variables in the string and returns evaluated result
 func EvaluateString(template string, replacementsFunc func(string) string) string {
 	return varsRe.ReplaceAllStringFunc(template, func(p string) string {
 		return replacementsFunc(p[1:])

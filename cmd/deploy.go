@@ -24,7 +24,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Deploy *cobra.Command = initDeployCommand()
+// Deploy is the deploy CLI command object
+var Deploy = initDeployCommand()
 
 func deploy(cmd *cobra.Command, args []string) {
 	url, err := cmd.Flags().GetString("url")

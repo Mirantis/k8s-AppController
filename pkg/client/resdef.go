@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// ResourceDefinition represents template for one of supported k8s resource types
 type ResourceDefinition struct {
 	unversioned.TypeMeta `json:",inline"`
 
@@ -54,6 +55,7 @@ type ResourceDefinition struct {
 	Flow                  *Flow                     `json:"flow, omitempty"`
 }
 
+// ResourceDefinitionList is a k8s object representing list of resource definitions
 type ResourceDefinitionList struct {
 	unversioned.TypeMeta `json:",inline"`
 
@@ -63,6 +65,7 @@ type ResourceDefinitionList struct {
 	Items []ResourceDefinition `json:"items"`
 }
 
+// ResourceDefinitionsInterface is an interface to access Definition objects in k8s
 type ResourceDefinitionsInterface interface {
 	Create(*ResourceDefinition) (*ResourceDefinition, error)
 	List(opts api.ListOptions) (*ResourceDefinitionList, error)
@@ -74,10 +77,12 @@ type resourceDefinitions struct {
 	namespace string
 }
 
+// GetObjectKind returns type header of ResourceDefinition object
 func (r *ResourceDefinition) GetObjectKind() unversioned.ObjectKind {
 	return &r.TypeMeta
 }
 
+// GetObjectMeta returns metadata of ResourceDefinition object
 func (r *ResourceDefinition) GetObjectMeta() meta.Object {
 	return &r.ObjectMeta
 }
@@ -91,6 +96,7 @@ func newResourceDefinitions(c rest.Config, ns string) (*resourceDefinitions, err
 	return &resourceDefinitions{rc, ns}, nil
 }
 
+// List returns Definition objects stored in K8s
 func (c *resourceDefinitions) List(opts api.ListOptions) (*ResourceDefinitionList, error) {
 	resp, err := c.rc.Get().
 		Namespace(c.namespace).
@@ -111,6 +117,7 @@ func (c *resourceDefinitions) List(opts api.ListOptions) (*ResourceDefinitionLis
 	return result, nil
 }
 
+// Create creates new Definition object in K8s
 func (c *resourceDefinitions) Create(rd *ResourceDefinition) (result *ResourceDefinition, err error) {
 	result = &ResourceDefinition{}
 	err = c.rc.Post().
@@ -122,6 +129,7 @@ func (c *resourceDefinitions) Create(rd *ResourceDefinition) (result *ResourceDe
 	return
 }
 
+// Delete deletes Definition object from K8s
 func (c *resourceDefinitions) Delete(name string, opts *api.DeleteOptions) error {
 	return c.rc.Delete().
 		Namespace(c.namespace).

@@ -27,7 +27,7 @@ import (
 )
 
 var _ = Describe("Flows Suite", func() {
-	framework := FlowFramework{ExamplesFramework{testutils.NewAppControllerManager()}}
+	framework := FlowFramework{examplesFramework{testutils.NewAppControllerManager()}}
 
 	It("Example 'flows' should finish and create one graph replica", func() {
 		framework.CreateRunAndVerify("flows", interfaces.DependencyGraphOptions{MinReplicaCount: 1})
@@ -107,7 +107,7 @@ var _ = Describe("Flows Suite", func() {
 })
 
 type FlowFramework struct {
-	ExamplesFramework
+	examplesFramework
 }
 
 func (ff FlowFramework) countPods(prefix string, equal bool) int {

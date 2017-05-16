@@ -21,7 +21,7 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 )
 
-const ReportIndentSize = 4
+const reportIndentSize = 4
 
 // NodeReport is a report of a node in graph
 type NodeReport struct {
@@ -52,7 +52,7 @@ func (n NodeReport) AsText(indent int) []string {
 		readyStr,
 	}
 	for _, dependency := range n.Dependencies {
-		ret = append(ret, dependencyReportAsText(dependency, ReportIndentSize)...)
+		ret = append(ret, dependencyReportAsText(dependency, reportIndentSize)...)
 	}
 	return Indent(indent, ret)
 }
@@ -64,7 +64,7 @@ type DeploymentReport []NodeReport
 func (d DeploymentReport) AsText(indent int) []string {
 	ret := make([]string, 0, len(d)*4)
 	for _, n := range d {
-		ret = append(ret, n.AsText(ReportIndentSize)...)
+		ret = append(ret, n.AsText(reportIndentSize)...)
 	}
 	return Indent(indent, ret)
 }

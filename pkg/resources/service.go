@@ -32,7 +32,7 @@ var serviceParamFields = []string{
 	"Spec.Selector",
 }
 
-type Service struct {
+type newService struct {
 	Base
 	Service   *v1.Service
 	Client    corev1.ServiceInterface
@@ -57,12 +57,12 @@ func (serviceTemplateFactory) Kind() string {
 // New returns Service controller for new resource based on resource definition
 func (serviceTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	service := parametrizeResource(def.Service, gc, serviceParamFields).(*v1.Service)
-	return report.SimpleReporter{BaseResource: Service{Base: Base{def.Meta}, Service: service, Client: c.Services(), APIClient: c}}
+	return report.SimpleReporter{BaseResource: newService{Base: Base{def.Meta}, Service: service, Client: c.Services(), APIClient: c}}
 }
 
 // NewExisting returns Service controller for existing resource by its name
 func (serviceTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingService{Name: name, Client: c.Services()}}
+	return report.SimpleReporter{BaseResource: existingService{Name: name, Client: c.Services()}}
 }
 
 func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
@@ -91,13 +91,13 @@ func serviceStatus(s corev1.ServiceInterface, name string, apiClient client.Inte
 	}
 	resources := make([]interfaces.BaseResource, 0, len(pods.Items)+len(jobs.Items)+len(replicasets.Items))
 	for _, pod := range pods.Items {
-		resources = append(resources, newPod(&pod, apiClient.Pods(), nil))
+		resources = append(resources, createNewPod(&pod, apiClient.Pods(), nil))
 	}
 	for _, j := range jobs.Items {
-		resources = append(resources, newJob(&j, apiClient.Jobs(), nil))
+		resources = append(resources, createNewJob(&j, apiClient.Jobs(), nil))
 	}
 	for _, r := range replicasets.Items {
-		resources = append(resources, newReplicaSet(&r, apiClient.ReplicaSets(), nil))
+		resources = append(resources, createNewReplicaSet(&r, apiClient.ReplicaSets(), nil))
 	}
 	if apiClient.IsEnabled(v1beta1.SchemeGroupVersion) {
 		statefulsets, err := apiClient.StatefulSets().List(options)
@@ -129,12 +129,12 @@ func serviceKey(name string) string {
 }
 
 // Key returns service name
-func (s Service) Key() string {
+func (s newService) Key() string {
 	return serviceKey(s.Service.Name)
 }
 
 // Create looks for the Service in k8s and creates it if not present
-func (s Service) Create() error {
+func (s newService) Create() error {
 	if err := checkExistence(s); err != nil {
 		log.Println("Creating", s.Key())
 		s.Service, err = s.Client.Create(s.Service)
@@ -144,16 +144,16 @@ func (s Service) Create() error {
 }
 
 // Delete deletes Service from the cluster
-func (s Service) Delete() error {
+func (s newService) Delete() error {
 	return s.Client.Delete(s.Service.Name, nil)
 }
 
 // Status returns Service Status. It is based on the status of all objects which match the service selector. If all of them are ready, the Service is considered ready.
-func (s Service) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (s newService) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceStatus(s.Client, s.Service.Name, s.APIClient)
 }
 
-type ExistingService struct {
+type existingService struct {
 	Base
 	Name      string
 	Client    corev1.ServiceInterface
@@ -161,21 +161,21 @@ type ExistingService struct {
 }
 
 // Key returns service name
-func (s ExistingService) Key() string {
+func (s existingService) Key() string {
 	return serviceKey(s.Name)
 }
 
 // Create looks for existing Service and returns error if there is no such Service
-func (s ExistingService) Create() error {
+func (s existingService) Create() error {
 	return createExistingResource(s)
 }
 
 // Status returns Service Status. It is based on the status of all objects which match the service selector. If all of them are ready, the Service is considered ready.
-func (s ExistingService) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (s existingService) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceStatus(s.Client, s.Name, s.APIClient)
 }
 
 // Delete deletes Service from the cluster
-func (s ExistingService) Delete() error {
+func (s existingService) Delete() error {
 	return s.Client.Delete(s.Name, nil)
 }

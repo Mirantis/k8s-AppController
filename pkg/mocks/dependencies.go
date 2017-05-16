@@ -24,8 +24,9 @@ import (
 	"k8s.io/client-go/pkg/api"
 )
 
-var counter int32 = 0
+var counter int32
 
+// MakeDependency generates Dependency object
 func MakeDependency(parent, child string, label ...string) *client.Dependency {
 	labelMap := map[string]string{}
 	for _, l := range label {

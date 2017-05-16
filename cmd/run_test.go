@@ -59,12 +59,12 @@ func TestLabelFlag(t *testing.T) {
 
 // TestParseArg tests how key-value arguments are parsed in command line interface
 func TestParseArg(t *testing.T) {
-	table := []struct{
-		arg string
-		key string
+	table := []struct {
+		arg   string
+		key   string
 		value string
 		error bool
-	} {
+	}{
 		{"x=y", "x", "y", false},
 		{"x:y", "x", "y", false},
 		{"x = y", "x", "y", false},

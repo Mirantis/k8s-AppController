@@ -36,7 +36,7 @@ func TestSuccessCheck(t *testing.T) {
 
 func TestFailCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeReplicaSet("fail"))
-	status, err := replicaSetStatus(c.ReplicaSets(), "fail", map[string]string{SuccessFactorKey: "80"})
+	status, err := replicaSetStatus(c.ReplicaSets(), "fail", map[string]string{successFactorKey: "80"})
 
 	if err != nil {
 		t.Error(err)

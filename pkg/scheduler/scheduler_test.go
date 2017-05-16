@@ -46,7 +46,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 		return
 	}
 
-	depGraph := dg.(*DependencyGraph).graph
+	depGraph := dg.(*dependencyGraph).graph
 
 	if len(depGraph) != 2 {
 		t.Errorf("wrong length of dependency graph, expected %d, actual %d",
@@ -109,13 +109,13 @@ func TestBuildDependencyGraph(t *testing.T) {
 }
 
 func TestIsBlocked(t *testing.T) {
-	depGraph := NewDependencyGraph(nil, interfaces.DependencyGraphOptions{})
-	context := &GraphContext{graph: depGraph}
+	depGraph := newDependencyGraph(nil, interfaces.DependencyGraphOptions{})
+	context := &graphContext{graph: depGraph}
 
 	one := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 		Meta:     map[string]map[string]string{},
-		Context:  context,
+		context:  context,
 	}
 
 	depGraph.graph["fake1"] = one
@@ -127,7 +127,7 @@ func TestIsBlocked(t *testing.T) {
 	two := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
 		Meta:     map[string]map[string]string{},
-		Context:  context,
+		context:  context,
 	}
 
 	depGraph.graph["fake2"] = two
@@ -146,7 +146,7 @@ func TestIsBlocked(t *testing.T) {
 	depGraph.graph["fake3"] = &ScheduledResource{
 		Resource: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
 		Meta:     map[string]map[string]string{},
-		Context:  context,
+		context:  context,
 	}
 
 	two.Error = nil
@@ -166,13 +166,13 @@ func detectCyclesHelper(dependencies []client.Dependency) [][]string {
 }
 
 func TestIsBlockedWithOnErrorDependency(t *testing.T) {
-	depGraph := NewDependencyGraph(nil, interfaces.DependencyGraphOptions{})
-	context := &GraphContext{graph: depGraph}
+	depGraph := newDependencyGraph(nil, interfaces.DependencyGraphOptions{})
+	context := &graphContext{graph: depGraph}
 
 	one := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 		Meta:     map[string]map[string]string{},
-		Context:  context,
+		context:  context,
 	}
 	depGraph.graph["fake1"] = one
 
@@ -183,7 +183,7 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	two := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "not ready")},
 		Meta:     map[string]map[string]string{},
-		Context:  context,
+		context:  context,
 	}
 	depGraph.graph["fake2"] = two
 
@@ -324,13 +324,13 @@ func TestLimitConcurrency(t *testing.T) {
 	for concurrency := range [...]int{0, 3, 5, 10} {
 		counter := mocks.NewCounterWithMemo()
 
-		sched := &Scheduler{concurrency: concurrency}
-		depGraph := NewDependencyGraph(sched, interfaces.DependencyGraphOptions{})
+		sched := &scheduler{concurrency: concurrency}
+		depGraph := newDependencyGraph(sched, interfaces.DependencyGraphOptions{})
 
 		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
 			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second/4)}
-			context := &GraphContext{graph: depGraph}
+			context := &graphContext{graph: depGraph}
 			sr := newScheduledResourceFor(r, context, false)
 			depGraph.graph[sr.Key()] = sr
 		}
@@ -348,7 +348,7 @@ func TestLimitConcurrency(t *testing.T) {
 }
 
 func TestStopBeforeDeploymentStarted(t *testing.T) {
-	depGraph := NewDependencyGraph(&Scheduler{}, interfaces.DependencyGraphOptions{})
+	depGraph := newDependencyGraph(&scheduler{}, interfaces.DependencyGraphOptions{})
 	sr := &ScheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 	}
@@ -405,7 +405,7 @@ func TestGraphAllResourceTypes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	graph := depGraph.(*DependencyGraph).graph
+	graph := depGraph.(*dependencyGraph).graph
 
 	expectedLenght := 11
 	if len(graph) != expectedLenght {
@@ -596,8 +596,8 @@ func TestWaitWithZeroTimeout(t *testing.T) {
 	pod := mocks.MakePod("fail")
 	resdef := client.ResourceDefinition{Pod: pod}
 	options := interfaces.DependencyGraphOptions{FlowName: "test"}
-	graph := &DependencyGraph{graphOptions: options}
-	gc := &GraphContext{graph: graph}
+	graph := &dependencyGraph{graphOptions: options}
+	gc := &graphContext{graph: graph}
 	resource := resources.KindToResourceTemplate["pod"].New(resdef, mocks.NewClient(pod), gc)
 	sr := newScheduledResourceFor(resource, gc, false)
 	stopChan := make(chan struct{})
