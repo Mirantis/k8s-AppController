@@ -34,9 +34,9 @@ var replicaSetParamFields = []string{
 	"Spec.Template.ObjectMeta",
 }
 
-const SuccessFactorKey = "success_factor"
+const successFactorKey = "success_factor"
 
-type ReplicaSet struct {
+type newReplicaSet struct {
 	Base
 	ReplicaSet *extbeta1.ReplicaSet
 	Client     v1beta1.ReplicaSetInterface
@@ -60,12 +60,12 @@ func (replicaSetTemplateFactory) Kind() string {
 // New returns ReplicaSet controller for new resource based on resource definition
 func (replicaSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	replicaSet := parametrizeResource(def.ReplicaSet, gc, replicaSetParamFields).(*extbeta1.ReplicaSet)
-	return newReplicaSet(replicaSet, c.ReplicaSets(), def.Meta)
+	return createNewReplicaSet(replicaSet, c.ReplicaSets(), def.Meta)
 }
 
 // NewExisting returns ReplicaSet controller for existing resource by its name
 func (replicaSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return ExistingReplicaSet{Name: name, Client: c.ReplicaSets()}
+	return existingReplicaSet{Name: name, Client: c.ReplicaSets()}
 }
 
 func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) (interfaces.ResourceStatus, error) {
@@ -74,7 +74,7 @@ func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[strin
 		return interfaces.ResourceError, err
 	}
 
-	successFactor, err := getPercentage(SuccessFactorKey, meta)
+	successFactor, err := getPercentage(successFactorKey, meta)
 	if err != nil {
 		return interfaces.ResourceError, err
 	}
@@ -91,7 +91,7 @@ func replicaSetReport(r v1beta1.ReplicaSetInterface, name string, meta map[strin
 	if err != nil {
 		return report.ErrorReport(name, err)
 	}
-	successFactor, err := getPercentage(SuccessFactorKey, meta)
+	successFactor, err := getPercentage(successFactorKey, meta)
 	if err != nil {
 		return report.ErrorReport(name, err)
 	}
@@ -126,12 +126,12 @@ func replicaSetKey(name string) string {
 }
 
 // Key returns ReplicaSet name
-func (r ReplicaSet) Key() string {
+func (r newReplicaSet) Key() string {
 	return replicaSetKey(r.ReplicaSet.Name)
 }
 
 // Create looks for the ReplicaSet in k8s and creates it if not present
-func (r ReplicaSet) Create() error {
+func (r newReplicaSet) Create() error {
 	if err := checkExistence(r); err != nil {
 		log.Println("Creating", r.Key())
 		r.ReplicaSet, err = r.Client.Create(r.ReplicaSet)
@@ -141,51 +141,51 @@ func (r ReplicaSet) Create() error {
 }
 
 // Delete deletes ReplicaSet from the cluster
-func (r ReplicaSet) Delete() error {
+func (r newReplicaSet) Delete() error {
 	return r.Client.Delete(r.ReplicaSet.Name, nil)
 }
 
 // Status returns ReplicaSet status based on provided meta.
-func (r ReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (r newReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
 }
 
 // GetDependencyReport returns a DependencyReport for this ReplicaSet
-func (r ReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
+func (r newReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
 	return replicaSetReport(r.Client, r.ReplicaSet.Name, meta)
 }
 
-func newReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) ReplicaSet {
-	return ReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
+func createNewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) newReplicaSet {
+	return newReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
 }
 
-type ExistingReplicaSet struct {
+type existingReplicaSet struct {
 	Base
 	Name   string
 	Client v1beta1.ReplicaSetInterface
 }
 
 // Key returns ReplicaSet name
-func (r ExistingReplicaSet) Key() string {
+func (r existingReplicaSet) Key() string {
 	return replicaSetKey(r.Name)
 }
 
 // Create looks for existing ReplicaSet and returns error if there is no such ReplicaSet
-func (r ExistingReplicaSet) Create() error {
+func (r existingReplicaSet) Create() error {
 	return createExistingResource(r)
 }
 
 // Status returns ReplicaSet status based on provided meta.
-func (r ExistingReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (r existingReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return replicaSetStatus(r.Client, r.Name, meta)
 }
 
 // Delete deletes ReplicaSet from the cluster
-func (r ExistingReplicaSet) Delete() error {
+func (r existingReplicaSet) Delete() error {
 	return r.Client.Delete(r.Name, nil)
 }
 
 // GetDependencyReport returns a DependencyReport for this ReplicaSet
-func (r ExistingReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
+func (r existingReplicaSet) GetDependencyReport(meta map[string]string) interfaces.DependencyReport {
 	return replicaSetReport(r.Client, r.Name, meta)
 }

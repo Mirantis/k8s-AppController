@@ -154,7 +154,7 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		p := pod
-		resources = append(resources, newPod(&p, apiClient.Pods(), nil))
+		resources = append(resources, createNewPod(&p, apiClient.Pods(), nil))
 	}
 
 	status, err := resourceListStatus(resources)

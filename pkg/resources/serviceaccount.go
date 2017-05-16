@@ -30,13 +30,13 @@ var serviceAccountParamFields = []string{
 	"ImagePullSecrets",
 }
 
-type ServiceAccount struct {
+type newServiceAccount struct {
 	Base
 	ServiceAccount *v1.ServiceAccount
 	Client         corev1.ServiceAccountInterface
 }
 
-type ExistingServiceAccount struct {
+type existingServiceAccount struct {
 	Base
 	Name   string
 	Client corev1.ServiceAccountInterface
@@ -61,13 +61,13 @@ func (serviceAccountTemplateFactory) Kind() string {
 func (serviceAccountTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	serviceAccount := parametrizeResource(def.ServiceAccount, gc, serviceAccountParamFields).(*v1.ServiceAccount)
 	return report.SimpleReporter{
-		BaseResource: ServiceAccount{Base: Base{def.Meta}, ServiceAccount: serviceAccount, Client: c.ServiceAccounts()},
+		BaseResource: newServiceAccount{Base: Base{def.Meta}, ServiceAccount: serviceAccount, Client: c.ServiceAccounts()},
 	}
 }
 
 // NewExisting returns ServiceAccount controller for existing resource by its name
 func (serviceAccountTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingServiceAccount{Name: name, Client: c.ServiceAccounts()}}
+	return report.SimpleReporter{BaseResource: existingServiceAccount{Name: name, Client: c.ServiceAccounts()}}
 }
 
 func serviceAccountKey(name string) string {
@@ -75,7 +75,7 @@ func serviceAccountKey(name string) string {
 }
 
 // Key returns ServiceAccount name
-func (c ServiceAccount) Key() string {
+func (c newServiceAccount) Key() string {
 	return serviceAccountKey(c.ServiceAccount.Name)
 }
 
@@ -89,12 +89,12 @@ func serviceAccountStatus(c corev1.ServiceAccountInterface, name string) (interf
 }
 
 // Status returns ServiceAccount status
-func (c ServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (c newServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceAccountStatus(c.Client, c.ServiceAccount.Name)
 }
 
 // Create looks for the ServiceAccount in k8s and creates it if not present
-func (c ServiceAccount) Create() error {
+func (c newServiceAccount) Create() error {
 	if err := checkExistence(c); err != nil {
 		log.Println("Creating", c.Key())
 		c.ServiceAccount, err = c.Client.Create(c.ServiceAccount)
@@ -104,26 +104,26 @@ func (c ServiceAccount) Create() error {
 }
 
 // Delete deletes ServiceAccount from the cluster
-func (c ServiceAccount) Delete() error {
+func (c newServiceAccount) Delete() error {
 	return c.Client.Delete(c.ServiceAccount.Name, &v1.DeleteOptions{})
 }
 
 // Key returns ServiceAccount name
-func (c ExistingServiceAccount) Key() string {
+func (c existingServiceAccount) Key() string {
 	return serviceAccountKey(c.Name)
 }
 
 // Status returns ServiceAccount status
-func (c ExistingServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (c existingServiceAccount) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
 	return serviceAccountStatus(c.Client, c.Name)
 }
 
 // Create looks for existing ServiceAccount and returns error if there is no such ServiceAccount
-func (c ExistingServiceAccount) Create() error {
+func (c existingServiceAccount) Create() error {
 	return createExistingResource(c)
 }
 
 // Delete deletes ServiceAccount from the cluster
-func (c ExistingServiceAccount) Delete() error {
+func (c existingServiceAccount) Delete() error {
 	return c.Client.Delete(c.Name, nil)
 }

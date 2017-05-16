@@ -28,8 +28,8 @@ import (
 	"k8s.io/client-go/testing"
 )
 
-// FakeReplicas implements ReplicaInterface
-type FakeReplicas struct {
+// fakeReplicas implements ReplicaInterface
+type fakeReplicas struct {
 	fake *testing.Fake
 	ns   string
 }
@@ -40,7 +40,8 @@ var replicaResource = unversioned.GroupVersionResource{
 	Resource: "replica",
 }
 
-func (fr *FakeReplicas) Create(replica *client.Replica) (result *client.Replica, err error) {
+// Create stores new replica object in the fake k8s
+func (fr *fakeReplicas) Create(replica *client.Replica) (result *client.Replica, err error) {
 	if replica.GenerateName != "" {
 		uuid, _ := newUUID()
 		replica.Name = replica.GenerateName + uuid
@@ -59,7 +60,8 @@ func (fr *FakeReplicas) Create(replica *client.Replica) (result *client.Replica,
 	return res, err
 }
 
-func (fr *FakeReplicas) Update(replica *client.Replica) (result *client.Replica, err error) {
+// Update updates Replica object stored in the fake k8s
+func (fr *fakeReplicas) Update(replica *client.Replica) (result *client.Replica, err error) {
 	obj, err := fr.fake.
 		Invokes(testing.NewUpdateAction(replicaResource, fr.ns, replica), &client.Replica{})
 
@@ -69,31 +71,16 @@ func (fr *FakeReplicas) Update(replica *client.Replica) (result *client.Replica,
 	return obj.(*client.Replica), err
 }
 
-func (fr *FakeReplicas) Delete(name string) error {
+// Delete deletes a replica object by its name
+func (fr *fakeReplicas) Delete(name string) error {
 	_, err := fr.fake.
 		Invokes(testing.NewDeleteAction(replicaResource, fr.ns, name), &client.Replica{})
 
 	return err
 }
 
-func (fr *FakeReplicas) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(replicaResource, fr.ns, listOptions)
-
-	_, err := fr.fake.Invokes(action, &client.Replica{})
-	return err
-}
-
-func (fr *FakeReplicas) Get(name string) (result *client.Replica, err error) {
-	obj, err := fr.fake.
-		Invokes(testing.NewGetAction(replicaResource, fr.ns, name), &client.Replica{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*client.Replica), err
-}
-
-func (fr *FakeReplicas) List(opts api.ListOptions) (result *client.ReplicaList, err error) {
+// List returns a list of flow replicas stored in fake k8s
+func (fr *fakeReplicas) List(opts api.ListOptions) (result *client.ReplicaList, err error) {
 	obj, err := fr.fake.
 		Invokes(testing.NewListAction(replicaResource, fr.ns, opts), &client.ReplicaList{})
 

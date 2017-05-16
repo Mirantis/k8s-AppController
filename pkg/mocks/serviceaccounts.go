@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/pkg/runtime"
 )
 
+// MakeServiceAccount generates sample ServiceAccount object
 func MakeServiceAccount(name string) *v1.ServiceAccount {
 	serviceAccount := &v1.ServiceAccount{}
 	serviceAccount.Name = name
@@ -28,6 +29,7 @@ func MakeServiceAccount(name string) *v1.ServiceAccount {
 	return serviceAccount
 }
 
+// ServiceAccounts generates sample ServiceAccountList collection object
 func ServiceAccounts(names ...string) runtime.Object {
 	var serviceAccounts []v1.ServiceAccount
 	for i := 0; i < 3; i++ {

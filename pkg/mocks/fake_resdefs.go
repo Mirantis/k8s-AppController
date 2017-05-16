@@ -23,8 +23,8 @@ import (
 	"k8s.io/client-go/testing"
 )
 
-// FakeResDef implements ResourceDefinitionsInterface
-type FakeResDef struct {
+// fakeResDef implements ResourceDefinitionsInterface
+type fakeResDef struct {
 	fake *testing.Fake
 	ns   string
 }
@@ -35,7 +35,8 @@ var resdefResource = unversioned.GroupVersionResource{
 	Resource: "definitions",
 }
 
-func (c *FakeResDef) Create(resDef *client.ResourceDefinition) (result *client.ResourceDefinition, err error) {
+// Create creates new Definition object in fake K8s
+func (c *fakeResDef) Create(resDef *client.ResourceDefinition) (result *client.ResourceDefinition, err error) {
 	obj, err := c.fake.
 		Invokes(testing.NewCreateAction(resdefResource, c.ns, resDef), &client.ResourceDefinition{})
 
@@ -45,41 +46,16 @@ func (c *FakeResDef) Create(resDef *client.ResourceDefinition) (result *client.R
 	return obj.(*client.ResourceDefinition), err
 }
 
-func (c *FakeResDef) Update(resDef *client.ResourceDefinition) (result *client.ResourceDefinition, err error) {
-	obj, err := c.fake.
-		Invokes(testing.NewUpdateAction(resdefResource, c.ns, resDef), &client.ResourceDefinition{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*client.ResourceDefinition), err
-}
-
-func (c *FakeResDef) Delete(name string, options *api.DeleteOptions) error {
+// Delete deletes Definition object from fake K8s
+func (c *fakeResDef) Delete(name string, options *api.DeleteOptions) error {
 	_, err := c.fake.
 		Invokes(testing.NewDeleteAction(resdefResource, c.ns, name), &client.ResourceDefinition{})
 
 	return err
 }
 
-func (c *FakeResDef) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(resdefResource, c.ns, listOptions)
-
-	_, err := c.fake.Invokes(action, &client.ResourceDefinitionList{})
-	return err
-}
-
-func (c *FakeResDef) Get(name string) (result *client.ResourceDefinition, err error) {
-	obj, err := c.fake.
-		Invokes(testing.NewGetAction(resdefResource, c.ns, name), &client.ResourceDefinition{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*client.ResourceDefinition), err
-}
-
-func (c *FakeResDef) List(opts api.ListOptions) (result *client.ResourceDefinitionList, err error) {
+// List returns Definition objects stored in fake K8s
+func (c *fakeResDef) List(opts api.ListOptions) (result *client.ResourceDefinitionList, err error) {
 	obj, err := c.fake.
 		Invokes(testing.NewListAction(resdefResource, c.ns, opts), &client.ResourceDefinitionList{})
 

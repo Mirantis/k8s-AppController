@@ -18,14 +18,17 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 )
 
+// ResourceStatus is an enum of k8s resource statuses
 type ResourceStatus string
 
+// Possible ResourceStatus values
 const (
 	ResourceReady    ResourceStatus = "ready"
 	ResourceNotReady ResourceStatus = "not ready"
 	ResourceError    ResourceStatus = "error"
 )
 
+// DefaultFlowName is the name of default flow (main dependency graph)
 const DefaultFlowName = "DEFAULT"
 
 // BaseResource is an interface for AppController supported resources
@@ -61,16 +64,20 @@ type ResourceTemplate interface {
 	NewExisting(string, client.Interface, GraphContext) Resource
 }
 
+// DeploymentReport is an interface to get string representation of current deployment progress
 type DeploymentReport interface {
 	AsText(int) []string
 }
 
+// DependencyGraph represents operations on dependency graph
 type DependencyGraph interface {
 	GetStatus() (DeploymentStatus, DeploymentReport)
 	Deploy(<-chan struct{})
 	Options() DependencyGraphOptions
 }
 
+// GraphContext represents context of dependency graph. Resource factories get implementation of this interface
+// so that they can get graph, they created in, its options, arguments and call Scheduler API
 type GraphContext interface {
 	Scheduler() Scheduler
 	GetArg(string) string
@@ -78,6 +85,7 @@ type GraphContext interface {
 	Dependencies() []client.Dependency
 }
 
+// DependencyGraphOptions contains all the input required to build a dependency graph
 type DependencyGraphOptions struct {
 	FlowName                     string
 	Args                         map[string]string
@@ -92,6 +100,7 @@ type DependencyGraphOptions struct {
 	Silent                       bool
 }
 
+// Scheduler interface is an API to build dependency graphs and manage their settings
 type Scheduler interface {
 	BuildDependencyGraph(options DependencyGraphOptions) (DependencyGraph, error)
 	Serialize(options DependencyGraphOptions) map[string]string

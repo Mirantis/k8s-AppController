@@ -26,16 +26,15 @@ import (
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/testing"
-
 )
 
 func newClientWithFake(apiVersions *unversioned.APIGroupList, objects ...runtime.Object) (client.Interface, *testing.Fake) {
 	ns := "testing"
 	fakeClientset := fake.NewSimpleClientset(objects...)
 	apps := &alphafake.FakeApps{&fakeClientset.Fake}
-	deps := &FakeDeps{fake: &fakeClientset.Fake, ns: ns}
-	replicas := &FakeReplicas{fake: &fakeClientset.Fake, ns: ns}
-	resDefs := &FakeResDef{fake: &fakeClientset.Fake, ns: ns}
+	deps := &fakeDeps{fake: &fakeClientset.Fake, ns: ns}
+	replicas := &fakeReplicas{fake: &fakeClientset.Fake, ns: ns}
+	resDefs := &fakeResDef{fake: &fakeClientset.Fake, ns: ns}
 	return client.NewClient(
 		fakeClientset,
 		apps,
@@ -60,14 +59,17 @@ func makeVersionsList(version unversioned.GroupVersion) *unversioned.APIGroupLis
 	}}
 }
 
+// NewClient returns new fake client
 func NewClient(objects ...runtime.Object) client.Interface {
 	return newClient(makeVersionsList(v1beta1.SchemeGroupVersion), objects...)
 }
 
+// NewClientWithFake returns new fake client and *testing.Fake object that can be used to catch client events
 func NewClientWithFake(objects ...runtime.Object) (client.Interface, *testing.Fake) {
 	return newClientWithFake(makeVersionsList(v1beta1.SchemeGroupVersion), objects...)
 }
 
+// NewClient1_4 returns fake client for K8s 1.4.x
 func NewClient1_4(objects ...runtime.Object) client.Interface {
 	return newClient(makeVersionsList(v1alpha1.SchemeGroupVersion), objects...)
 }

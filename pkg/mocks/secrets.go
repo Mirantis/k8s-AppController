@@ -16,6 +16,7 @@ package mocks
 
 import "k8s.io/client-go/pkg/api/v1"
 
+// MakeSecret generates sample Secret object
 func MakeSecret(name string) *v1.Secret {
 	secret := &v1.Secret{}
 	secret.Name = name

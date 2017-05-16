@@ -20,6 +20,7 @@ import (
 	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
+// MakeReplicaSet generates sample ReplicaSet object
 func MakeReplicaSet(name string) *extbeta1.ReplicaSet {
 	status := strings.Split(name, "-")[0]
 

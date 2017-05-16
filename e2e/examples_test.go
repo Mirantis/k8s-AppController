@@ -23,7 +23,7 @@ import (
 
 var _ = Describe("Examples Suite", func() {
 	options := interfaces.DependencyGraphOptions{ReplicaCount: 1}
-	framework := ExamplesFramework{testutils.NewAppControllerManager()}
+	framework := examplesFramework{testutils.NewAppControllerManager()}
 
 	It("Example 'simple' should finish", func() {
 		framework.CreateRunAndVerify("simple", options)

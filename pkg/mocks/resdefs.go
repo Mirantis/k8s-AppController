@@ -23,13 +23,13 @@ import (
 	"k8s.io/client-go/pkg/api"
 )
 
+// MakeResourceDefinition generates sample ResourceDefinition object
 func MakeResourceDefinition(name string) *client.ResourceDefinition {
 	resName := normalizeName(name)
 
 	rd := &client.ResourceDefinition{
 		ObjectMeta: api.ObjectMeta{Name: resName, Namespace: "testing"},
 	}
-
 
 	splitted := strings.Split(name, "/")
 	objectType := splitted[0]

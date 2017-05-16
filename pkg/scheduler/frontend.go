@@ -26,27 +26,29 @@ import (
 	"k8s.io/client-go/pkg/labels"
 )
 
-type Scheduler struct {
+type scheduler struct {
 	client      client.Interface
 	selector    labels.Selector
 	concurrency int
 }
+
+var _ interfaces.Scheduler = &scheduler{}
 
 // New creates and initializes instance of Scheduler
 func New(client client.Interface, selector labels.Selector, concurrency int) interfaces.Scheduler {
 	if selector == nil {
 		selector, _ = labels.Parse("")
 	}
-	return &Scheduler{
+	return &scheduler{
 		client:      client,
 		selector:    selector,
 		concurrency: concurrency,
 	}
 }
 
-// Serialize converts scheduler settings and DependencyGraphOptions into string map which can be saved in ConfigMap
+// Serialize converts scheduler settings and DependencyGraphOptions into string map which can be saved in configMap
 // object. Together is has all the information required to build and deploy dependency graph
-func (sched *Scheduler) Serialize(options interfaces.DependencyGraphOptions) map[string]string {
+func (sched *scheduler) Serialize(options interfaces.DependencyGraphOptions) map[string]string {
 	result := map[string]string{
 		"selector":                     sched.selector.String(),
 		"concurrency":                  strconv.Itoa(sched.concurrency),
@@ -134,8 +136,8 @@ func getSelector(cfg map[string]string, key string, out *labels.Selector) (err e
 	return err
 }
 
-// CreateDeployment creates deployment task (ConfigMap object) for standalone deployment process and returns its name/error
-func (sched *Scheduler) CreateDeployment(options interfaces.DependencyGraphOptions) (string, error) {
+// CreateDeployment creates deployment task (configMap object) for standalone deployment process and returns its name/error
+func (sched *scheduler) CreateDeployment(options interfaces.DependencyGraphOptions) (string, error) {
 	cm := &v1.ConfigMap{}
 	cm.Data = sched.Serialize(options)
 	cm.GenerateName = "appcontrollerdeployment-"

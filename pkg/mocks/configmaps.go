@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/pkg/runtime"
 )
 
+// MakeConfigMap generates sample ConfigMap object
 func MakeConfigMap(name string) *v1.ConfigMap {
 	configMap := &v1.ConfigMap{}
 	configMap.Name = name
@@ -28,6 +29,7 @@ func MakeConfigMap(name string) *v1.ConfigMap {
 	return configMap
 }
 
+// ConfigMaps generates sample ConfigMapList collection object
 func ConfigMaps(names ...string) runtime.Object {
 	var configMaps []v1.ConfigMap
 	for i := 0; i < 3; i++ {

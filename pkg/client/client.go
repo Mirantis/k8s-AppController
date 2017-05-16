@@ -35,28 +35,31 @@ import (
 )
 
 const (
+	// GroupName is the name prefix for all AppController TPRs
 	GroupName string = "appcontroller.k8s"
-	Version   string = "v1alpha1"
+
+	// Version of AppController TPRs
+	Version string = "v1alpha1"
 )
 
 var (
-	SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: Version}
-	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
+	schemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: Version}
+	schemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
 )
 
 func addKnownTypes(scheme *runtime.Scheme) error {
-	definitionGVK := SchemeGroupVersion.WithKind("Definition")
+	definitionGVK := schemeGroupVersion.WithKind("Definition")
 	scheme.AddKnownTypeWithName(
 		definitionGVK,
 		&ResourceDefinition{},
 	)
-	definitionListGVK := SchemeGroupVersion.WithKind("DefinitionList")
+	definitionListGVK := schemeGroupVersion.WithKind("DefinitionList")
 	scheme.AddKnownTypeWithName(
 		definitionListGVK,
 		&ResourceDefinitionList{},
 	)
 	scheme.AddKnownTypes(
-		SchemeGroupVersion,
+		schemeGroupVersion,
 		&Dependency{},
 		&DependencyList{},
 		&Replica{},
@@ -69,10 +72,10 @@ func init() {
 	if err := announced.NewGroupMetaFactory(
 		&announced.GroupMetaFactoryArgs{
 			GroupName:              GroupName,
-			VersionPreferenceOrder: []string{SchemeGroupVersion.Version},
+			VersionPreferenceOrder: []string{schemeGroupVersion.Version},
 		},
 		announced.VersionToSchemeFunc{
-			SchemeGroupVersion.Version: SchemeBuilder.AddToScheme,
+			schemeGroupVersion.Version: schemeBuilder.AddToScheme,
 		},
 	).Announce().RegisterAndEnable(); err != nil {
 		panic(err)
@@ -102,7 +105,7 @@ type Interface interface {
 	Namespace() string
 }
 
-type Client struct {
+type client struct {
 	clientset           kubernetes.Interface
 	alphaApps           v1alpha1.AppsInterface
 	dependencies        DependenciesInterface
@@ -112,90 +115,90 @@ type Client struct {
 	apiVersions         *unversioned.APIGroupList
 }
 
-var _ Interface = &Client{}
+var _ Interface = &client{}
 
 // Dependencies returns dependency client for ThirdPartyResource created by AppController
-func (c Client) Dependencies() DependenciesInterface {
+func (c client) Dependencies() DependenciesInterface {
 	return c.dependencies
 }
 
 // ResourceDefinitions returns resource definition client for ThirdPartyResource created by AppController
-func (c Client) ResourceDefinitions() ResourceDefinitionsInterface {
+func (c client) ResourceDefinitions() ResourceDefinitionsInterface {
 	return c.resourceDefinitions
 }
 
 // ConfigMaps returns K8s ConfigMaps client for ac namespace
-func (c Client) ConfigMaps() corev1.ConfigMapInterface {
+func (c client) ConfigMaps() corev1.ConfigMapInterface {
 	return c.clientset.Core().ConfigMaps(c.namespace)
 }
 
 // Secrets returns K8s Secrets client for ac namespace
-func (c Client) Secrets() corev1.SecretInterface {
+func (c client) Secrets() corev1.SecretInterface {
 	return c.clientset.Core().Secrets(c.namespace)
 }
 
 // Pods returns K8s Pod client for ac namespace
-func (c Client) Pods() corev1.PodInterface {
+func (c client) Pods() corev1.PodInterface {
 	return c.clientset.Core().Pods(c.namespace)
 }
 
 // Jobs returns K8s Job client for ac namespace
-func (c Client) Jobs() batchv1.JobInterface {
+func (c client) Jobs() batchv1.JobInterface {
 	return c.clientset.Batch().Jobs(c.namespace)
 }
 
 // Services returns K8s Service client for ac namespace
-func (c Client) Services() corev1.ServiceInterface {
+func (c client) Services() corev1.ServiceInterface {
 	return c.clientset.Core().Services(c.namespace)
 }
 
 // ServiceAccounts returns K8s ServiceAccount client for ac namespace
-func (c Client) ServiceAccounts() corev1.ServiceAccountInterface {
+func (c client) ServiceAccounts() corev1.ServiceAccountInterface {
 	return c.clientset.Core().ServiceAccounts(c.namespace)
 }
 
 // ReplicaSets returns K8s ReplicaSet client for ac namespace
-func (c Client) ReplicaSets() v1beta1.ReplicaSetInterface {
+func (c client) ReplicaSets() v1beta1.ReplicaSetInterface {
 	return c.clientset.Extensions().ReplicaSets(c.namespace)
 }
 
 // StatefulSets returns K8s StatefulSet client for ac namespace
-func (c Client) StatefulSets() appsbeta1.StatefulSetInterface {
+func (c client) StatefulSets() appsbeta1.StatefulSetInterface {
 	return c.clientset.Apps().StatefulSets(c.namespace)
 }
 
-func (c Client) PetSets() v1alpha1.PetSetInterface {
+func (c client) PetSets() v1alpha1.PetSetInterface {
 	return c.alphaApps.PetSets(c.namespace)
 }
 
 // DaemonSets return K8s DaemonSet client for ac namespace
-func (c Client) DaemonSets() v1beta1.DaemonSetInterface {
+func (c client) DaemonSets() v1beta1.DaemonSetInterface {
 	return c.clientset.Extensions().DaemonSets(c.namespace)
 }
 
 // Deployments return K8s Deployment client for ac namespace
-func (c Client) Deployments() v1beta1.DeploymentInterface {
+func (c client) Deployments() v1beta1.DeploymentInterface {
 	return c.clientset.Extensions().Deployments(c.namespace)
 }
 
 // PersistentVolumeClaims return K8s PVC client for ac namespace
-func (c Client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
+func (c client) PersistentVolumeClaims() corev1.PersistentVolumeClaimInterface {
 	return c.clientset.Core().PersistentVolumeClaims(c.namespace)
 }
 
 // Replicas return interface to access flow deployments
-func (c Client) Replicas() ReplicasInterface {
+func (c client) Replicas() ReplicasInterface {
 	return c.replicas
 }
 
 // Returns AC namespace
-func (c Client) Namespace() string {
+func (c client) Namespace() string {
 	return c.namespace
 }
 
 // IsEnabled verifies that required group name and group version is registered in API
 // particularly we need it to support both pet sets and stateful sets using same application
-func (c Client) IsEnabled(version unversioned.GroupVersion) bool {
+func (c client) IsEnabled(version unversioned.GroupVersion) bool {
 	for i := range c.apiVersions.Groups {
 		group := c.apiVersions.Groups[i]
 		if group.Name != version.Group {
@@ -239,7 +242,7 @@ func newForConfig(c rest.Config, namespace string) (Interface, error) {
 	return NewClient(cl, apps, deps, resdefs, replicas, namespace, versions), nil
 }
 
-// Client class constructor
+// NewClient creates k8s client
 func NewClient(
 	clientset kubernetes.Interface,
 	alphaApps v1alpha1.AppsInterface,
@@ -249,7 +252,7 @@ func NewClient(
 	namespace string,
 	apiVersions *unversioned.APIGroupList) Interface {
 
-	return &Client{
+	return &client{
 		clientset:           clientset,
 		alphaApps:           alphaApps,
 		dependencies:        dependencies,

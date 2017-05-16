@@ -16,6 +16,7 @@ package mocks
 
 import "github.com/Mirantis/k8s-AppController/pkg/client"
 
+// MakeFlow generates sample Flow resource definition
 func MakeFlow(name string) *client.ResourceDefinition {
 	flow := &client.Flow{
 		Exported:     true,
@@ -30,6 +31,7 @@ func MakeFlow(name string) *client.ResourceDefinition {
 	return &resDef
 }
 
+// MakeFlowParameter creates stample Flow parameter object
 func MakeFlowParameter(defaultValue string) client.FlowParameter {
 	return client.FlowParameter{Default: &defaultValue}
 }

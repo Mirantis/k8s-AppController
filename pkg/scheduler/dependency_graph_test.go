@@ -27,7 +27,7 @@ import (
 func TestAllocateReplicas(t *testing.T) {
 	flow := mocks.MakeFlow("flow").Flow
 	c := mocks.NewClient()
-	sched := New(c, nil, 0).(*Scheduler)
+	sched := New(c, nil, 0).(*scheduler)
 	newReplicas1, deleteReplicas, err := sched.allocateReplicas(flow,
 		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 3}))
 	if err != nil {
@@ -97,7 +97,7 @@ func TestAllocateReplicas(t *testing.T) {
 func TestDeallocateReplicas(t *testing.T) {
 	flow := mocks.MakeFlow("flow").Flow
 	c := mocks.NewClient()
-	sched := New(c, nil, 0).(*Scheduler)
+	sched := New(c, nil, 0).(*scheduler)
 	newReplicas1, deleteReplicas1, err := sched.allocateReplicas(flow,
 		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 5}))
 	if err != nil {
@@ -134,15 +134,15 @@ func TestDeallocateReplicas(t *testing.T) {
 	ensureReplicas(c, t, 0, 5)
 }
 
-func toContext(options interfaces.DependencyGraphOptions) *GraphContext {
-	return &GraphContext{graph: &DependencyGraph{graphOptions: options}}
+func toContext(options interfaces.DependencyGraphOptions) *graphContext {
+	return &graphContext{graph: &dependencyGraph{graphOptions: options}}
 }
 
 // TestAllocateReplicasMinMax tests replica allocation with min/max constraints applied
 func TestAllocateReplicasMinMax(t *testing.T) {
 	flow := mocks.MakeFlow("flow").Flow
 	c := mocks.NewClient()
-	sched := New(c, nil, 0).(*Scheduler)
+	sched := New(c, nil, 0).(*scheduler)
 	newReplicas, deleteReplicas, err := sched.allocateReplicas(flow,
 		toContext(interfaces.DependencyGraphOptions{ReplicaCount: 3, MinReplicaCount: 5, MaxReplicaCount: 10}))
 	if err != nil {

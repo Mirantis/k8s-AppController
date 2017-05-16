@@ -35,11 +35,11 @@ import (
 	"k8s.io/client-go/pkg/runtime"
 )
 
-type ExamplesFramework struct {
+type examplesFramework struct {
 	*utils.AppControllerManager
 }
 
-func (f *ExamplesFramework) CreateExample(exampleName string) {
+func (f *examplesFramework) CreateExample(exampleName string) {
 	// list all files in directory, for each file run Create
 	fqDir := filepath.Join(utils.TestContext.Examples, exampleName)
 	By("Creating example from directory " + fqDir)
@@ -52,7 +52,7 @@ func (f *ExamplesFramework) CreateExample(exampleName string) {
 	}
 }
 
-func (f *ExamplesFramework) Create(fileName string) {
+func (f *examplesFramework) Create(fileName string) {
 	// Load data from filepath
 	// try to serialize it into Unstructured or UnstructuredList
 	data, err := ioutil.ReadFile(fileName)
@@ -74,7 +74,7 @@ func (f *ExamplesFramework) Create(fileName string) {
 	})
 }
 
-func (f *ExamplesFramework) handleItemCreation(ust *runtime.Unstructured) {
+func (f *examplesFramework) handleItemCreation(ust *runtime.Unstructured) {
 	// based on kind of item - instantiate correct object and wrap it with resource definition
 	// if unstructured is of kind Dependency - just create it as is
 	encodedData, err := json.Marshal(ust)
@@ -98,13 +98,13 @@ func (f *ExamplesFramework) handleItemCreation(ust *runtime.Unstructured) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func (f *ExamplesFramework) handleListCreation(ustList *runtime.UnstructuredList) {
+func (f *examplesFramework) handleListCreation(ustList *runtime.UnstructuredList) {
 	for _, ust := range ustList.Items {
 		f.handleItemCreation(ust)
 	}
 }
 
-func (f *ExamplesFramework) VerifyStatus(task string, options interfaces.DependencyGraphOptions) {
+func (f *examplesFramework) VerifyStatus(task string, options interfaces.DependencyGraphOptions) {
 	var depReport report.DeploymentReport
 	Eventually(
 		func() bool {
@@ -123,7 +123,7 @@ func (f *ExamplesFramework) VerifyStatus(task string, options interfaces.Depende
 		300*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(depReport.AsText(0), "\n"))
 }
 
-func (f *ExamplesFramework) CreateRunAndVerify(exampleName string, options interfaces.DependencyGraphOptions) {
+func (f *examplesFramework) CreateRunAndVerify(exampleName string, options interfaces.DependencyGraphOptions) {
 	By("Creating example " + exampleName)
 	f.CreateExample(exampleName)
 	By("Running appcontroller scheduler")

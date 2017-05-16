@@ -33,6 +33,7 @@ const (
 	appcontrollerPod = "k8s-appcontroller"
 )
 
+// AppControllerManager is the test controller exposes remote AC operations and test primitives for dependency graphs
 type AppControllerManager struct {
 	Client    client.Interface
 	Clientset *kubernetes.Clientset
@@ -42,10 +43,12 @@ type AppControllerManager struct {
 	acPod *v1.Pod
 }
 
+// Run runs dependency graph deployment with default settings
 func (a *AppControllerManager) Run() string {
 	return a.RunWithOptions(interfaces.DependencyGraphOptions{MinReplicaCount: 1})
 }
 
+// RunWithOptions runs dependency graph deployment with given settings
 func (a *AppControllerManager) RunWithOptions(options interfaces.DependencyGraphOptions) string {
 	sched := scheduler.New(a.Client, nil, 0)
 
@@ -54,6 +57,7 @@ func (a *AppControllerManager) RunWithOptions(options interfaces.DependencyGraph
 	return task
 }
 
+// DeleteAppControllerPod deletes pod, where AppController is running
 func (a *AppControllerManager) DeleteAppControllerPod() {
 	By("Removing pod  " + appcontrollerPod)
 	err := a.Client.Pods().Delete(appcontrollerPod, nil)
@@ -64,6 +68,7 @@ func (a *AppControllerManager) DeleteAppControllerPod() {
 	}, 20*time.Second, 1*time.Second).Should(BeTrue(), "Appcontroller pod wasn't removed in time")
 }
 
+// Prepare starts AppController pod
 func (a *AppControllerManager) Prepare() {
 	appControllerObj := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
@@ -105,6 +110,7 @@ func (a *AppControllerManager) Prepare() {
 	}, 120*time.Second, 5*time.Second).Should(BeTrue())
 }
 
+// BeforeEach is an action executed before each test
 func (a *AppControllerManager) BeforeEach() {
 	var err error
 	a.Clientset, err = KubeClient()
@@ -127,6 +133,7 @@ func (a *AppControllerManager) BeforeEach() {
 	a.Prepare()
 }
 
+// AfterEach is an action executed after each test
 func (a *AppControllerManager) AfterEach() {
 	By("Dumping appcontroller logs")
 	if CurrentGinkgoTestDescription().Failed && a.acPod != nil {
@@ -137,6 +144,7 @@ func (a *AppControllerManager) AfterEach() {
 	RemoveServiceAccountFromAdmins(a.Clientset)
 }
 
+// NewAppControllerManager creates new instance of AppControllerManager
 func NewAppControllerManager() *AppControllerManager {
 	appc := &AppControllerManager{}
 	BeforeEach(appc.BeforeEach)
