@@ -609,7 +609,7 @@ func TestReplication(t *testing.T) {
 }
 
 // TestReplicationWithSharedResources tests that resource definitions that don't have evaluated parts in their name
-// are shared across all flow replics
+// are shared across all flow replicas
 func TestReplicationWithSharedResources(t *testing.T) {
 	replicaCount := 3
 	c := mocks.NewClient(
@@ -738,8 +738,8 @@ func TestCompositionFlowReplication(t *testing.T) {
 		mocks.MakeResourceDefinition("job/ready-flow2-2-$AC_NAME"),
 
 		mocks.MakeDependency("flow/flow1", "job/ready-flow1-1-$AC_NAME", "flow=flow1"),
-		mocks.MakeDependency("job/ready-flow1-1-$AC_NAME", "flow/flow2", "flow=flow1"),
-		mocks.MakeDependency("flow/flow2", "job/ready-flow1-2-$AC_NAME", "flow=flow1"),
+		mocks.MakeDependency("job/ready-flow1-1-$AC_NAME", "flow/flow2/$AC_NAME", "flow=flow1"),
+		mocks.MakeDependency("flow/flow2/$AC_NAME", "job/ready-flow1-2-$AC_NAME", "flow=flow1"),
 		mocks.MakeDependency("flow/flow2", "job/ready-flow2-1-$AC_NAME", "flow=flow2"),
 		mocks.MakeDependency("job/ready-flow2-1-$AC_NAME", "job/ready-flow2-2-$AC_NAME", "flow=flow2"),
 	)
@@ -847,7 +847,7 @@ func TestCompositeFlowDestruction(t *testing.T) {
 		mocks.MakeResourceDefinition("job/ready-b$AC_NAME"),
 		mocks.MakeResourceDefinition("job/ready-c$AC_NAME"),
 		mocks.MakeDependency("flow/flow1", "job/ready-a$AC_NAME", "flow=flow1"),
-		mocks.MakeDependency("job/ready-a$AC_NAME", "flow/flow2", "flow=flow1"),
+		mocks.MakeDependency("job/ready-a$AC_NAME", "flow/flow2/$AC_NAME", "flow=flow1"),
 		mocks.MakeDependency("flow/flow2", "job/ready-b$AC_NAME", "flow=flow2"),
 		mocks.MakeDependency("flow/flow2", "job/ready-c$AC_NAME", "flow=flow2"),
 	)
@@ -1173,5 +1173,157 @@ func TestDeploymentRecoveryForRelativeReplicaCount(t *testing.T) {
 		if !r.Deployed {
 			t.Error("all replica must be deployed after successful graph deployment")
 		}
+	}
+}
+
+// TestMultiParentFlow tests that flow objects, that depends on two other resources doesn't turn into two separate flows
+func TestMultiParentFlow(t *testing.T) {
+	c := mocks.NewClient(
+		mocks.MakeFlow("test"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME-1"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME-2"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME-3"),
+		mocks.MakeDependency("job/ready-$AC_NAME-1", "flow/test"),
+		mocks.MakeDependency("job/ready-$AC_NAME-2", "flow/test"),
+		mocks.MakeDependency("flow/test", "job/ready-$AC_NAME-3", "flow=test"),
+	)
+	sched := New(c, nil, 0)
+	depGraph, err := sched.BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	ensureReplicas(c, t, 5, 3)
+}
+
+// TestMultiParentFlowWithSuffix tests, how flow with name without variables can depend on 2 resource
+// and be triggered once per consuming flow replica rather than once per parent resource or just once
+func TestMultiParentFlowWithSuffix(t *testing.T) {
+	c := mocks.NewClient(
+		mocks.MakeFlow("test"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME-1"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME-2"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME-3"),
+		mocks.MakeDependency("job/ready-$AC_NAME-1", "flow/test/$AC_NAME"),
+		mocks.MakeDependency("job/ready-$AC_NAME-2", "flow/test/$AC_NAME"),
+		mocks.MakeDependency("flow/test", "job/ready-$AC_NAME-3", "flow=test"),
+	)
+	sched := New(c, nil, 0)
+	depGraph, err := sched.BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	ensureReplicas(c, t, 6, 4)
+}
+
+// TestMultipleFlowCalls tests, how the same flow an be called several times from different places of another flow
+func TestMultipleFlowCalls(t *testing.T) {
+	flow := mocks.MakeFlow("test")
+	flow.Flow.Parameters = map[string]client.FlowParameter{
+		"name": mocks.MakeFlowParameter(""),
+	}
+
+	dep1 := mocks.MakeDependency("job/ready-1", "flow/test/call-1")
+	dep1.Args = map[string]string{"name": "aaa"}
+	dep2 := mocks.MakeDependency("job/ready-2", "flow/test/call-2")
+	dep2.Args = map[string]string{"name": "bbb"}
+
+	c := mocks.NewClient(
+		flow,
+		mocks.MakeResourceDefinition("job/ready-1"),
+		mocks.MakeResourceDefinition("job/ready-2"),
+		mocks.MakeResourceDefinition("job/ready-$name"),
+		dep1,
+		mocks.MakeDependency("flow/test/call-1", "job/ready-2"),
+		dep2,
+		mocks.MakeDependency("flow/test", "job/ready-$name", "flow=test"),
+	)
+	sched := New(c, nil, 0)
+	depGraph, err := sched.BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	jobs := ensureReplicas(c, t, 4, 3)
+	jobNames := map[string]bool{
+		"ready-1": true,
+		"ready-2": true,
+		"ready-aaa": true,
+		"ready-bbb": true,
+	}
+	for _, job := range jobs {
+		if !jobNames[job.Name] {
+			t.Error("found unexpected job", job.Name)
+		}
+		delete(jobNames, job.Name)
+	}
+
+	if len(jobNames) != 0 {
+		t.Errorf("not all jobs were created: %d jobs were not found", len(jobNames))
+	}
+}
+
+// TestMultipathParameterPassingWithSuffix tests that single parametrized flow that is reachable along two
+// paths with different parameter values is triggered twice despite flow name is not parametrized due to usage of suffix
+func TestMultipathParameterPassingWithSuffix(t *testing.T) {
+	flow := mocks.MakeFlow("test")
+	flow.Flow.Parameters = map[string]client.FlowParameter{
+		"arg": mocks.MakeFlowParameter(""),
+	}
+
+	dep1 := mocks.MakeDependency("job/ready", "flow/test/$arg")
+	dep1.Args = map[string]string{"arg": "x"}
+	dep2 := mocks.MakeDependency("job/ready", "flow/test/$arg")
+	dep2.Args = map[string]string{"arg": "y"}
+
+	c := mocks.NewClient(
+		mocks.MakeResourceDefinition("job/ready"),
+		dep1,
+		dep2,
+		flow,
+		mocks.MakeResourceDefinition("job/ready-$arg"),
+		mocks.MakeDependency("flow/test", "job/ready-$arg", "flow=test"),
+	)
+
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	jobs, err := c.Jobs().List(api_v1.ListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobNames := map[string]bool{
+		"ready": true,
+		"ready-x": true,
+		"ready-y": true,
+	}
+	for _, job := range jobs.Items {
+		if !jobNames[job.Name] {
+			t.Error("found unexpected job", job.Name)
+		}
+		delete(jobNames, job.Name)
+	}
+
+	if len(jobNames) != 0 {
+		t.Errorf("not all jobs were created: %d jobs were not found", len(jobNames))
 	}
 }

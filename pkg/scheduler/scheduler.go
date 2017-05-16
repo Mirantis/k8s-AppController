@@ -45,10 +45,20 @@ type ScheduledResource struct {
 	context        *graphContext
 	usedInReplicas []string
 	status         interfaces.ResourceStatus
+	suffix         string
 	interfaces.Resource
 	// parentKey -> dependencyMetadata
 	Meta map[string]map[string]string
 	sync.RWMutex
+}
+
+// Key returns resource identifier with optional suffix
+func (sr ScheduledResource) Key() string {
+	baseKey := sr.Resource.Key()
+	if sr.suffix == "" {
+		return baseKey
+	}
+	return baseKey + "/" + sr.suffix
 }
 
 // RequestCreation does not create a scheduled resource immediately, but updates status

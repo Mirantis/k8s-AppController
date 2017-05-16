@@ -16,6 +16,7 @@ package integration
 
 import (
 	"strings"
+	"time"
 
 	testutils "github.com/Mirantis/k8s-AppController/e2e/utils"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -33,56 +34,56 @@ var _ = Describe("Flows Suite", func() {
 		framework.CreateRunAndVerify("flows", interfaces.DependencyGraphOptions{MinReplicaCount: 1})
 		Eventually(func() int {
 			return framework.countJobs("a-job-", false)
-		}).Should(Equal(1), "1 a-job* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 a-job* should have been created")
 		Eventually(func() int {
 			return framework.countJobs("b-job-", false)
-		}).Should(Equal(1), "1 a-job* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 a-job* should have been created")
 		Eventually(func() int {
 			return framework.countJobs("test-job", true)
-		}).Should(Equal(1), "1 test-job should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 test-job should have been created")
 		Eventually(func() int {
 			return framework.countPods("a-pod-", false)
-		}).Should(Equal(1), "1 a-pod* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 a-pod* should have been created")
 		Eventually(func() int {
 			return framework.countPods("b-pod-", false)
-		}).Should(Equal(1), "1 a-pod* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 a-pod* should have been created")
 		Eventually(func() int {
 			return framework.countPods("test-pod", true)
-		}).Should(Equal(1), "1 test-pod should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 test-pod should have been created")
 		Eventually(func() int {
 			return framework.countReplicas("test-flow", true)
-		}).Should(Equal(2), "2 test-flow replicas should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(2), "2 test-flow replicas should have been created")
 		Eventually(func() int {
 			return framework.countReplicas("DEFAULT", true)
-		}).Should(Equal(1), "1 DEFAULT flow replica should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 DEFAULT flow replica should have been created")
 	})
 
 	It("Example 'flows' with replication should finish and create two replicas", func() {
 		framework.CreateRunAndVerify("flows", interfaces.DependencyGraphOptions{ReplicaCount: 2})
 		Eventually(func() int {
 			return framework.countJobs("a-job-", false)
-		}).Should(Equal(2), "1 a-job* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(2), "1 a-job* should have been created")
 		Eventually(func() int {
 			return framework.countJobs("b-job-", false)
-		}).Should(Equal(2), "1 a-job* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(2), "1 a-job* should have been created")
 		Eventually(func() int {
 			return framework.countJobs("test-job", true)
-		}).Should(Equal(1), "1 test-job should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 test-job should have been created")
 		Eventually(func() int {
 			return framework.countPods("a-pod-", false)
-		}).Should(Equal(2), "1 a-pod* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(2), "1 a-pod* should have been created")
 		Eventually(func() int {
 			return framework.countPods("b-pod-", false)
-		}).Should(Equal(2), "1 a-pod* should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(2), "1 a-pod* should have been created")
 		Eventually(func() int {
 			return framework.countPods("test-pod", true)
-		}).Should(Equal(1), "1 test-pod should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "1 test-pod should have been created")
 		Eventually(func() int {
 			return framework.countReplicas("test-flow", true)
-		}).Should(Equal(4), "2 test-flow replicas should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(4), "2 test-flow replicas should have been created")
 		Eventually(func() int {
 			return framework.countReplicas("DEFAULT", true)
-		}).Should(Equal(2), "1 DEFAULT flow replica should have been created")
+		}, 300*time.Second, 5*time.Second).Should(Equal(2), "1 DEFAULT flow replica should have been created")
 	})
 
 	It("Example 'flows' should cleanup after itself", func() {
@@ -96,13 +97,13 @@ var _ = Describe("Flows Suite", func() {
 
 		Eventually(func() int {
 			return framework.countReplicas("", false)
-		}).Should(Equal(0), "0 replicas should remain")
+		}, 300*time.Second, 5*time.Second).Should(Equal(0), "0 replicas should remain")
 		Eventually(func() int {
 			return framework.countJobs("", false)
-		}).Should(Equal(0), "0 jobs should remain")
+		}, 300*time.Second, 5*time.Second).Should(Equal(0), "0 jobs should remain")
 		Eventually(func() int {
 			return framework.countPods("", false)
-		}).Should(Equal(1), "only AC pod should remain")
+		}, 300*time.Second, 5*time.Second).Should(Equal(1), "only AC pod should remain")
 	})
 })
 
