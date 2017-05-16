@@ -26,11 +26,11 @@ import (
 
 type flow struct {
 	Base
-	flow          *client.Flow
-	context       interfaces.GraphContext
-	generatedName string
-	originalName  string
-	currentGraph  interfaces.DependencyGraph
+	flow         *client.Flow
+	context      interfaces.GraphContext
+	originalName string
+	instanceName string
+	currentGraph interfaces.DependencyGraph
 }
 
 type flowTemplateFactory struct{}
@@ -52,19 +52,19 @@ func (flowTemplateFactory) Kind() string {
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newFlow := parametrizeResource(def.Flow, gc, []string{"*"}).(*client.Flow)
 
-	deps := gc.Dependencies()
+	dep := gc.Dependency()
 	var depName string
-	if len(deps) > 0 {
-		depName = strings.Replace(deps[0].Name, deps[0].GenerateName, "", 1)
+	if dep != nil {
+		depName = strings.Replace(dep.Name, dep.GenerateName, "", 1)
 	}
 
 	return report.SimpleReporter{
 		BaseResource: &flow{
-			Base:          Base{def.Meta},
-			flow:          newFlow,
-			context:       gc,
-			generatedName: fmt.Sprintf("%s-%s%s", newFlow.Name, depName, gc.GetArg("AC_NAME")),
-			originalName:  def.Flow.Name,
+			Base:         Base{def.Meta},
+			flow:         newFlow,
+			context:      gc,
+			originalName: def.Flow.Name,
+			instanceName: fmt.Sprintf("%s%s", depName, gc.GetArg("AC_NAME")),
 		}}
 }
 
@@ -77,7 +77,7 @@ func (flowTemplateFactory) NewExisting(name string, c client.Interface, gc inter
 
 // Key return Flow identifier
 func (f flow) Key() string {
-	return "flow/" + f.generatedName
+	return "flow/" + f.flow.Name
 }
 
 func (f *flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.DependencyGraph, error) {
@@ -98,7 +98,7 @@ func (f *flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.D
 	options := interfaces.DependencyGraphOptions{
 		FlowName:              f.originalName,
 		Args:                  args,
-		FlowInstanceName:      f.generatedName,
+		FlowInstanceName:      f.instanceName,
 		ReplicaCount:          replicaCount,
 		Silent:                silent,
 		FixedNumberOfReplicas: fixedNumberOfReplicas,

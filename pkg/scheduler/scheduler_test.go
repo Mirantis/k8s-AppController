@@ -331,7 +331,7 @@ func TestLimitConcurrency(t *testing.T) {
 			key := fmt.Sprintf("resource%d", i)
 			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second/4)}
 			context := &graphContext{graph: depGraph}
-			sr := newScheduledResourceFor(r, context, false)
+			sr := newScheduledResourceFor(r, "", context, false)
 			depGraph.graph[sr.Key()] = sr
 		}
 		stopChan := make(chan struct{})
@@ -599,7 +599,7 @@ func TestWaitWithZeroTimeout(t *testing.T) {
 	graph := &dependencyGraph{graphOptions: options}
 	gc := &graphContext{graph: graph}
 	resource := resources.KindToResourceTemplate["pod"].New(resdef, mocks.NewClient(pod), gc)
-	sr := newScheduledResourceFor(resource, gc, false)
+	sr := newScheduledResourceFor(resource, "", gc, false)
 	stopChan := make(chan struct{})
 	defer close(stopChan)
 

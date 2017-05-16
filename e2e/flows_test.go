@@ -15,7 +15,9 @@
 package integration
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	testutils "github.com/Mirantis/k8s-AppController/e2e/utils"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -31,58 +33,30 @@ var _ = Describe("Flows Suite", func() {
 
 	It("Example 'flows' should finish and create one graph replica", func() {
 		framework.CreateRunAndVerify("flows", interfaces.DependencyGraphOptions{MinReplicaCount: 1})
-		Eventually(func() int {
-			return framework.countJobs("a-job-", false)
-		}).Should(Equal(1), "1 a-job* should have been created")
-		Eventually(func() int {
-			return framework.countJobs("b-job-", false)
-		}).Should(Equal(1), "1 a-job* should have been created")
-		Eventually(func() int {
-			return framework.countJobs("test-job", true)
-		}).Should(Equal(1), "1 test-job should have been created")
-		Eventually(func() int {
-			return framework.countPods("a-pod-", false)
-		}).Should(Equal(1), "1 a-pod* should have been created")
-		Eventually(func() int {
-			return framework.countPods("b-pod-", false)
-		}).Should(Equal(1), "1 a-pod* should have been created")
-		Eventually(func() int {
-			return framework.countPods("test-pod", true)
-		}).Should(Equal(1), "1 test-pod should have been created")
-		Eventually(func() int {
-			return framework.countReplicas("test-flow", true)
-		}).Should(Equal(2), "2 test-flow replicas should have been created")
-		Eventually(func() int {
-			return framework.countReplicas("DEFAULT", true)
-		}).Should(Equal(1), "1 DEFAULT flow replica should have been created")
+		framework.validateResourceCounts([]resourceCount{
+			{"jobs", "a-job-", false, 1},
+			{"jobs", "b-job-", false, 1},
+			{"jobs", "test-job", true, 1},
+			{"pods", "a-pod-", false, 1},
+			{"pods", "b-pod-", false, 1},
+			{"pods", "test-pod", true, 1},
+			{"replicas", "test-flow", true, 2},
+			{"replicas", "DEFAULT", true, 1},
+		})
 	})
 
 	It("Example 'flows' with replication should finish and create two replicas", func() {
 		framework.CreateRunAndVerify("flows", interfaces.DependencyGraphOptions{ReplicaCount: 2})
-		Eventually(func() int {
-			return framework.countJobs("a-job-", false)
-		}).Should(Equal(2), "1 a-job* should have been created")
-		Eventually(func() int {
-			return framework.countJobs("b-job-", false)
-		}).Should(Equal(2), "1 a-job* should have been created")
-		Eventually(func() int {
-			return framework.countJobs("test-job", true)
-		}).Should(Equal(1), "1 test-job should have been created")
-		Eventually(func() int {
-			return framework.countPods("a-pod-", false)
-		}).Should(Equal(2), "1 a-pod* should have been created")
-		Eventually(func() int {
-			return framework.countPods("b-pod-", false)
-		}).Should(Equal(2), "1 a-pod* should have been created")
-		Eventually(func() int {
-			return framework.countPods("test-pod", true)
-		}).Should(Equal(1), "1 test-pod should have been created")
-		Eventually(func() int {
-			return framework.countReplicas("test-flow", true)
-		}).Should(Equal(4), "2 test-flow replicas should have been created")
-		Eventually(func() int {
-			return framework.countReplicas("DEFAULT", true)
-		}).Should(Equal(2), "1 DEFAULT flow replica should have been created")
+		framework.validateResourceCounts([]resourceCount{
+			{"jobs", "a-job-", false, 2},
+			{"jobs", "b-job-", false, 2},
+			{"jobs", "test-job", true, 1},
+			{"pods", "a-pod-", false, 2},
+			{"pods", "b-pod-", false, 2},
+			{"pods", "test-pod", true, 1},
+			{"replicas", "test-flow", true, 4},
+			{"replicas", "DEFAULT", true, 2},
+		})
 	})
 
 	It("Example 'flows' should cleanup after itself", func() {
@@ -94,20 +68,46 @@ var _ = Describe("Flows Suite", func() {
 		By("Verifying status of deployment")
 		framework.VerifyStatus(task, deleteOptions)
 
-		Eventually(func() int {
-			return framework.countReplicas("", false)
-		}).Should(Equal(0), "0 replicas should remain")
-		Eventually(func() int {
-			return framework.countJobs("", false)
-		}).Should(Equal(0), "0 jobs should remain")
-		Eventually(func() int {
-			return framework.countPods("", false)
-		}).Should(Equal(1), "only AC pod should remain")
+		framework.validateResourceCounts([]resourceCount{
+			{"replicas", "", false, 0},
+			{"jobs", "", false, 0},
+			{"pods", "", false, 1},
+		})
 	})
 })
 
 type FlowFramework struct {
 	examplesFramework
+}
+
+type resourceCount struct {
+	kind     string
+	prefix   string
+	equal    bool
+	expected int
+}
+
+func (ff FlowFramework) validateResourceCounts(counts []resourceCount) {
+	for _, item := range counts {
+		var suffix string
+		if !item.equal {
+			suffix = "*"
+		}
+		Eventually(func() int {
+			switch item.kind {
+			case "pods":
+				return ff.countPods(item.prefix, item.equal)
+			case "jobs":
+				return ff.countJobs(item.prefix, item.equal)
+			case "replicas":
+				return ff.countReplicas(item.prefix, item.equal)
+			default:
+				return -1
+			}
+		}, 300*time.Second, 5*time.Second).Should(Equal(item.expected),
+			fmt.Sprintf("there should be %d %s %s%s", item.expected, item.kind, item.prefix, suffix))
+	}
+
 }
 
 func (ff FlowFramework) countPods(prefix string, equal bool) int {
