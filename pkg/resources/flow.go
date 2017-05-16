@@ -91,6 +91,9 @@ func (f *flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.D
 	fixedNumberOfReplicas := false
 	if replicaCount > 0 {
 		fixedNumberOfReplicas = f.context.Graph().Options().FixedNumberOfReplicas
+	} else if replicaCount == 0 {
+		fixedNumberOfReplicas = true
+		replicaCount = -1
 	}
 	options := interfaces.DependencyGraphOptions{
 		FlowName:              f.originalName,

@@ -61,14 +61,11 @@ func (fr *fakeReplicas) Create(replica *client.Replica) (result *client.Replica,
 }
 
 // Update updates Replica object stored in the fake k8s
-func (fr *fakeReplicas) Update(replica *client.Replica) (result *client.Replica, err error) {
-	obj, err := fr.fake.
+func (fr *fakeReplicas) Update(replica *client.Replica) error {
+	_, err := fr.fake.
 		Invokes(testing.NewUpdateAction(replicaResource, fr.ns, replica), &client.Replica{})
 
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*client.Replica), err
+	return err
 }
 
 // Delete deletes a replica object by its name
