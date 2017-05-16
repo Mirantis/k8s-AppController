@@ -608,7 +608,7 @@ func TestReplication(t *testing.T) {
 	}
 }
 
-// TestReplicationWithSharedResources tests that resouce definitions that don't have evaluated parts in their name
+// TestReplicationWithSharedResources tests that resource definitions that don't have evaluated parts in their name
 // are shared across all flow replics
 func TestReplicationWithSharedResources(t *testing.T) {
 	replicaCount := 3
@@ -1091,7 +1091,7 @@ func TestCleanupResourcesErrorHandling(t *testing.T) {
 		func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 			if !prevented {
 				prevented = true
-				return true, nil, errors.New("resouce cannot be deleted")
+				return true, nil, errors.New("resource cannot be deleted")
 			}
 			return false, nil, nil
 		})
@@ -1117,4 +1117,61 @@ func TestCleanupResourcesErrorHandling(t *testing.T) {
 	depGraph.Deploy(stopChan)
 
 	ensureReplicas(c, t, 1, 1)
+}
+
+// TestDeploymentRecoveryForRelativeReplicaCount tests that if we deploy graph with relative replica count,
+// abort deployment in the middle and then restart it again, we don't get double replica count created
+func TestDeploymentRecoveryForRelativeReplicaCount(t *testing.T) {
+	c, fake := mocks.NewClientWithFake(
+		mocks.MakeFlow("test"),
+		mocks.MakeResourceDefinition("pod/ready-$AC_NAME"),
+		mocks.MakeResourceDefinition("job/ready"),
+		mocks.MakeDependency("flow/test", "pod/ready-$AC_NAME", "flow=test"),
+		mocks.MakeDependency("pod/ready-$AC_NAME", "job/ready", "flow=test"),
+	)
+
+	stopChan := make(chan struct{})
+	prevented := false
+	// this makes deployment stop on the first job
+	fake.PrependReactor("create", "jobs",
+		func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			if !prevented {
+				prevented = true
+				stopChan <- struct{}{}
+				return true, nil, errors.New("resource cannot be created")
+			}
+			return false, nil, nil
+		})
+
+	sched := New(c, nil, 0)
+	depGraph, err := sched.BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 2, FlowName: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	depGraph.Deploy(stopChan)
+
+	ensureReplicas(c, t, 0, 2)
+	replicas, _ := c.Replicas().List(api.ListOptions{})
+	for _, r := range replicas.Items {
+		if r.Deployed {
+			t.Error("there must not be deployed replica if deployment was aborted")
+		}
+	}
+
+	depGraph, err = sched.BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 2, FlowName: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	depGraph.Deploy(stopChan)
+	ensureReplicas(c, t, 1, 2)
+	replicas, _ = c.Replicas().List(api.ListOptions{})
+	for _, r := range replicas.Items {
+		if !r.Deployed {
+			t.Error("all replica must be deployed after successful graph deployment")
+		}
+	}
 }
