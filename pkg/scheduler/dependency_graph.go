@@ -420,6 +420,25 @@ func getReplicaSpace(flow *client.Flow, gc interfaces.GraphContext) string {
 	return copier.EvaluateString(name, getArgFunc(gc))
 }
 
+func (sched *scheduler) getAllReplicas(flow *client.Flow, gc interfaces.GraphContext) ([]client.Replica, error) {
+	replicaSpace := getReplicaSpace(flow, gc)
+	label := labels.Set{"replicaspace": replicaSpace}
+	options := gc.Graph().Options()
+	if options.FlowInstanceName != "" {
+		label["context"] = options.FlowInstanceName
+	}
+	existingReplicas, err := sched.client.Replicas().List(api.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sortableReplicas := sortableReplicaList(existingReplicas.Items)
+	sort.Stable(sortableReplicas)
+	return sortableReplicas, nil
+}
+
 // allocateReplicas allocates Replica objects for either creation or deletion.
 // it returns list of replicas to be constructed, list of replicas to be destructed and an error.
 // new Replica objects are created in this function as a side effect, but not deleted since this can happen only after
@@ -437,10 +456,16 @@ func (sched *scheduler) allocateReplicas(flow *client.Flow, gc interfaces.GraphC
 	if err != nil {
 		return nil, nil, err
 	}
+	initialCount := 0
+	for _, replica := range existingReplicas.Items {
+		if replica.Deployed {
+			initialCount++
+		}
+	}
 
 	targetCount := options.ReplicaCount // absolute number of replicas that we want to have
 	if !options.FixedNumberOfReplicas {
-		targetCount += len(existingReplicas.Items)
+		targetCount += initialCount
 	}
 	if targetCount < options.MinReplicaCount {
 		targetCount = options.MinReplicaCount
@@ -455,7 +480,6 @@ func (sched *scheduler) allocateReplicas(flow *client.Flow, gc interfaces.GraphC
 		return nil, nil, err
 	}
 
-	initialCount := len(existingReplicas.Items)
 	if targetCount < initialCount {
 		return nil, adjustedReplicas[targetCount:], nil
 	}
@@ -475,34 +499,54 @@ func (sched *scheduler) createReplicas(
 			maxCurrentTime = item.CreationTimestamp.Time
 		}
 	}
+	replicaList := make(sortableReplicaList, 0, len(existingReplicas))
+	unusedReplicas := make(sortableReplicaList, 0, len(existingReplicas))
 
-	sortableReplicaList := sortableReplicaList(existingReplicas)
-	for len(sortableReplicaList) < desiredCount {
-		replica := &client.Replica{
-			ObjectMeta: api.ObjectMeta{
-				GenerateName: "replica-",
-				Labels:       label,
-				Namespace:    sched.client.Namespace(),
-			},
-			FlowName:     flowName,
-			ReplicaSpace: replicaSpace,
+	for _, replica := range existingReplicas {
+		if replica.Deployed {
+			replicaList = append(replicaList, replica)
+		} else {
+			unusedReplicas = append(unusedReplicas, replica)
 		}
-		replica, err := sched.client.Replicas().Create(replica)
-		if err != nil {
-			return nil, err
+	}
+	sort.Stable(&unusedReplicas)
+
+	for len(replicaList) < desiredCount {
+		var replica *client.Replica
+		if len(unusedReplicas) > 0 {
+			replica = &unusedReplicas[0]
+			unusedReplicas = unusedReplicas[1:]
+		} else {
+			replica = &client.Replica{
+				ObjectMeta: api.ObjectMeta{
+					GenerateName: "replica-",
+					Labels:       label,
+					Namespace:    sched.client.Namespace(),
+				},
+				FlowName:     flowName,
+				ReplicaSpace: replicaSpace,
+			}
+			var err error
+			replica, err = sched.client.Replicas().Create(replica)
+			if err != nil {
+				return nil, err
+			}
+			if !replica.CreationTimestamp.After(maxCurrentTime) {
+				// ensure that new elements in the list have timestamp that exceeds all the timestamps of existing items
+				// this guarantees that after the sort all new elements will still go after old ones in the list
+				time.Sleep(time.Second)
+				sched.client.Replicas().Delete(replica.Name)
+				continue
+			}
 		}
-		if !replica.CreationTimestamp.After(maxCurrentTime) {
-			// ensure that new elements in the list have timestamp that exceeds all the timestamps of existing items
-			// this guarantees that after the sort all new elements will still go after old ones in the list
-			time.Sleep(time.Second)
-			sched.client.Replicas().Delete(replica.Name)
-			continue
-		}
-		sortableReplicaList = append(sortableReplicaList, *replica)
+		replicaList = append(replicaList, *replica)
+	}
+	for _, replica := range unusedReplicas {
+		sched.client.Replicas().Delete(replica.Name)
 	}
 
-	sort.Stable(&sortableReplicaList)
-	return sortableReplicaList, nil
+	sort.Stable(&replicaList)
+	return replicaList, nil
 }
 
 // BuildDependencyGraph loads dependencies data and creates the DependencyGraph
@@ -559,7 +603,12 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	depGraph := newDependencyGraph(sched, options)
 	rootContext := &graphContext{scheduler: sched, graph: depGraph, flow: flow, args: options.Args}
 
-	replicas, deleteReplicas, err := sched.allocateReplicas(flow, rootContext)
+	var replicas, deleteReplicas []client.Replica
+	if options.ReplicaCount < 0 && options.FixedNumberOfReplicas {
+		replicas, err = sched.getAllReplicas(flow, rootContext)
+	} else {
+		replicas, deleteReplicas, err = sched.allocateReplicas(flow, rootContext)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -580,12 +629,16 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	}
 
 	if len(deleteReplicas) > 0 {
-		dryRunOptions := getDryRunDependencyGraphOptions(options)
+		silentOptions := options
+		silentOptions.Silent = true
 
 		// since we are using dry-run options, allocateReplicas will only return existing replicas
-		allReplicasGraph := newDependencyGraph(sched, dryRunOptions)
-		context := &graphContext{scheduler: sched, graph: allReplicasGraph, flow: flow, args: dryRunOptions.Args}
-		allReplicas, _, err := sched.allocateReplicas(flow, context)
+		allReplicasGraph := newDependencyGraph(sched, silentOptions)
+		context := &graphContext{scheduler: sched, graph: allReplicasGraph, flow: flow, args: silentOptions.Args}
+		allReplicas, err := sched.getAllReplicas(flow, context)
+		if err != nil {
+			return nil, err
+		}
 
 		// create dependency graph that has all the replicas (both those that we are about to delete and those that
 		// remain to see what resources belong exclusively to deleted replicas and what resources are shared with
@@ -597,20 +650,12 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 
 		// compose finalizer method that will delete all the resources belonging to deleted replicas and those
 		// that were created specially for destruction (for example, jobs with cleanup scripts)
-		depGraph.finalizer = sched.composeFinalizer(allReplicasGraph, depGraph, deleteReplicas)
+		depGraph.finalizer = sched.composeDeletingFinalizer(allReplicasGraph, depGraph, deleteReplicas)
+	} else {
+		depGraph.finalizer = sched.composeAcknowledgingFinalizer(replicas)
 	}
 
 	return depGraph, nil
-}
-
-// getDryRunDependencyGraphOptions returns dependency graph options that will not produce side effects
-// (i.e. no new or deleted replicas and no logging)
-func getDryRunDependencyGraphOptions(options interfaces.DependencyGraphOptions) interfaces.DependencyGraphOptions {
-	options.ReplicaCount = 0
-	options.MinReplicaCount = 0
-	options.FixedNumberOfReplicas = false
-	options.Silent = true
-	return options
 }
 
 func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
@@ -775,7 +820,7 @@ readFailed:
 	}
 }
 
-func (sched *scheduler) composeFinalizer(construction, destruction *dependencyGraph, replicas []client.Replica) func() {
+func (sched *scheduler) composeDeletingFinalizer(construction, destruction *dependencyGraph, replicas []client.Replica) func() {
 	replicaMap := map[string]client.Replica{}
 	for _, replica := range replicas {
 		replicaMap[replica.ReplicaName()] = replica
@@ -785,6 +830,34 @@ func (sched *scheduler) composeFinalizer(construction, destruction *dependencyGr
 	destructors := getResourceDestructors(construction, destruction, replicaMap, &failed)
 
 	return func() {
+		log.Print("Performing resource cleanup")
 		deleteReplicaResources(sched, destructors, replicaMap, &failed)
+	}
+}
+
+func makeAcknowledgeReplicaFunc(replica client.Replica, api client.ReplicasInterface) func() bool {
+	return func() bool {
+		replica.Deployed = true
+		log.Printf("%s flow: Marking replica %s as deployed", replica.FlowName, replica.ReplicaName())
+		if err := api.Update(&replica); err != nil {
+			log.Printf("failed to update replica %s: %v", replica.Name, err)
+			return false
+		}
+		return true
+	}
+}
+
+func (sched *scheduler) composeAcknowledgingFinalizer(replicas []client.Replica) func() {
+	var funcs []func() bool
+	for _, replica := range replicas {
+		if !replica.Deployed {
+			funcs = append(funcs, makeAcknowledgeReplicaFunc(replica, sched.client.Replicas()))
+		}
+	}
+
+	return func() {
+		if !runConcurrently(funcs, sched.concurrency) {
+			log.Println("Some of the replicas were not updated!")
+		}
 	}
 }
