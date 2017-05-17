@@ -4,8 +4,6 @@ engines:
   golint:
     enabled: true
     checks:
-      GoLint/Comments/DocComments:
-        enabled: false
       GoLint/Imports/ImportDot:
         enabled: false
   govet:
