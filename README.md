@@ -91,7 +91,7 @@ Load it to k8s:
 
 Start the graph deployment:
 
-`kubectl exec k8s-appcontroller kubeac -- run`
+`kubectl exec k8s-appcontroller run`
 
 ## Reporting
 
