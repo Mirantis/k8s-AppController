@@ -13,14 +13,14 @@ Examples, where flows are especially useful:
   servers in a web farm. Especially, this is helpful if such units are made of several Kubernetes resources.
   Encapsulating such deployment blocks in a flow allows to build multi-node systems by repeating (replicating)
   flow.
-* Moreover, flows can represent an operation that can be performed with application: scale, migrate, heal, backup 
+* Moreover, flows can represent an operation that can be performed with application: scale, migrate, heal, backup
   and so on, if such operations can be expressed by Kubernetes resources. Considering that number of then can
   contain arbitrary bash scripts, this is often the case.
 
 Most important properties of flows are:
 1. **Name**. Since flow is named part of dependency graph, it has a name. When one wants to use the flow in another
    graph part, he just makes a dependency on the flow vertex.
-2. **Scope**. This is a label selector than can be applied to dependencies. All graph vertexes, reachable from the 
+2. **Scope**. This is a label selector than can be applied to dependencies. All graph vertexes, reachable from the
    flow vertex using only edges (dependencies) that match the selector are said to belong to the flow. There can
    be one or two scopes for a flow: construction scope and (optional) destruction scope. Construction scope defines,
    what is going to be deployed for each flow replica. Destruction scope defines what needs to be performed before
@@ -34,12 +34,12 @@ Most important properties of flows are:
    Kubernetes. But with parametrization, parameter value may be used as part of resource names. So with different
    arguments the same flow can produce different resources. Replication creates specified number of flow copies, each
    of them gets unique name which can be used like if it was a parameter.
-  
+
 ## Flow definition
 
 In AppController dependency graph there are resource definitions and dependencies between them. Flows do not bring
 new entities into this picture. Instead, flow is implemented as a yet another resource type that can be used as a graph
-vertex. Flow resource is where all flow properties can be specified. 
+vertex. Flow resource is where all flow properties can be specified.
 
 To use flow, i.e. deploy resources that make the flow, one just need to place it in dependency graph, and the flow
 vertex creation will trigger creation of the subgraph.
@@ -79,7 +79,7 @@ are represented. However, for other resource types it is still possible to creat
 
 Sections below explain each of the flow properties and how they affect graph deployment.
 
-Note: Since it is possible to run `kubeac` both inside and outside of the cluster, here and below I refer to 
+Note: Since it is possible to run `kubeac` both inside and outside of the cluster, here and below I refer to
 `kubeac` binary by its simple name. However, in most cases this is going to be something like
 `kubectl exec k8s-appcontroller kubeac` to run the binary remotely, in AppController pod.
 
@@ -87,7 +87,7 @@ Note: Since it is possible to run `kubeac` both inside and outside of the cluste
 
 Each flow must have a `name` in its `metadata`. This name is used to refer to the flow in order to run it.
 There are two method to run a flow:
-1) Call it from withing a dependency graph. This is done by placing dependency on the `flow/flowName` resource,
+1) Call it from within a dependency graph. This is done by placing dependency on the `flow/flowName` resource,
    where `flowName` is the name of the flow.
 2) Explicitly call the flow from command line: `kubeac run flowName`.
 
@@ -139,7 +139,7 @@ The advantages of declared parameters are:
   parameter can be accompanied with description text.
 * Declaration may have default value for the parameter. If there is a default value, the parameter becomes optional.
   Values for parameter that do not have default must be provided by the flow consumer.
-  
+
 Parameters are declared in the `parameters` section of the `Flow` resource. It is a dictionary where keys are
 parameter names and values are structures with two optional fields: `description` and `default`. If none of them
 present, then the value may just remain empty, as shown for `parameterName2` in example above. Parameter names
@@ -186,7 +186,7 @@ created as many resources as the number of passed values for the parameter.
 For example, the graph
 ```
              {arg=a}
-            --------- 
+            ---------
 [parent]  /           \   [child]
 my-flow ->             -> pod/pod-$arg
           \           /
@@ -227,7 +227,7 @@ Replication works as following:
 
 The replica count is specified using `-n` (or longer `--replicas`) commandline switch:
 
-`kubec run my-flow -n3` creates deploys 3 replicas of `my-flow`. If there were 1, 2 replicas would be created. 
+`kubec run my-flow -n3` creates deploys 3 replicas of `my-flow`. If there were 1, 2 replicas would be created.
 If there were 7 of them, 4 replicas would be deleted.\
 `kubeac run my-flow -n+1` increments replica count by 1\
 `kubeac run my-flow -n-2` decreases replica count by 2\
