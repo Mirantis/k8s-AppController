@@ -75,7 +75,7 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 }
 
 func isResourceFinished(sr *ScheduledResource, ch chan error) bool {
-	status, err := sr.Resource.Status(nil)
+	status, err := sr.Status(nil)
 	if err != nil {
 		ch <- err
 		return true
@@ -186,7 +186,7 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 			log.Println("Deployment is not stopped, keep creating")
 		}
 		go func(r *ScheduledResource, finished chan string, ccLimiter chan struct{}) {
-			// Acquire sepmaphor
+			// Acquire semaphore
 			ccLimiter <- struct{}{}
 			defer func() {
 				<-ccLimiter
