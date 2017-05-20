@@ -225,7 +225,6 @@ func createResources(toCreate chan *ScheduledResource, finished chan string, ccL
 						req := r.context.graph.graph[reqKey]
 						go func(req *ScheduledResource, toCreate chan *ScheduledResource) {
 							ticker := time.NewTicker(CheckInterval)
-							log.Printf("Requesting creation of dependency %v", req.Key())
 							for {
 								select {
 								case <-stopChan:

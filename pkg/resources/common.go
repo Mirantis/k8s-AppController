@@ -44,6 +44,7 @@ func init() {
 		serviceTemplateFactory{},
 		serviceAccountTemplateFactory{},
 		statefulSetTemplateFactory{},
+		voidTemplateFactory{},
 	}
 	for _, factory := range factories {
 		KindToResourceTemplate[factory.Kind()] = factory
