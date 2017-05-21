@@ -15,9 +15,7 @@
 package resources
 
 import (
-	"fmt"
 	"log"
-	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -29,7 +27,6 @@ type flow struct {
 	flow         *client.Flow
 	context      interfaces.GraphContext
 	originalName string
-	instanceName string
 	currentGraph interfaces.DependencyGraph
 }
 
@@ -52,19 +49,12 @@ func (flowTemplateFactory) Kind() string {
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newFlow := parametrizeResource(def.Flow, gc, []string{"*"}).(*client.Flow)
 
-	dep := gc.Dependency()
-	var depName string
-	if dep != nil {
-		depName = strings.Replace(dep.Name, dep.GenerateName, "", 1)
-	}
-
 	return report.SimpleReporter{
 		BaseResource: &flow{
 			Base:         Base{def.Meta},
 			flow:         newFlow,
 			context:      gc,
 			originalName: def.Flow.Name,
-			instanceName: fmt.Sprintf("%s%s", depName, gc.GetArg("AC_NAME")),
 		}}
 }
 
@@ -98,7 +88,7 @@ func (f *flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.D
 	options := interfaces.DependencyGraphOptions{
 		FlowName:              f.originalName,
 		Args:                  args,
-		FlowInstanceName:      f.instanceName,
+		FlowInstanceName:      f.context.GetArg("AC_ID"),
 		ReplicaCount:          replicaCount,
 		Silent:                silent,
 		FixedNumberOfReplicas: fixedNumberOfReplicas,

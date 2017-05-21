@@ -195,7 +195,7 @@ my-flow ->             -> pod/pod-$arg
 ```
 will create two pods: `pod-a` and `pod-b`.
 
-## Replication of flows
+## Replication
 
 Flow replication is an AppController feature that makes specified number of flow graph copies, each one with
 a unique name and then merges them into a single graph. Because each replica name may be used in some of resource
@@ -233,6 +233,96 @@ If there were 7 of them, 4 replicas would be deleted.\
 `kubeac run my-flow -n-2` decreases replica count by 2\
 `kubeac run my-flow` if there are no replicas exist, create one, otherwise validate status of
 resources of existing replicas.
+
+### Replication of dependencies
+
+With commandline parameters one can create number of flow replicas. But sometimes there is a need to have flow
+that creates several replicas of another flow, or just several resources with the same specification that differ
+only in name.
+
+One possible solution is to utilize technique shown above: make parameter value be part of resource name and
+then duplicate the dependency that leads to this resource and pass different parameter value along each of
+dependencies. This works well for small and fixed number of replicas. But if the number goes big, it becomes hard
+to manage such number of dependency objects. Moreover if the number itself is not fixed but rather passed as a
+parameter replicating resource by manual replication of dependencies becomes impossible.
+
+Luckily, the dependencies can be automatically replicated. This is done through the `generateFor` field of the
+`Dependency` object. `generateFor` is a map where keys are argument names and values are list expressions. Each list
+expression is comma-separated list of values. If the value has a form of `number..number`, it is expended into a
+list of integers in the given range. For example `"1..3, 10..11, abc"` will turn into `["1", "2", "3", "10", "11", "abc"]`. 
+Then the dependency is going to be replicated automatically with each replica getting on of the list values as an
+additional argument. There can be several `generateFor` arguments. In this case there is going to be one dependency
+for each combination of the list values. For example,
+
+```YAML
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency
+parent: pod/podName
+child: flow/flowName-$x-$y
+generateFor:
+  x: 1..2
+  y: a, b
+```
+
+has the same effect as
+
+```YAML
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency1
+parent: pod/podName
+child: flow/flowName-$x-$y
+args:
+  x: 1
+  y: a
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency2
+parent: pod/podName
+child: flow/flowName-$x-$y
+args:
+  x: 2
+  y: a
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency3
+parent: pod/podName
+child: flow/flowName-$x-$y
+args:
+  x: 1
+  y: b
+---
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency4
+parent: pod/podName
+child: flow/flowName-$x-$y
+args:
+  x: 2
+  y: b
+```
+
+Besides simplifying the dependency graph, dependency replication makes possible to have dynamic number of replicas
+by using parameter value right inside the list expressions:
+
+```YAML
+apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: dependency
+parent: pod/podName
+child: flow/flowName-$index
+generateFor:
+  index: 1..$replicaCount
+```
 
 ### Replica-spaces and contexts
 
