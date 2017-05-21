@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,12 +41,12 @@ type dependencyGraph struct {
 }
 
 type graphContext struct {
-	args       map[string]string
-	graph      *dependencyGraph
-	scheduler  *scheduler
-	flow       *client.Flow
-	dependency *client.Dependency
-	replica    string
+	args      map[string]string
+	graph     *dependencyGraph
+	scheduler *scheduler
+	flow      *client.Flow
+	id        string
+	replica   string
 }
 
 var _ interfaces.GraphContext = &graphContext{}
@@ -62,6 +63,8 @@ func (gc graphContext) GetArg(name string) string {
 		return gc.replica
 	case "AC_FLOW_NAME":
 		return gc.flow.Name
+	case "AC_ID":
+		return gc.id
 	default:
 		val, ok := gc.args[name]
 		if ok {
@@ -82,11 +85,6 @@ func (gc graphContext) GetArg(name string) string {
 // Graph method returns the currently running dependency graph
 func (gc graphContext) Graph() interfaces.DependencyGraph {
 	return gc.graph
-}
-
-// Dependency returns Dependency for which child is the resource being created with this context
-func (gc graphContext) Dependency() *client.Dependency {
-	return gc.dependency
 }
 
 // newScheduledResourceFor returns new scheduled resource for given resource in init state
@@ -159,7 +157,9 @@ func groupDependencies(dependencies []client.Dependency,
 		defaultFlow = []client.Dependency{}
 		addResource := func(name string) {
 			if !strings.HasPrefix(name, "flow/") && !isDependant[name] {
-				defaultFlow = append(defaultFlow, client.Dependency{Parent: defaultFlowName, Child: name})
+				dep := client.Dependency{Parent: defaultFlowName, Child: name}
+				dep.Name = name
+				defaultFlow = append(defaultFlow, dep)
 				isDependant[name] = true
 			}
 		}
@@ -328,11 +328,11 @@ func getArgFunc(gc interfaces.GraphContext) func(string) string {
 
 func (sched *scheduler) prepareContext(parentContext *graphContext, dependency *client.Dependency, replica string) *graphContext {
 	context := &graphContext{
-		scheduler:  sched,
-		graph:      parentContext.graph,
-		flow:       parentContext.flow,
-		replica:    replica,
-		dependency: dependency,
+		scheduler: sched,
+		graph:     parentContext.graph,
+		flow:      parentContext.flow,
+		replica:   replica,
+		id:        getVertexID(dependency, replica),
 	}
 
 	context.args = make(map[string]string)
@@ -342,6 +342,15 @@ func (sched *scheduler) prepareContext(parentContext *graphContext, dependency *
 		}
 	}
 	return context
+}
+
+func getVertexID(dependency *client.Dependency, replica string) string {
+	var depName string
+	if dependency != nil {
+		depName = strings.Replace(dependency.Name, dependency.GenerateName, "", 1)
+	}
+	depName += replica
+	return depName
 }
 
 func (sched *scheduler) updateContext(context, parentContext *graphContext, dependency client.Dependency) {
@@ -661,6 +670,105 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	return depGraph, nil
 }
 
+func listDependencies(dependencies map[string][]client.Dependency, parent string, flow *client.Flow,
+	useDestructionSelector bool, context *graphContext) []client.Dependency {
+
+	deps := filterDependencies(dependencies, parent, flow, useDestructionSelector)
+	var result []client.Dependency
+	for _, dep := range deps {
+		if len(dep.GenerateFor) == 0 {
+			result = append(result, dep)
+			continue
+		}
+
+		var keys []string
+		for k := range dep.GenerateFor {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		lists := make([][]string, len(dep.GenerateFor))
+		for i, key := range keys {
+			lists[i] = expandListExpression(copier.EvaluateString(dep.GenerateFor[key], getArgFunc(context)))
+		}
+		for n, combination := range permute(lists) {
+			newArgs := make(map[string]string, len(dep.Args)+len(keys))
+			for k, v := range dep.Args {
+				newArgs[k] = v
+			}
+			for i, key := range keys {
+				newArgs[key] = combination[i]
+			}
+			depCopy := dep
+			depCopy.Args = newArgs
+			depCopy.Name += strconv.Itoa(n + 1)
+			result = append(result, depCopy)
+		}
+	}
+	return result
+}
+
+func permute(variants [][]string) [][]string {
+	switch len(variants) {
+	case 0:
+		return variants
+	case 1:
+		var result [][]string
+		for _, v := range variants[0] {
+			result = append(result, []string{v})
+		}
+		return result
+	default:
+		var result [][]string
+		for _, tail := range variants[len(variants)-1] {
+			for _, p := range permute(variants[:len(variants)-1]) {
+				result = append(result, append(p, tail))
+			}
+		}
+		return result
+	}
+}
+
+func expandListExpression(expr string) []string {
+	var result []string
+	for _, part := range strings.Split(expr, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		isRange := true
+		var from, to int
+
+		rangeParts := strings.SplitN(part, "..", 2)
+		if len(rangeParts) != 2 {
+			isRange = false
+		}
+
+		var err error
+		if isRange {
+			from, err = strconv.Atoi(rangeParts[0])
+			if err != nil {
+				isRange = false
+			}
+		}
+		if isRange {
+			to, err = strconv.Atoi(rangeParts[1])
+			if err != nil {
+				isRange = false
+			}
+		}
+
+		if isRange {
+			for i := from; i <= to; i++ {
+				result = append(result, strconv.Itoa(i))
+			}
+		} else {
+			result = append(result, part)
+		}
+	}
+	return result
+}
+
 func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 	resDefs map[string]client.ResourceDefinition,
 	dependencies map[string][]client.Dependency,
@@ -683,7 +791,7 @@ func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 		for e := queue.Front(); e != nil; e = e.Next() {
 			parent := e.Value.(*Block)
 
-			deps := filterDependencies(dependencies, parent.dependency.Child, flow, useDestructionSelector)
+			deps := listDependencies(dependencies, parent.dependency.Child, flow, useDestructionSelector, replicaContext)
 
 			for _, dep := range deps {
 				if parent.scheduledResource != nil && strings.HasPrefix(parent.scheduledResource.Key(), "flow/") {

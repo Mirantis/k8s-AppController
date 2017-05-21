@@ -1327,3 +1327,102 @@ func TestMultipathParameterPassingWithSuffix(t *testing.T) {
 		t.Errorf("not all jobs were created: %d jobs were not found", len(jobNames))
 	}
 }
+
+// TestConsumeReplicatedFlow tests case, where each replica of the outer flow consumes N replicas of another flow
+// by replicating dependency which leads to the consumed flow
+func TestConsumeReplicatedFlow(t *testing.T) {
+	dep := mocks.MakeDependency("flow/outer", "flow/inner/$AC_NAME-$i", "flow=outer")
+	dep.GenerateFor = map[string]string{"i": "1..3"}
+
+	c := mocks.NewClient(
+		mocks.MakeFlow("inner"),
+		mocks.MakeFlow("outer"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME"),
+		dep,
+		mocks.MakeDependency("flow/inner", "job/ready-$AC_NAME", "flow=inner"),
+	)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 2, FlowName: "outer"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	ensureReplicas(c, t, 2*3, 3*2+2)
+}
+
+// TestComplexDependencyReplication tests complex dependency generation over two list expressions
+func TestComplexDependencyReplication(t *testing.T) {
+	dep := mocks.MakeDependency("flow/test", "job/ready-$x-$y", "flow=test")
+	dep.GenerateFor = map[string]string{
+		"x": "1..3, 8..9",
+		"y": "a, b",
+	}
+
+	c := mocks.NewClient(
+		mocks.MakeFlow("test"),
+		mocks.MakeResourceDefinition("job/ready-$x-$y"),
+		dep,
+	)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1, FlowName: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	expectedJobNames := map[string]bool{
+		"ready-1-a": true,
+		"ready-2-a": true,
+		"ready-3-a": true,
+		"ready-8-a": true,
+		"ready-9-a": true,
+		"ready-1-b": true,
+		"ready-2-b": true,
+		"ready-3-b": true,
+		"ready-8-b": true,
+		"ready-9-b": true,
+	}
+	jobs := ensureReplicas(c, t, len(expectedJobNames), 1)
+	for _, j := range jobs {
+		if !expectedJobNames[j.Name] {
+			t.Errorf("unexpected job %s", j.Name)
+		} else {
+			delete(expectedJobNames, j.Name)
+		}
+	}
+	if len(expectedJobNames) != 0 {
+		t.Error("not all jobs were found")
+	}
+}
+
+// TestDynamicDependencyReplication tests that variables can be used in list expressions used for dependency replication
+func TestDynamicDependencyReplication(t *testing.T) {
+	flow := mocks.MakeFlow("test")
+	flow.Flow.Parameters = map[string]client.FlowParameter{
+		"replicaCount": mocks.MakeFlowParameter("1"),
+	}
+
+	dep := mocks.MakeDependency("flow/test", "job/ready-$index", "flow=test")
+	dep.GenerateFor = map[string]string{
+		"index": "1..$replicaCount",
+	}
+
+	c := mocks.NewClient(
+		flow,
+		mocks.MakeResourceDefinition("job/ready-$index"),
+		dep,
+	)
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: 1, FlowName: "test",
+			Args: map[string]string{"replicaCount": "7"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopChan := make(chan struct{})
+	depGraph.Deploy(stopChan)
+
+	ensureReplicas(c, t, 7, 1)
+}
