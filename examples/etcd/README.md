@@ -26,8 +26,7 @@ If omitted, `etcd` name is used by default.
 `kubectl exec k8s-appcontroller kubeac run etcd-scale -n +1 --arg clusterName=my-cluster`
 
 `-n +1` - adds one node to the cluster. Use `-n -1` to scale the cluster down by one node. In this case the last 
-added node is going to be deleted. At the moment it is only possible to scale cluster up by one node at a time. 
-However, any number of nodes can be removed. Note, that this can also remove nodes created upon initial deployment. 
+added node is going to be deleted. This flow can also remove nodes created upon initial deployment. 
 
 `--arg clusterName=my-cluster` - name of the cluster to scale (`etcd` if not specified).
 
