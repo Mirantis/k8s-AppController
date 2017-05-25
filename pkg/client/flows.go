@@ -46,6 +46,9 @@ type Flow struct {
 	// can only be triggered by other flows (including DEFAULT flow which is exported by-default)
 	Exported bool `json:"exported,omitempty"`
 
+	// Flow replicas must be deployed sequentially, one by one
+	Sequential bool `json:"sequential,omitempty"`
+
 	// Parameters that the flow can accept (i.e. valid inputs for the flow)
 	Parameters map[string]FlowParameter `json:"parameters,omitempty"`
 

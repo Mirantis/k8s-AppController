@@ -769,27 +769,29 @@ func expandListExpression(expr string) []string {
 	return result
 }
 
+type interimGraphVertex struct {
+	dependency        client.Dependency
+	scheduledResource *ScheduledResource
+	parentContext     *graphContext
+}
+
 func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 	resDefs map[string]client.ResourceDefinition,
 	dependencies map[string][]client.Dependency,
 	flow *client.Flow, replicas []client.Replica, useDestructionSelector bool) error {
 
-	type Block struct {
-		dependency        client.Dependency
-		scheduledResource *ScheduledResource
-		parentContext     *graphContext
-	}
-	blocks := map[string][]*Block{}
+	var vertices [][]interimGraphVertex
 	silent := rootContext.graph.Options().Silent
 
 	for _, replica := range replicas {
+		var replicaVertices []interimGraphVertex
 		replicaName := replica.ReplicaName()
 		replicaContext := sched.prepareContext(rootContext, nil, replicaName)
 		queue := list.New()
-		queue.PushFront(&Block{dependency: client.Dependency{Child: "flow/" + flow.Name}})
+		queue.PushFront(interimGraphVertex{dependency: client.Dependency{Child: "flow/" + flow.Name}})
 
 		for e := queue.Front(); e != nil; e = e.Next() {
-			parent := e.Value.(*Block)
+			parent := e.Value.(interimGraphVertex)
 
 			deps := listDependencies(dependencies, parent.dependency.Child, flow, useDestructionSelector, replicaContext)
 
@@ -815,44 +817,149 @@ func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 				}
 				sr.usedInReplicas = []string{replicaName}
 
-				block := &Block{
+				vertex := interimGraphVertex{
 					scheduledResource: sr,
 					dependency:        dep,
 					parentContext:     parentContext,
 				}
-
-				blocks[dep.Child] = append(blocks[dep.Child], block)
+				replicaVertices = append(replicaVertices, vertex)
 
 				if parent.scheduledResource != nil {
 					sr.Requires = append(sr.Requires, parent.scheduledResource.Key())
 					parent.scheduledResource.RequiredBy = append(parent.scheduledResource.RequiredBy, sr.Key())
 					sr.Meta[parent.dependency.Child] = dep.Meta
 				}
-				queue.PushBack(block)
+				queue.PushBack(vertex)
 			}
 		}
-		for _, block := range blocks {
-			for _, entry := range block {
-				key := entry.scheduledResource.Key()
-				existingSr := rootContext.graph.graph[key]
-				if existingSr == nil {
-					if !silent {
-						log.Printf("Adding resource %s to the dependency graph flow %s", key, flow.Name)
-					}
-					rootContext.graph.graph[key] = entry.scheduledResource
-				} else {
-					sched.updateContext(existingSr.context, entry.parentContext, entry.dependency)
-					existingSr.Requires = append(existingSr.Requires, entry.scheduledResource.Requires...)
-					existingSr.RequiredBy = append(existingSr.RequiredBy, entry.scheduledResource.RequiredBy...)
-					existingSr.usedInReplicas = append(existingSr.usedInReplicas, entry.scheduledResource.usedInReplicas...)
-					for metaKey, metaValue := range entry.scheduledResource.Meta {
-						existingSr.Meta[metaKey] = metaValue
-					}
+		vertices = append(vertices, replicaVertices)
+	}
+
+	if flow.Sequential {
+		sched.concatenateReplicas(vertices, rootContext, rootContext.graph.Options())
+	} else {
+		sched.mergeReplicas(vertices, rootContext, rootContext.graph.Options())
+	}
+	return nil
+}
+
+func (sched *scheduler) mergeReplicas(vertices [][]interimGraphVertex, gc *graphContext,
+	options interfaces.DependencyGraphOptions) {
+
+	for _, replicaVertices := range vertices {
+		sched.mergeInterimGraphVertices(replicaVertices, gc.graph.graph, options)
+	}
+}
+
+func (sched *scheduler) concatenateReplicas(vertices [][]interimGraphVertex, gc *graphContext,
+	options interfaces.DependencyGraphOptions) {
+	graph := gc.graph.graph
+	var previousReplicaGraph map[string]*ScheduledResource
+	for i, replicaVertices := range vertices {
+		replicaGraph := map[string]*ScheduledResource{}
+		sched.mergeInterimGraphVertices(replicaVertices, replicaGraph, options)
+
+		if i > 0 {
+			correctDuplicateResources(graph, replicaGraph, i)
+
+			for _, leafName := range getLeafs(previousReplicaGraph) {
+				for _, rootName := range getRoots(replicaGraph) {
+					root := replicaGraph[rootName]
+					leaf := previousReplicaGraph[leafName]
+					root.Requires = append(root.Requires, leafName)
+					leaf.RequiredBy = append(leaf.RequiredBy, rootName)
 				}
 			}
 		}
+		previousReplicaGraph = replicaGraph
+		for key, value := range replicaGraph {
+			graph[key] = value
+		}
 	}
-	return nil
+}
+
+func correctDuplicateResources(existingGraph, newGraph map[string]*ScheduledResource, index int) {
+	toReplace := map[string]*ScheduledResource{}
+	for key, sr := range newGraph {
+		if existingGraph[key] != nil {
+			toReplace[key] = sr
+		}
+	}
+	for key, sr := range toReplace {
+		sr.context.id = existingGraph[key].context.id
+		j := index + 1
+		suffix := sr.suffix
+		for {
+			sr.suffix = fmt.Sprintf("%s #%d", suffix, j)
+			if existingGraph[sr.Key()] == nil {
+				break
+			}
+			j++
+		}
+		for _, rKey := range sr.RequiredBy {
+			requires := newGraph[rKey].Requires
+			for i, rKey2 := range requires {
+				if rKey2 == key {
+					requires[i] = sr.Key()
+					break
+				}
+			}
+		}
+		for _, rKey := range sr.Requires {
+			requiredBy := newGraph[rKey].RequiredBy
+			for i, rKey2 := range requiredBy {
+				if rKey2 == key {
+					requiredBy[i] = sr.Key()
+					break
+				}
+			}
+		}
+		delete(newGraph, key)
+		newGraph[sr.Key()] = sr
+	}
+}
+
+func getRoots(graph map[string]*ScheduledResource) []string {
+	var result []string
+	for key, sr := range graph {
+		if len(sr.Requires) == 0 {
+			result = append(result, key)
+		}
+	}
+	return result
+}
+
+func getLeafs(graph map[string]*ScheduledResource) []string {
+	var result []string
+	for key, sr := range graph {
+		if len(sr.RequiredBy) == 0 {
+			result = append(result, key)
+		}
+	}
+	return result
+}
+
+func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex, graph map[string]*ScheduledResource,
+	options interfaces.DependencyGraphOptions) {
+
+	for _, entry := range vertices {
+		key := entry.scheduledResource.Key()
+		existingSr := graph[key]
+		if existingSr == nil {
+			if !options.Silent {
+				log.Printf("Adding resource %s to the dependency graph flow %s", key, options.FlowName)
+			}
+			graph[key] = entry.scheduledResource
+		} else {
+			sched.updateContext(existingSr.context, entry.parentContext, entry.dependency)
+			existingSr.Requires = append(existingSr.Requires, entry.scheduledResource.Requires...)
+			existingSr.RequiredBy = append(existingSr.RequiredBy, entry.scheduledResource.RequiredBy...)
+			existingSr.usedInReplicas = append(existingSr.usedInReplicas, entry.scheduledResource.usedInReplicas...)
+			for metaKey, metaValue := range entry.scheduledResource.Meta {
+				existingSr.Meta[metaKey] = metaValue
+			}
+		}
+	}
 }
 
 // getResourceDestructors builds a list of functions, each of them delete one of replica resources

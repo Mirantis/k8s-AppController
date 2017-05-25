@@ -1426,3 +1426,85 @@ func TestDynamicDependencyReplication(t *testing.T) {
 
 	ensureReplicas(c, t, 7, 1)
 }
+
+// TestSequentialReplication tests that resources of sequentially replicated flows create in right order
+func TestSequentialReplication(t *testing.T) {
+	replicaCount := 3
+	flow := mocks.MakeFlow("test")
+	flow.Flow.Sequential = true
+
+	c, fake := mocks.NewClientWithFake(
+		flow,
+		mocks.MakeResourceDefinition("pod/ready-$AC_NAME"),
+		mocks.MakeResourceDefinition("secret/secret"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME"),
+		mocks.MakeDependency("flow/test", "pod/ready-$AC_NAME", "flow=test"),
+		mocks.MakeDependency("pod/ready-$AC_NAME", "secret/secret", "flow=test"),
+		mocks.MakeDependency("secret/secret", "job/ready-$AC_NAME", "flow=test"),
+	)
+
+	stopChan := make(chan struct{})
+	var deployed []string
+	fake.PrependReactor("create", "*",
+		func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			resource := action.GetResource().Resource
+			if resource != "replica" {
+				deployed = append(deployed, resource)
+			}
+
+			return false, nil, nil
+		})
+
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: replicaCount, FlowName: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	graph := depGraph.(*dependencyGraph).graph
+	if len(graph) != 3*replicaCount {
+		t.Error("wrong dependency graph length")
+	}
+
+	depGraph.Deploy(stopChan)
+	expected := []string{"pods", "secrets", "jobs", "pods", "jobs", "pods", "jobs"}
+	if len(deployed) != len(expected) {
+		t.Fatal("invalid resource sequence", deployed)
+	}
+	for i, r := range deployed {
+		if expected[i] != r {
+			t.Fatal("invalid resource sequence")
+		}
+	}
+
+	ensureReplicas(c, t, replicaCount, replicaCount)
+}
+
+// TestSequentialReplicationWithSharedFlow tests that flow consumed as a resource shared by replicas of
+// sequentially replicated flow deployed only once
+func TestSequentialReplicationWithSharedFlow(t *testing.T) {
+	replicaCount := 3
+	flow := mocks.MakeFlow("outer")
+	flow.Flow.Sequential = true
+
+	c := mocks.NewClient(
+		flow,
+		mocks.MakeFlow("inner"),
+		mocks.MakeResourceDefinition("job/ready-a$AC_NAME"),
+		mocks.MakeResourceDefinition("job/ready-b$AC_NAME"),
+		mocks.MakeDependency("flow/outer", "flow/inner", "flow=outer"),
+		mocks.MakeDependency("flow/inner", "job/ready-a$AC_NAME", "flow=outer"),
+		mocks.MakeDependency("flow/inner", "job/ready-b$AC_NAME", "flow=inner"),
+	)
+
+	stopChan := make(chan struct{})
+
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: replicaCount, FlowName: "outer"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	depGraph.Deploy(stopChan)
+	ensureReplicas(c, t, replicaCount+1, replicaCount+1)
+}

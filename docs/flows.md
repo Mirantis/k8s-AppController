@@ -63,6 +63,7 @@ destruction:
 
 replicaSpace: optional-name
 exported: true
+sequential: true
 
 parameters:
   parameterName1:
@@ -350,6 +351,14 @@ new replicas need to be created, they get this composite label as well. As a res
 another flow will "see" only its own replicas so the `Flow` resource can always adjust replica count to 1.
 However, when the flow is run independently, it will not have any context and thus query replicas based on
 replica-space alone, which means it will get all the replicas from all contexts.
+
+### Sequential flows
+
+By default, if flow has more than one replica, generated dependency graph would have each replica subgraph attached
+to the graph root vertex (the `Flow` vertex). When deployed, resources of all replicas are going to be created in
+parallel. However, in some cases it is desired that replicas be deployed sequentially, one by one. This can be achieved
+by setting `sequential` attribute of the `Flow` to `true`. For sequential flows each replica roots get attached to the
+leaf vertices of previous one.
 
 ## Scheduling flow deployments
 
