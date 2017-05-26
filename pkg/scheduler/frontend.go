@@ -30,6 +30,10 @@ type scheduler struct {
 	client      client.Interface
 	selector    labels.Selector
 	concurrency int
+
+	resDefsCache     map[string]client.ResourceDefinition
+	dependencyCache  []client.Dependency
+	graphHasNoCycles bool
 }
 
 var _ interfaces.Scheduler = &scheduler{}
