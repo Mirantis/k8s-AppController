@@ -140,7 +140,6 @@ func deployTasks(taskQueue *list.List, mutex *sync.Mutex, cond *sync.Cond, clien
 		cond.L.Unlock()
 		if processing != nil {
 			if abortChan != nil {
-				abortChan <- struct{}{}
 				close(abortChan)
 				abortChan = nil
 				processing = nil

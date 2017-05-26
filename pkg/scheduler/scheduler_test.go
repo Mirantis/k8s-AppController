@@ -546,18 +546,18 @@ func TestGraph(t *testing.T) {
 	}
 }
 
-func makeTaskFunc(i int32, res bool, acc *int32) func() bool {
-	return func() bool {
+func makeTaskFunc(i int32, res bool, acc *int32) func(<-chan struct{}) bool {
+	return func(<-chan struct{}) bool {
 		time.Sleep(time.Second / 10)
 		atomic.AddInt32(acc, i)
 		return res
 	}
 }
 
-func runTaskFuncs(t *testing.T, funcs []func() bool, concurrency int, expectedSum int32, expectedResult bool, threshold float64, acc *int32) {
+func runTaskFuncs(t *testing.T, funcs []func(<-chan struct{}) bool, concurrency int, expectedSum int32, expectedResult bool, threshold float64, acc *int32) {
 	*acc = 0
 	before := time.Now()
-	res := runConcurrently(funcs, concurrency)
+	res := runConcurrently(funcs, concurrency, nil)
 	after := time.Now()
 	if *acc != expectedSum {
 		t.Errorf("runConcurrently failed: %d != %d", expectedSum, acc)
@@ -576,7 +576,7 @@ func runTaskFuncs(t *testing.T, funcs []func() bool, concurrency int, expectedSu
 // TestRunConcurrently tests runConcurrently function which runs list of concurrent tasks
 func TestRunConcurrently(t *testing.T) {
 	var acc int32
-	var funcs []func() bool
+	var funcs []func(<-chan struct{}) bool
 	for i := int32(1); i <= 50; i++ {
 		funcs = append(funcs, makeTaskFunc(i, true, &acc))
 	}
