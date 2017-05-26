@@ -123,7 +123,13 @@ func (d *sortableDependencyList) Swap(i, j int) {
 	d.Items[i], d.Items[j] = d.Items[j], d.Items[i]
 }
 
-func (sched *scheduler) getDependencies() ([]client.Dependency, error) {
+func (sched *scheduler) getDependencies(silent bool) ([]client.Dependency, error) {
+	if sched.dependencyCache != nil {
+		return sched.dependencyCache, nil
+	}
+	if !silent {
+		log.Println("Getting dependencies")
+	}
 	depList, err := sched.client.Dependencies().List(api.ListOptions{LabelSelector: sched.selector})
 	if err != nil {
 		return nil, err
@@ -131,6 +137,7 @@ func (sched *scheduler) getDependencies() ([]client.Dependency, error) {
 	sortableDepList := sortableDependencyList(*depList)
 	sort.Stable(&sortableDepList)
 
+	sched.dependencyCache = sortableDepList.Items
 	return sortableDepList.Items, nil
 
 }
@@ -184,7 +191,13 @@ func getResourceName(resourceDefinition client.ResourceDefinition) (string, stri
 	return "", ""
 }
 
-func (sched *scheduler) getResourceDefinitions() (map[string]client.ResourceDefinition, error) {
+func (sched *scheduler) getResourceDefinitions(silent bool) (map[string]client.ResourceDefinition, error) {
+	if sched.resDefsCache != nil {
+		return sched.resDefsCache, nil
+	}
+	if !silent {
+		log.Println("Getting resource definitions")
+	}
 	resDefList, err := sched.client.ResourceDefinitions().List(api.ListOptions{LabelSelector: sched.selector})
 	if err != nil {
 		return nil, err
@@ -197,6 +210,7 @@ func (sched *scheduler) getResourceDefinitions() (map[string]client.ResourceDefi
 		}
 		result[kind+"/"+name] = resDef
 	}
+	sched.resDefsCache = result
 	return result, nil
 }
 
@@ -567,10 +581,7 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		options.FlowName = interfaces.DefaultFlowName
 	}
 
-	if !options.Silent {
-		log.Println("Getting resource definitions")
-	}
-	resDefs, err := sched.getResourceDefinitions()
+	resDefs, err := sched.getResourceDefinitions(options.Silent)
 	if err != nil {
 		return nil, err
 	}
@@ -595,10 +606,7 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 		return nil, err
 	}
 
-	if !options.Silent {
-		log.Println("Getting dependencies")
-	}
-	depList, err := sched.getDependencies()
+	depList, err := sched.getDependencies(options.Silent)
 	if err != nil {
 		return nil, err
 	}
@@ -606,8 +614,11 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	if !options.Silent {
 		log.Println("Making sure there is no cycles in the dependency graph")
 	}
-	if err = EnsureNoCycles(depList, resDefs); err != nil {
-		return nil, err
+	if !sched.graphHasNoCycles {
+		if err = EnsureNoCycles(depList, resDefs); err != nil {
+			return nil, err
+		}
+		sched.graphHasNoCycles = true
 	}
 
 	dependencies := groupDependencies(depList, resDefs)

@@ -227,6 +227,9 @@ func createResources(toCreate chan *scheduledResource, finished chan<- *schedule
 					for _, reqKey := range r.requiredBy {
 						req := r.context.graph.graph[reqKey]
 						go func(req *scheduledResource, toCreate chan<- *scheduledResource) {
+							if req.requestCreation(toCreate) {
+								return
+							}
 							ticker := time.NewTicker(CheckInterval)
 							for {
 								select {
