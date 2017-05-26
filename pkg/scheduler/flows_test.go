@@ -144,8 +144,7 @@ func TestTriggerFlowIndependently(t *testing.T) {
 		t.Fatal("Job list is not empty")
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err = c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -217,8 +216,7 @@ func TestTriggerOneFlowFromAnother(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err := c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -262,8 +260,7 @@ func TestParameterPassing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err := c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -306,8 +303,7 @@ func TestMultipathParameterPassing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err := c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -354,8 +350,7 @@ func TestParametrizedFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err := c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -396,8 +391,7 @@ func TestAcNameParameter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	replicas, err := c.Replicas().List(api.ListOptions{})
 	if err != nil {
@@ -444,8 +438,7 @@ func TestUseUndeclaredFlowParameter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err := c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -538,8 +531,7 @@ func TestParameterPassingBetweenFlows(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err := c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -596,8 +588,7 @@ func TestReplication(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs := ensureReplicas(c, t, 2*replicaCount, replicaCount)
 
@@ -625,8 +616,7 @@ func TestReplicationWithSharedResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs := ensureReplicas(c, t, replicaCount+1, replicaCount)
 
@@ -664,8 +654,7 @@ func TestReplicationScaleUp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, initialReplicaCount, initialReplicaCount)
 
@@ -679,7 +668,7 @@ func TestReplicationScaleUp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, adjustedReplicaCount, adjustedReplicaCount)
 
@@ -693,7 +682,7 @@ func TestReplicationScaleUp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs := ensureReplicas(c, t, adjustedReplicaCount+replicaCountDelta, adjustedReplicaCount+replicaCountDelta)
 
@@ -718,8 +707,7 @@ func TestNoOpReplication(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 0, 0)
 }
@@ -749,8 +737,7 @@ func TestCompositionFlowReplication(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs := ensureReplicas(c, t, 4*replicaCount, 2*replicaCount)
 
@@ -802,8 +789,7 @@ func TestDestruction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 6, 5)
 
@@ -812,7 +798,7 @@ func TestDestruction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 4, 3)
 
@@ -821,7 +807,7 @@ func TestDestruction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs := ensureReplicas(c, t, 2, 1)
 	if jobs[0].Name != "ready-b" && jobs[1].Name != "ready-b" {
@@ -833,7 +819,7 @@ func TestDestruction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 0, 0)
 }
@@ -859,8 +845,7 @@ func TestCompositeFlowDestruction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 15, 10)
 
@@ -869,7 +854,7 @@ func TestCompositeFlowDestruction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 9, 6)
 
@@ -878,7 +863,7 @@ func TestCompositeFlowDestruction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 3, 2)
 
@@ -887,7 +872,7 @@ func TestCompositeFlowDestruction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 0, 0)
 }
@@ -944,8 +929,7 @@ func TestCleanupResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 1, 1)
 	if !(aCreated && !aDeleted && !bCreated && !bDeleted && !cCreated && !cDeleted) {
@@ -958,7 +942,7 @@ func TestCleanupResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 0, 0)
 	if !(aCreated && aDeleted && bCreated && bDeleted && cCreated && cDeleted) {
@@ -991,8 +975,7 @@ func TestSharedReplicaSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 2, 1)
 
@@ -1002,7 +985,7 @@ func TestSharedReplicaSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 0, 0)
 
@@ -1012,7 +995,7 @@ func TestSharedReplicaSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 2, 1)
 
@@ -1022,7 +1005,7 @@ func TestSharedReplicaSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 0, 0)
 }
@@ -1043,8 +1026,7 @@ func TestDeleteExistingResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 1, 1)
 
@@ -1053,7 +1035,7 @@ func TestDeleteExistingResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 1, 0, "invalid attempt to delete external resources")
 
@@ -1063,7 +1045,7 @@ func TestDeleteExistingResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 1, 1)
 
@@ -1072,7 +1054,7 @@ func TestDeleteExistingResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 0, 0, "valid attempt to delete external resources")
 }
@@ -1103,8 +1085,7 @@ func TestCleanupResourcesErrorHandling(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 2, 2)
 
@@ -1114,7 +1095,7 @@ func TestCleanupResourcesErrorHandling(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 1, 1)
 }
@@ -1137,7 +1118,7 @@ func TestDeploymentRecoveryForRelativeReplicaCount(t *testing.T) {
 		func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 			if !prevented {
 				prevented = true
-				stopChan <- struct{}{}
+				close(stopChan)
 				return true, nil, errors.New("resource cannot be created")
 			}
 			return false, nil, nil
@@ -1166,7 +1147,7 @@ func TestDeploymentRecoveryForRelativeReplicaCount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 	ensureReplicas(c, t, 1, 2)
 	replicas, _ = c.Replicas().List(api.ListOptions{})
 	for _, r := range replicas.Items {
@@ -1194,9 +1175,7 @@ func TestMultiParentFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
-
+	depGraph.Deploy(nil)
 	ensureReplicas(c, t, 5, 3)
 }
 
@@ -1219,8 +1198,7 @@ func TestMultiParentFlowWithSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 6, 4)
 }
@@ -1254,8 +1232,7 @@ func TestMultipleFlowCalls(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs := ensureReplicas(c, t, 4, 3)
 	jobNames := map[string]bool{
@@ -1304,8 +1281,7 @@ func TestMultipathParameterPassingWithSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	jobs, err := c.Jobs().List(api_v1.ListOptions{})
 	if err != nil {
@@ -1346,8 +1322,7 @@ func TestConsumeReplicatedFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 2*3, 3*2+2)
 }
@@ -1370,8 +1345,7 @@ func TestComplexDependencyReplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	expectedJobNames := map[string]bool{
 		"ready-1-a": true,
@@ -1421,8 +1395,7 @@ func TestDynamicDependencyReplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stopChan := make(chan struct{})
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 
 	ensureReplicas(c, t, 7, 1)
 }
@@ -1443,7 +1416,6 @@ func TestSequentialReplication(t *testing.T) {
 		mocks.MakeDependency("secret/secret", "job/ready-$AC_NAME", "flow=test"),
 	)
 
-	stopChan := make(chan struct{})
 	var deployed []string
 	fake.PrependReactor("create", "*",
 		func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -1466,7 +1438,7 @@ func TestSequentialReplication(t *testing.T) {
 		t.Error("wrong dependency graph length")
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 	expected := []string{"pods", "secrets", "jobs", "pods", "jobs", "pods", "jobs"}
 	if len(deployed) != len(expected) {
 		t.Fatal("invalid resource sequence", deployed)
@@ -1497,14 +1469,12 @@ func TestSequentialReplicationWithSharedFlow(t *testing.T) {
 		mocks.MakeDependency("flow/inner", "job/ready-b$AC_NAME", "flow=inner"),
 	)
 
-	stopChan := make(chan struct{})
-
 	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
 		interfaces.DependencyGraphOptions{ReplicaCount: replicaCount, FlowName: "outer"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	depGraph.Deploy(stopChan)
+	depGraph.Deploy(nil)
 	ensureReplicas(c, t, replicaCount+1, replicaCount+1)
 }

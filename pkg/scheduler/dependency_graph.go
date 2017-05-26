@@ -37,7 +37,7 @@ type dependencyGraph struct {
 	graph        map[string]*ScheduledResource
 	scheduler    *scheduler
 	graphOptions interfaces.DependencyGraphOptions
-	finalizer    func()
+	finalizer    func(stopChan <-chan struct{})
 }
 
 type graphContext struct {
@@ -963,9 +963,10 @@ func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex,
 }
 
 // getResourceDestructors builds a list of functions, each of them delete one of replica resources
-func getResourceDestructors(construction, destruction *dependencyGraph, replicaMap map[string]client.Replica, failed *chan *ScheduledResource) []func() bool {
-	var destructors []func() bool
+func getResourceDestructors(construction, destruction *dependencyGraph, replicaMap map[string]client.Replica,
+	failed *chan *ScheduledResource) []func(<-chan struct{}) bool {
 
+	var destructors []func(<-chan struct{}) bool
 	for _, depGraph := range [2]*dependencyGraph{construction, destruction} {
 		for _, resource := range depGraph.graph {
 			resourceCanBeDeleted := true
@@ -983,8 +984,8 @@ func getResourceDestructors(construction, destruction *dependencyGraph, replicaM
 	return destructors
 }
 
-func getDestructorFunc(resource *ScheduledResource, failed *chan *ScheduledResource) func() bool {
-	return func() bool {
+func getDestructorFunc(resource *ScheduledResource, failed *chan *ScheduledResource) func(<-chan struct{}) bool {
+	return func(<-chan struct{}) bool {
 		res := deleteResource(resource)
 		if res != nil {
 			*failed <- resource
@@ -995,10 +996,12 @@ func getDestructorFunc(resource *ScheduledResource, failed *chan *ScheduledResou
 }
 
 // deleteReplicaResources invokes resources destructors and deletes replicas for which 100% of resources were deleted
-func deleteReplicaResources(sched *scheduler, destructors []func() bool, replicaMap map[string]client.Replica, failed *chan *ScheduledResource) {
+func deleteReplicaResources(sched *scheduler, destructors []func(<-chan struct{}) bool, replicaMap map[string]client.Replica,
+	failed *chan *ScheduledResource, stopChan <-chan struct{}) {
+
 	*failed = make(chan *ScheduledResource, len(destructors))
 	defer close(*failed)
-	deleted := runConcurrently(destructors, sched.concurrency)
+	deleted := runConcurrently(destructors, sched.concurrency, stopChan)
 	failedReplicas := map[string]bool{}
 	if !deleted {
 		log.Println("Some of resources were not deleted")
@@ -1015,7 +1018,7 @@ readFailed:
 			break readFailed
 		}
 	}
-	var deleteReplicaFuncs []func() bool
+	var deleteReplicaFuncs []func(<-chan struct{}) bool
 
 	for replicaName, replicaObject := range replicaMap {
 		if _, found := failedReplicas[replicaName]; found {
@@ -1023,7 +1026,7 @@ readFailed:
 		}
 		replicaNameCopy := replicaName
 		replicaObjectCopy := replicaObject
-		deleteReplicaFuncs = append(deleteReplicaFuncs, func() bool {
+		deleteReplicaFuncs = append(deleteReplicaFuncs, func(<-chan struct{}) bool {
 			log.Printf("%s flow: Deleting replica %s", replicaObjectCopy.FlowName, replicaNameCopy)
 			err := sched.client.Replicas().Delete(replicaObjectCopy.Name)
 			if err != nil {
@@ -1033,12 +1036,12 @@ readFailed:
 		})
 	}
 
-	if deleteReplicaFuncs != nil && !runConcurrently(deleteReplicaFuncs, sched.concurrency) {
+	if deleteReplicaFuncs != nil && !runConcurrently(deleteReplicaFuncs, sched.concurrency, stopChan) {
 		log.Println("Some of flow replicas were not deleted")
 	}
 }
 
-func (sched *scheduler) composeDeletingFinalizer(construction, destruction *dependencyGraph, replicas []client.Replica) func() {
+func (sched *scheduler) composeDeletingFinalizer(construction, destruction *dependencyGraph, replicas []client.Replica) func(<-chan struct{}) {
 	replicaMap := map[string]client.Replica{}
 	for _, replica := range replicas {
 		replicaMap[replica.ReplicaName()] = replica
@@ -1047,14 +1050,14 @@ func (sched *scheduler) composeDeletingFinalizer(construction, destruction *depe
 	var failed chan *ScheduledResource
 	destructors := getResourceDestructors(construction, destruction, replicaMap, &failed)
 
-	return func() {
+	return func(stopChan <-chan struct{}) {
 		log.Print("Performing resource cleanup")
-		deleteReplicaResources(sched, destructors, replicaMap, &failed)
+		deleteReplicaResources(sched, destructors, replicaMap, &failed, stopChan)
 	}
 }
 
-func makeAcknowledgeReplicaFunc(replica client.Replica, api client.ReplicasInterface) func() bool {
-	return func() bool {
+func makeAcknowledgeReplicaFunc(replica client.Replica, api client.ReplicasInterface) func(<-chan struct{}) bool {
+	return func(<-chan struct{}) bool {
 		replica.Deployed = true
 		log.Printf("%s flow: Marking replica %s as deployed", replica.FlowName, replica.ReplicaName())
 		if err := api.Update(&replica); err != nil {
@@ -1065,16 +1068,16 @@ func makeAcknowledgeReplicaFunc(replica client.Replica, api client.ReplicasInter
 	}
 }
 
-func (sched *scheduler) composeAcknowledgingFinalizer(replicas []client.Replica) func() {
-	var funcs []func() bool
+func (sched *scheduler) composeAcknowledgingFinalizer(replicas []client.Replica) func(<-chan struct{}) {
+	var funcs []func(<-chan struct{}) bool
 	for _, replica := range replicas {
 		if !replica.Deployed {
 			funcs = append(funcs, makeAcknowledgeReplicaFunc(replica, sched.client.Replicas()))
 		}
 	}
 
-	return func() {
-		if !runConcurrently(funcs, sched.concurrency) {
+	return func(stopChan <-chan struct{}) {
+		if !runConcurrently(funcs, sched.concurrency, stopChan) {
 			log.Println("Some of the replicas were not updated!")
 		}
 	}
