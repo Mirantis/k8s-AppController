@@ -72,7 +72,7 @@ type DeploymentReport interface {
 // DependencyGraph represents operations on dependency graph
 type DependencyGraph interface {
 	GetStatus() (DeploymentStatus, DeploymentReport)
-	Deploy(<-chan struct{})
+	Deploy(<-chan struct{}) bool
 	Options() DependencyGraphOptions
 }
 

@@ -161,7 +161,11 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 		if err != nil {
 			return "", err
 		}
-		depGraph.Deploy(stopChan)
+		if depGraph.Deploy(stopChan) {
+			log.Println("Deployment finished sucessfully")
+		} else {
+			log.Println("Deployment failed")
+		}
 	} else {
 		log.Printf("Scheduling deployment of %s flow", options.FlowName)
 		var err error
@@ -171,7 +175,6 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 		}
 		log.Printf("Scheduled deployment task %s", task)
 	}
-	log.Println("Done")
 	return task, nil
 }
 

@@ -104,14 +104,10 @@ func (f *examplesFramework) handleListCreation(ustList *runtime.UnstructuredList
 	}
 }
 
-func (f *examplesFramework) VerifyStatus(task string, options interfaces.DependencyGraphOptions) {
+func (f *examplesFramework) VerifyStatus(options interfaces.DependencyGraphOptions) {
 	var depReport report.DeploymentReport
 	Eventually(
 		func() bool {
-			_, err := f.Client.ConfigMaps().Get(task)
-			if err == nil {
-				return false
-			}
 			status, r, err := scheduler.GetStatus(f.Client, nil, options)
 			if err != nil {
 				return false
@@ -127,7 +123,7 @@ func (f *examplesFramework) CreateRunAndVerify(exampleName string, options inter
 	By("Creating example " + exampleName)
 	f.CreateExample(exampleName)
 	By("Running appcontroller scheduler")
-	task := f.RunWithOptions(options)
+	f.RunWithOptions(options)
 	By("Verifying status of deployment for example " + exampleName)
-	f.VerifyStatus(task, options)
+	f.VerifyStatus(options)
 }

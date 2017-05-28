@@ -34,7 +34,7 @@ import (
 )
 
 type dependencyGraph struct {
-	graph        map[string]*ScheduledResource
+	graph        map[string]*scheduledResource
 	scheduler    *scheduler
 	graphOptions interfaces.DependencyGraphOptions
 	finalizer    func(stopChan <-chan struct{})
@@ -88,15 +88,15 @@ func (gc graphContext) Graph() interfaces.DependencyGraph {
 }
 
 // newScheduledResourceFor returns new scheduled resource for given resource in init state
-func newScheduledResourceFor(r interfaces.Resource, suffix string, context *graphContext, existing bool) *ScheduledResource {
-	return &ScheduledResource{
-		Started:  false,
-		Ignored:  false,
-		Error:    nil,
+func newScheduledResourceFor(r interfaces.Resource, suffix string, context *graphContext, existing bool) *scheduledResource {
+	return &scheduledResource{
+		started:  false,
+		ignored:  false,
+		error:    nil,
 		Resource: r,
-		Meta:     map[string]map[string]string{},
+		meta:     map[string]map[string]string{},
 		context:  context,
-		Existing: existing,
+		existing: existing,
 		suffix:   copier.EvaluateString(suffix, getArgFunc(context)),
 	}
 }
@@ -254,7 +254,7 @@ func isMapContainedIn(contained, containing map[string]string) bool {
 
 // newScheduledResource is a constructor for ScheduledResource
 func (sched scheduler) newScheduledResource(kind, name, suffix string, resDefs map[string]client.ResourceDefinition,
-	gc *graphContext, silent bool) (*ScheduledResource, error) {
+	gc *graphContext, silent bool) (*scheduledResource, error) {
 	var r interfaces.Resource
 
 	resourceTemplate, ok := resources.KindToResourceTemplate[kind]
@@ -310,7 +310,7 @@ func keyParts(key string) (kind, name, suffix string, err error) {
 
 func newDependencyGraph(sched *scheduler, options interfaces.DependencyGraphOptions) *dependencyGraph {
 	return &dependencyGraph{
-		graph:        make(map[string]*ScheduledResource),
+		graph:        make(map[string]*scheduledResource),
 		scheduler:    sched,
 		graphOptions: options,
 	}
@@ -635,8 +635,8 @@ func (sched *scheduler) BuildDependencyGraph(options interfaces.DependencyGraphO
 	}
 
 	for _, value := range depGraph.graph {
-		value.RequiredBy = unique(value.RequiredBy)
-		value.Requires = unique(value.Requires)
+		value.requiredBy = unique(value.requiredBy)
+		value.requires = unique(value.requires)
 		value.usedInReplicas = unique(value.usedInReplicas)
 	}
 
@@ -771,7 +771,7 @@ func expandListExpression(expr string) []string {
 
 type interimGraphVertex struct {
 	dependency        client.Dependency
-	scheduledResource *ScheduledResource
+	scheduledResource *scheduledResource
 	parentContext     *graphContext
 }
 
@@ -825,9 +825,9 @@ func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 				replicaVertices = append(replicaVertices, vertex)
 
 				if parent.scheduledResource != nil {
-					sr.Requires = append(sr.Requires, parent.scheduledResource.Key())
-					parent.scheduledResource.RequiredBy = append(parent.scheduledResource.RequiredBy, sr.Key())
-					sr.Meta[parent.dependency.Child] = dep.Meta
+					sr.requires = append(sr.requires, parent.scheduledResource.Key())
+					parent.scheduledResource.requiredBy = append(parent.scheduledResource.requiredBy, sr.Key())
+					sr.meta[parent.dependency.Child] = dep.Meta
 				}
 				queue.PushBack(vertex)
 			}
@@ -854,9 +854,9 @@ func (sched *scheduler) mergeReplicas(vertices [][]interimGraphVertex, gc *graph
 func (sched *scheduler) concatenateReplicas(vertices [][]interimGraphVertex, gc *graphContext,
 	options interfaces.DependencyGraphOptions) {
 	graph := gc.graph.graph
-	var previousReplicaGraph map[string]*ScheduledResource
+	var previousReplicaGraph map[string]*scheduledResource
 	for i, replicaVertices := range vertices {
-		replicaGraph := map[string]*ScheduledResource{}
+		replicaGraph := map[string]*scheduledResource{}
 		sched.mergeInterimGraphVertices(replicaVertices, replicaGraph, options)
 
 		if i > 0 {
@@ -866,8 +866,8 @@ func (sched *scheduler) concatenateReplicas(vertices [][]interimGraphVertex, gc 
 				for _, rootName := range getRoots(replicaGraph) {
 					root := replicaGraph[rootName]
 					leaf := previousReplicaGraph[leafName]
-					root.Requires = append(root.Requires, leafName)
-					leaf.RequiredBy = append(leaf.RequiredBy, rootName)
+					root.requires = append(root.requires, leafName)
+					leaf.requiredBy = append(leaf.requiredBy, rootName)
 				}
 			}
 		}
@@ -878,8 +878,8 @@ func (sched *scheduler) concatenateReplicas(vertices [][]interimGraphVertex, gc 
 	}
 }
 
-func correctDuplicateResources(existingGraph, newGraph map[string]*ScheduledResource, index int) {
-	toReplace := map[string]*ScheduledResource{}
+func correctDuplicateResources(existingGraph, newGraph map[string]*scheduledResource, index int) {
+	toReplace := map[string]*scheduledResource{}
 	for key, sr := range newGraph {
 		if existingGraph[key] != nil {
 			toReplace[key] = sr
@@ -896,8 +896,8 @@ func correctDuplicateResources(existingGraph, newGraph map[string]*ScheduledReso
 			}
 			j++
 		}
-		for _, rKey := range sr.RequiredBy {
-			requires := newGraph[rKey].Requires
+		for _, rKey := range sr.requiredBy {
+			requires := newGraph[rKey].requires
 			for i, rKey2 := range requires {
 				if rKey2 == key {
 					requires[i] = sr.Key()
@@ -905,8 +905,8 @@ func correctDuplicateResources(existingGraph, newGraph map[string]*ScheduledReso
 				}
 			}
 		}
-		for _, rKey := range sr.Requires {
-			requiredBy := newGraph[rKey].RequiredBy
+		for _, rKey := range sr.requires {
+			requiredBy := newGraph[rKey].requiredBy
 			for i, rKey2 := range requiredBy {
 				if rKey2 == key {
 					requiredBy[i] = sr.Key()
@@ -919,27 +919,27 @@ func correctDuplicateResources(existingGraph, newGraph map[string]*ScheduledReso
 	}
 }
 
-func getRoots(graph map[string]*ScheduledResource) []string {
+func getRoots(graph map[string]*scheduledResource) []string {
 	var result []string
 	for key, sr := range graph {
-		if len(sr.Requires) == 0 {
+		if len(sr.requires) == 0 {
 			result = append(result, key)
 		}
 	}
 	return result
 }
 
-func getLeafs(graph map[string]*ScheduledResource) []string {
+func getLeafs(graph map[string]*scheduledResource) []string {
 	var result []string
 	for key, sr := range graph {
-		if len(sr.RequiredBy) == 0 {
+		if len(sr.requiredBy) == 0 {
 			result = append(result, key)
 		}
 	}
 	return result
 }
 
-func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex, graph map[string]*ScheduledResource,
+func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex, graph map[string]*scheduledResource,
 	options interfaces.DependencyGraphOptions) {
 
 	for _, entry := range vertices {
@@ -952,11 +952,11 @@ func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex,
 			graph[key] = entry.scheduledResource
 		} else {
 			sched.updateContext(existingSr.context, entry.parentContext, entry.dependency)
-			existingSr.Requires = append(existingSr.Requires, entry.scheduledResource.Requires...)
-			existingSr.RequiredBy = append(existingSr.RequiredBy, entry.scheduledResource.RequiredBy...)
+			existingSr.requires = append(existingSr.requires, entry.scheduledResource.requires...)
+			existingSr.requiredBy = append(existingSr.requiredBy, entry.scheduledResource.requiredBy...)
 			existingSr.usedInReplicas = append(existingSr.usedInReplicas, entry.scheduledResource.usedInReplicas...)
-			for metaKey, metaValue := range entry.scheduledResource.Meta {
-				existingSr.Meta[metaKey] = metaValue
+			for metaKey, metaValue := range entry.scheduledResource.meta {
+				existingSr.meta[metaKey] = metaValue
 			}
 		}
 	}
@@ -964,7 +964,7 @@ func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex,
 
 // getResourceDestructors builds a list of functions, each of them delete one of replica resources
 func getResourceDestructors(construction, destruction *dependencyGraph, replicaMap map[string]client.Replica,
-	failed *chan *ScheduledResource) []func(<-chan struct{}) bool {
+	failed *chan *scheduledResource) []func(<-chan struct{}) bool {
 
 	var destructors []func(<-chan struct{}) bool
 	for _, depGraph := range [2]*dependencyGraph{construction, destruction} {
@@ -984,7 +984,7 @@ func getResourceDestructors(construction, destruction *dependencyGraph, replicaM
 	return destructors
 }
 
-func getDestructorFunc(resource *ScheduledResource, failed *chan *ScheduledResource) func(<-chan struct{}) bool {
+func getDestructorFunc(resource *scheduledResource, failed *chan *scheduledResource) func(<-chan struct{}) bool {
 	return func(<-chan struct{}) bool {
 		res := deleteResource(resource)
 		if res != nil {
@@ -997,9 +997,9 @@ func getDestructorFunc(resource *ScheduledResource, failed *chan *ScheduledResou
 
 // deleteReplicaResources invokes resources destructors and deletes replicas for which 100% of resources were deleted
 func deleteReplicaResources(sched *scheduler, destructors []func(<-chan struct{}) bool, replicaMap map[string]client.Replica,
-	failed *chan *ScheduledResource, stopChan <-chan struct{}) {
+	failed *chan *scheduledResource, stopChan <-chan struct{}) {
 
-	*failed = make(chan *ScheduledResource, len(destructors))
+	*failed = make(chan *scheduledResource, len(destructors))
 	defer close(*failed)
 	deleted := runConcurrently(destructors, sched.concurrency, stopChan)
 	failedReplicas := map[string]bool{}
@@ -1047,7 +1047,7 @@ func (sched *scheduler) composeDeletingFinalizer(construction, destruction *depe
 		replicaMap[replica.ReplicaName()] = replica
 	}
 
-	var failed chan *ScheduledResource
+	var failed chan *scheduledResource
 	destructors := getResourceDestructors(construction, destruction, replicaMap, &failed)
 
 	return func(stopChan <-chan struct{}) {
