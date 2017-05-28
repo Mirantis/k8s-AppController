@@ -91,9 +91,9 @@ var _ = Describe("Flows Suite", func() {
 
 		deleteOptions := interfaces.DependencyGraphOptions{ReplicaCount: 0, FixedNumberOfReplicas: true}
 		By("Running appcontroller scheduler")
-		task := framework.RunWithOptions(deleteOptions)
+		framework.RunWithOptions(false, deleteOptions)
 		By("Verifying status of deployment")
-		framework.VerifyStatus(task, deleteOptions)
+		framework.VerifyStatus(deleteOptions)
 
 		Eventually(func() int {
 			return framework.countReplicas("", false)

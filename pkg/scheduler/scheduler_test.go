@@ -64,19 +64,19 @@ func TestBuildDependencyGraph(t *testing.T) {
 			"pod/ready-1", sr.Key())
 	}
 
-	if len(sr.Requires) != 0 {
+	if len(sr.requires) != 0 {
 		t.Errorf("wrong length of 'Requires' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 0, len(sr.Requires))
+			sr.Key(), 0, len(sr.requires))
 	}
 
-	if len(sr.RequiredBy) != 1 {
+	if len(sr.requiredBy) != 1 {
 		t.Errorf("wrong length of 'RequiredBy' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 1, len(sr.Requires))
+			sr.Key(), 1, len(sr.requires))
 	}
 
-	if sr.RequiredBy[0] != "pod/ready-2" {
+	if sr.requiredBy[0] != "pod/ready-2" {
 		t.Errorf("wrong value of 'RequiredBy' for scheduled resource '%s', expected '%s', actual '%s'",
-			sr.Key(), "pod/ready-2", sr.RequiredBy[0])
+			sr.Key(), "pod/ready-2", sr.requiredBy[0])
 		return
 	}
 
@@ -92,19 +92,19 @@ func TestBuildDependencyGraph(t *testing.T) {
 			"pod/ready-2", sr.Key())
 	}
 
-	if len(sr.Requires) != 1 {
+	if len(sr.requires) != 1 {
 		t.Errorf("wrong length of 'Requires' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 1, len(sr.Requires))
+			sr.Key(), 1, len(sr.requires))
 	}
 
-	if sr.Requires[0] != "pod/ready-1" {
+	if sr.requires[0] != "pod/ready-1" {
 		t.Errorf("wrong value of 'Requires' for scheduled resource '%s', expected '%s', actual '%s'",
-			sr.Key(), "pod/ready-1", sr.Requires[0])
+			sr.Key(), "pod/ready-1", sr.requires[0])
 	}
 
-	if len(sr.RequiredBy) != 0 {
+	if len(sr.requiredBy) != 0 {
 		t.Errorf("wrong length of 'RequiredBy' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 0, len(sr.Requires))
+			sr.Key(), 0, len(sr.requires))
 	}
 }
 
@@ -112,47 +112,47 @@ func TestIsBlocked(t *testing.T) {
 	depGraph := newDependencyGraph(nil, interfaces.DependencyGraphOptions{})
 	context := &graphContext{graph: depGraph}
 
-	one := &ScheduledResource{
+	one := &scheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
-		Meta:     map[string]map[string]string{},
+		meta:     map[string]map[string]string{},
 		context:  context,
 	}
 
 	depGraph.graph["fake1"] = one
 
-	if one.IsBlocked() {
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must not")
 	}
 
-	two := &ScheduledResource{
+	two := &scheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
-		Meta:     map[string]map[string]string{},
+		meta:     map[string]map[string]string{},
 		context:  context,
 	}
 
 	depGraph.graph["fake2"] = two
 
-	one.Requires = []string{"fake2"}
+	one.requires = []string{"fake2"}
 
-	if one.IsBlocked() {
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must not")
 	}
 
-	two.Error = errors.New("non-nil error")
-	if !one.IsBlocked() {
+	two.error = errors.New("non-nil error")
+	if !one.isBlocked() {
 		t.Error("scheduled resource is not blocked but it must be")
 	}
 
-	depGraph.graph["fake3"] = &ScheduledResource{
+	depGraph.graph["fake3"] = &scheduledResource{
 		Resource: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
-		Meta:     map[string]map[string]string{},
+		meta:     map[string]map[string]string{},
 		context:  context,
 	}
 
-	two.Error = nil
-	one.Requires = append(one.Requires, "fake3")
+	two.error = nil
+	one.requires = append(one.requires, "fake3")
 
-	if !one.IsBlocked() {
+	if !one.isBlocked() {
 		t.Error("scheduled resource is not blocked but it must be")
 	}
 }
@@ -169,33 +169,33 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	depGraph := newDependencyGraph(nil, interfaces.DependencyGraphOptions{})
 	context := &graphContext{graph: depGraph}
 
-	one := &ScheduledResource{
+	one := &scheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
-		Meta:     map[string]map[string]string{},
+		meta:     map[string]map[string]string{},
 		context:  context,
 	}
 	depGraph.graph["fake1"] = one
 
-	if one.IsBlocked() {
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must be not")
 	}
 
-	two := &ScheduledResource{
+	two := &scheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "not ready")},
-		Meta:     map[string]map[string]string{},
+		meta:     map[string]map[string]string{},
 		context:  context,
 	}
 	depGraph.graph["fake2"] = two
 
-	one.Requires = []string{"fake2"}
-	one.Meta["fake2"] = map[string]string{"on-error": "true"}
+	one.requires = []string{"fake2"}
+	one.meta["fake2"] = map[string]string{"on-error": "true"}
 
-	if !one.IsBlocked() {
+	if !one.isBlocked() {
 		t.Error("scheduled resource is not blocked but it must be")
 	}
 
-	two.Error = errors.New("non-nil error")
-	if one.IsBlocked() {
+	two.error = errors.New("non-nil error")
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must be not")
 	}
 }
@@ -349,7 +349,7 @@ func TestLimitConcurrency(t *testing.T) {
 
 func TestStopBeforeDeploymentStarted(t *testing.T) {
 	depGraph := newDependencyGraph(&scheduler{}, interfaces.DependencyGraphOptions{})
-	sr := &ScheduledResource{
+	sr := &scheduledResource{
 		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
 	}
 	depGraph.graph[sr.Key()] = sr
@@ -604,9 +604,9 @@ func TestWaitWithZeroTimeout(t *testing.T) {
 	defer close(stopChan)
 
 	now := time.Now()
-	res, err := sr.Wait(CheckInterval, 0, stopChan)
+	res, err := sr.wait(CheckInterval, 0, stopChan)
 	if res {
-		t.Error("Wait() succeded")
+		t.Error("wait() succeded")
 	}
 	if err == nil {
 		t.Error("No error was returned")
@@ -615,11 +615,8 @@ func TestWaitWithZeroTimeout(t *testing.T) {
 		if err.Error() != expectedMessage {
 			t.Error("Got unexpected error:", err)
 		}
-		if sr.Error != err {
-			t.Error("ScheduledResource was not marked as permanently failed")
-		}
 	}
 	if time.Now().Sub(now) >= time.Second {
-		t.Error("Wait() was running for too long")
+		t.Error("wait() was running for too long")
 	}
 }

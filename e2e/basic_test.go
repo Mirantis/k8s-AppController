@@ -56,7 +56,9 @@ var _ = Describe("Basic Suite", func() {
 			},
 		}
 		childPod := PodPause("child-pod")
-		framework.Connect(framework.WrapAndCreate(parentPod), framework.WrapAndCreate(childPod))
+		framework.Connect(
+			framework.WrapWithMetaAndCreate(parentPod, map[string]interface{}{"timeout": 30}),
+			framework.WrapAndCreate(childPod))
 		framework.Run()
 		testutils.WaitForPod(framework.Clientset, framework.Namespace.Name, parentPod.Name, "")
 		time.Sleep(time.Second)
@@ -104,7 +106,7 @@ var _ = Describe("Basic Suite", func() {
 		By("Creating resource definition with single pod")
 		pod1 := PodPause("pod1")
 		framework.WrapAndCreate(pod1)
-		framework.Run()
+		framework.Start()
 		framework.DeleteAppControllerPod()
 		By("Verify that pod is consistently not found")
 		Consistently(func() bool {
