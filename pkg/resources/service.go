@@ -157,6 +157,12 @@ func (s newService) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (s newService) UpdateFromDefinition() (err error) {
+	s.Service, err = s.Client.Update(s.Definition.Service)
+	return err
+}
+
 // Delete deletes Service from the cluster
 func (s newService) Delete() error {
 	return s.Client.Delete(s.Service.Name, nil)

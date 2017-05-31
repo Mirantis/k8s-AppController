@@ -40,6 +40,7 @@ type BaseResource interface {
 	Create() error
 	Delete() error
 	Meta(string) interface{}
+	UpdateFromDefinition() error
 }
 
 // DependencyReport is a report of a single dependency of a node in graph

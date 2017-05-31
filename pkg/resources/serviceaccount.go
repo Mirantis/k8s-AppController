@@ -121,6 +121,12 @@ func (c newServiceAccount) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (c newServiceAccount) UpdateFromDefinition() (err error) {
+	c.ServiceAccount, err = c.Client.Update(c.Definition.ServiceAccount)
+	return err
+}
+
 // Delete deletes ServiceAccount from the cluster
 func (c newServiceAccount) Delete() error {
 	return c.Client.Delete(c.ServiceAccount.Name, &v1.DeleteOptions{})

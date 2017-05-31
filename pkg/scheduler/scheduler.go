@@ -74,6 +74,7 @@ func (sr *ScheduledResource) RequestCreation(toCreate chan *ScheduledResource) b
 	return false
 }
 
+// it can update the resource if it doesn't match the definition
 func isResourceFinished(sr *ScheduledResource, ch chan error) bool {
 	status, err := sr.Resource.Status(nil)
 	if err != nil {
@@ -84,6 +85,13 @@ func isResourceFinished(sr *ScheduledResource, ch chan error) bool {
 		ch <- nil
 		return true
 	}
+
+	if status == interfaces.ResourceWaitingForUpgrade {
+		err = sr.Resource.UpdateFromDefinition()
+		ch <- err
+		return true
+	}
+
 	return false
 }
 

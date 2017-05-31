@@ -81,6 +81,11 @@ func (b Base) equalsToDefinition(_ interface{}) bool {
 	return false
 }
 
+// UpdateFromDefinition is an empty implementation
+func (b Base) UpdateFromDefinition() error {
+	return nil
+}
+
 // KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
 // structs implement interfaces.ResourceTemplate
 var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{}

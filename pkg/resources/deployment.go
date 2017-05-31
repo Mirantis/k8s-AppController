@@ -132,6 +132,12 @@ func (d Deployment) Create() error {
 	return err
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (d Deployment) UpdateFromDefinition() (err error) {
+	d.Deployment, err = d.Client.Update(d.Definition.Deployment)
+	return err
+}
+
 // Delete deletes Deployment from the cluster
 func (d Deployment) Delete() error {
 	return d.Client.Delete(d.Deployment.Name, nil)

@@ -114,6 +114,12 @@ func (d DaemonSet) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (d DaemonSet) UpdateFromDefinition() (err error) {
+	d.DaemonSet, err = d.Client.Update(d.Definition.DaemonSet)
+	return err
+}
+
 // Delete deletes DaemonSet from the cluster
 func (d DaemonSet) Delete() error {
 	return d.Client.Delete(d.DaemonSet.Name, &v1.DeleteOptions{})

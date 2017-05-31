@@ -121,6 +121,12 @@ func (c newConfigMap) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (c newConfigMap) UpdateFromDefinition() (err error) {
+	c.ConfigMap, err = c.Client.Update(c.Definition.ConfigMap)
+	return err
+}
+
 // Delete deletes configMap from the cluster
 func (c newConfigMap) Delete() error {
 	return c.Client.Delete(c.ConfigMap.Name, &v1.DeleteOptions{})

@@ -96,6 +96,12 @@ func (p StatefulSet) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (p StatefulSet) UpdateFromDefinition() (err error) {
+	p.StatefulSet, err = p.Client.Update(p.Definition.StatefulSet)
+	return err
+}
+
 // Delete deletes StatefulSet from the cluster
 func (p StatefulSet) Delete() error {
 	return p.Client.Delete(p.StatefulSet.Name, nil)

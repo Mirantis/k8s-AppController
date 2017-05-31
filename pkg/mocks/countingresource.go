@@ -55,6 +55,11 @@ func (c *CountingResource) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition does nothing
+func (c *CountingResource) UpdateFromDefinition() error {
+	return nil
+}
+
 // Delete does nothing
 func (c *CountingResource) Delete() error {
 	return nil

@@ -127,6 +127,12 @@ func (s newSecret) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (s newSecret) UpdateFromDefinition() (err error) {
+	s.Secret, err = s.Client.Update(s.Definition.Secret)
+	return err
+}
+
 // Delete deletes Secret from the cluster
 func (s newSecret) Delete() error {
 	return s.Client.Delete(s.Secret.Name, nil)

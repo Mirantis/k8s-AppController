@@ -136,6 +136,12 @@ func (r newReplicaSet) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (r newReplicaSet) UpdateFromDefinition() (err error) {
+	r.ReplicaSet, err = r.Client.Update(r.Definition.ReplicaSet)
+	return err
+}
+
 // Delete deletes ReplicaSet from the cluster
 func (r newReplicaSet) Delete() error {
 	return r.Client.Delete(r.ReplicaSet.Name, nil)

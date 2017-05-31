@@ -106,6 +106,12 @@ func (p newPod) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (p newPod) UpdateFromDefinition() (err error) {
+	p.Pod, err = p.Client.Update(p.Definition.Pod)
+	return err
+}
+
 // Delete deletes pod from the cluster
 func (p newPod) Delete() error {
 	return p.Client.Delete(p.Pod.Name, nil)

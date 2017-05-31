@@ -91,6 +91,12 @@ func (p PetSet) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (p PetSet) UpdateFromDefinition() (err error) {
+	p.PetSet, err = p.Client.Update(p.Definition.PetSet)
+	return err
+}
+
 // Delete deletes PetSet from the cluster
 func (p PetSet) Delete() error {
 	return p.Client.Delete(p.PetSet.Name, nil)

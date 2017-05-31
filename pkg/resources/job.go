@@ -116,6 +116,12 @@ func (j newJob) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (j newJob) UpdateFromDefinition() (err error) {
+	j.Job, err = j.Client.Update(j.Definition.Job)
+	return err
+}
+
 // Delete deletes Job from the cluster
 func (j newJob) Delete() error {
 	return j.Client.Delete(j.Job.Name, nil)

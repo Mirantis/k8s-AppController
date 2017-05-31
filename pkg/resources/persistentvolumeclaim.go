@@ -103,6 +103,12 @@ func (p newPersistentVolumeClaim) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (p newPersistentVolumeClaim) UpdateFromDefinition() (err error) {
+	p.PersistentVolumeClaim, err = p.Client.Update(p.Definition.PersistentVolumeClaim)
+	return err
+}
+
 // Delete deletes persistentVolumeClaim from the cluster
 func (p newPersistentVolumeClaim) Delete() error {
 	return p.Client.Delete(p.PersistentVolumeClaim.Name, &v1.DeleteOptions{})
