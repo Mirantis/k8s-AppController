@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
@@ -51,27 +50,6 @@ func init() {
 	}
 }
 
-// Base is a base struct that contains data common for all resources
-type Base struct {
-	meta map[string]interface{}
-}
-
-// Meta returns metadata parameter with given name, or empty string,
-// if no metadata were provided or such parameter does not exist.
-func (b Base) Meta(paramName string) interface{} {
-	if b.meta == nil {
-		return nil
-	}
-
-	val, ok := b.meta[paramName]
-
-	if !ok {
-		return nil
-	}
-
-	return val
-}
-
 // KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
 // structs implement interfaces.ResourceTemplate
 var KindToResourceTemplate = map[string]interfaces.ResourceTemplate{}
@@ -87,56 +65,43 @@ func getKeys(m map[string]interfaces.ResourceTemplate) (keys []string) {
 	return keys
 }
 
-func resourceListStatus(resources []interfaces.BaseResource) (interfaces.ResourceStatus, error) {
+func resourceListProgress(resources []interfaces.Resource) (float32, error) {
+	var total float32
+	var lastErr error
+	if len(resources) == 0 {
+		return 1, nil
+	}
 	for _, r := range resources {
-		status, err := r.Status(nil)
-		if err != nil {
-			return interfaces.ResourceError, err
-		}
-		if status != interfaces.ResourceReady {
-			return interfaces.ResourceNotReady, fmt.Errorf("resource %s is not ready", r.Key())
+		progress, err := r.GetProgress()
+		if err == nil {
+			total += progress
+		} else {
+			lastErr = err
 		}
 	}
-	return interfaces.ResourceReady, nil
+	if total > 0 {
+		lastErr = nil
+	}
+	total /= float32(len(resources))
+	return total, lastErr
 }
 
-func getPercentage(factorName string, meta map[string]string) (int32, error) {
-	var factor string
-	var ok bool
-	if meta == nil {
-		factor = "100"
-	} else if factor, ok = meta[factorName]; !ok {
-		factor = "100"
-	}
-
-	f, err := strconv.ParseInt(factor, 10, 32)
-	if (f < 0 || f > 100) && err == nil {
-		err = fmt.Errorf("%s factor not between 0 and 100", factorName)
-	}
-	return int32(f), err
-}
-
-func checkExistence(r interfaces.BaseResource) error {
+func checkExistence(r interfaces.Resource) bool {
 	log.Println("Looking for", r.Key())
-	status, err := r.Status(nil)
+	_, err := r.GetProgress()
+	return err == nil
 
-	if err == nil {
-		log.Printf("Found %s, status: %s ", r.Key(), status)
-		return nil
-	}
-
-	return err
 }
 
-func createExistingResource(r interfaces.BaseResource) error {
-	if err := checkExistence(r); err != nil {
+func createExistingResource(r interfaces.Resource) error {
+	if !checkExistence(r) {
 		log.Printf("Expected resource %s to exist, not found", r.Key())
 		return errors.New("resource not found")
 	}
 	return nil
 }
 
-func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string) (interfaces.ResourceStatus, error) {
+func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string) (float32, error) {
 	var labelSelectors []string
 	for k, v := range objLabels {
 		labelSelectors = append(labelSelectors, fmt.Sprintf("%s=%s", k, v))
@@ -144,66 +109,21 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 	stringSelector := strings.Join(labelSelectors, ",")
 	selector, err := labels.Parse(stringSelector)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
 	options := v1.ListOptions{LabelSelector: selector.String()}
 
 	pods, err := apiClient.Pods().List(options)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
-	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
+	resources := make([]interfaces.Resource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		p := pod
-		resources = append(resources, createNewPod(&p, apiClient.Pods(), nil))
+		resources = append(resources, createNewPod(&p, apiClient.Pods()))
 	}
 
-	status, err := resourceListStatus(resources)
-	if status != interfaces.ResourceReady || err != nil {
-		return status, err
-	}
-
-	return interfaces.ResourceReady, nil
-}
-
-// GetIntMeta returns metadata value for parameter 'paramName', or 'defaultValue'
-// if parameter is not set or is not an integer value
-func GetIntMeta(r interfaces.BaseResource, paramName string, defaultValue int) int {
-	value := r.Meta(paramName)
-	if value == nil {
-		return defaultValue
-	}
-
-	intVal, ok := value.(int)
-	if ok {
-		return intVal
-	}
-
-	floatVal, ok := value.(float64)
-
-	if !ok {
-		log.Printf("Metadata parameter '%s' for resource '%s' is set to '%v' but it does not seem to be a number, using default value %d", paramName, r.Key(), value, defaultValue)
-		return defaultValue
-	}
-
-	return int(floatVal)
-}
-
-// GetStringMeta returns metadata value for parameter 'paramName', or 'defaultValue'
-// if parameter is not set or is not a string value
-func GetStringMeta(r interfaces.BaseResource, paramName string, defaultValue string) string {
-	value := r.Meta(paramName)
-	if value == nil {
-		return defaultValue
-	}
-
-	strVal, ok := value.(string)
-	if !ok {
-		log.Printf("Metadata parameter '%s' for resource '%s' is set to '%v' but it does not seem to be a string, using default value %s", paramName, r.Key(), value, defaultValue)
-		return defaultValue
-	}
-
-	return string(strVal)
+	return resourceListProgress(resources)
 }
 
 // Substitutes flow arguments into resource structure. Returns modified copy of the resource

@@ -17,14 +17,12 @@ package mocks
 import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
 // Resource is a fake resource
 type Resource struct {
-	key    string
-	status interfaces.ResourceStatus
-	meta   map[string]interface{}
+	key      string
+	progress float32
 }
 
 // Key returns a key of the Resource
@@ -32,9 +30,9 @@ func (c Resource) Key() string {
 	return c.key
 }
 
-// Status returns a status of the Resource
-func (c *Resource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return c.status, nil
+// GetProgress returns progress of the Resource
+func (c *Resource) GetProgress() (float32, error) {
+	return c.progress, nil
 }
 
 // Create does nothing
@@ -47,36 +45,17 @@ func (c *Resource) Delete() error {
 	return nil
 }
 
-// Meta returns empty string
-func (c *Resource) Meta(key string) interface{} {
-	return c.meta[key]
-}
-
-// NameMatches returns true
-func (c *Resource) NameMatches(_ client.ResourceDefinition, _ string) bool {
-	return true
-}
-
 // New returns new fake resource
 func (c *Resource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: NewResource("fake", "ready")}
+	return NewResource("fake", 1)
 }
 
 // NewExisting returns new existing resource
-func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.BaseResource {
-	return NewResource(name, "ready")
+func (c *Resource) NewExisting(name string, _ client.Interface) interfaces.Resource {
+	return NewResource(name, 1)
 }
 
 // NewResource creates new instance of Resource
-func NewResource(key string, status interfaces.ResourceStatus) *Resource {
-	return NewResourceWithMeta(key, status, nil)
-}
-
-// NewResourceWithMeta creates new instance of Resource
-func NewResourceWithMeta(key string, status interfaces.ResourceStatus, meta map[string]interface{}) *Resource {
-	return &Resource{
-		key:    key,
-		status: status,
-		meta:   meta,
-	}
+func NewResource(key string, progress float32) *Resource {
+	return &Resource{key: key, progress: progress}
 }

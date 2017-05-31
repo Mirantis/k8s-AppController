@@ -19,9 +19,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	appsalpha1 "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
-	"github.com/Mirantis/k8s-AppController/pkg/client/petsets/typed/apps/v1alpha1"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
 var petSetParamFields = []string{
@@ -32,12 +30,16 @@ var petSetParamFields = []string{
 	"Spec.Template.ObjectMeta",
 }
 
-// PetSet is a wrapper for K8s PetSet object
-type PetSet struct {
-	Base
-	PetSet    *appsalpha1.PetSet
-	Client    v1alpha1.PetSetInterface
-	APIClient client.Interface
+// newPetSet is a wrapper for K8s PetSet object
+type newPetSet struct {
+	petSet *appsalpha1.PetSet
+	client client.Interface
+}
+
+// existingPetSet is a wrapper for K8s PetSet object which is meant to already be in a cluster bofer AppController execution
+type existingPetSet struct {
+	name   string
+	client client.Interface
 }
 
 type petSetTemplateFactory struct{}
@@ -58,21 +60,21 @@ func (petSetTemplateFactory) Kind() string {
 // New returns PetSet controller for new resource based on resource definition
 func (petSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	petSet := parametrizeResource(def.PetSet, gc, petSetParamFields).(*appsalpha1.PetSet)
-	return newPetSet(petSet, c.PetSets(), c, def.Meta)
+	return createNewPetSet(petSet, c)
 }
 
 // NewExisting returns PetSet controller for existing resource by its name
 func (petSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingPetSet{Name: name, Client: c.PetSets(), APIClient: c}}
+	return existingPetSet{name: name, client: c}
 }
 
-func petsetStatus(p v1alpha1.PetSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
+func petsetProgress(client client.Interface, name string) (float32, error) {
 	// Use label from petset spec to get needed pods
-	ps, err := p.Get(name)
+	ps, err := client.PetSets().Get(name)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
-	return podsStateFromLabels(apiClient, ps.Spec.Template.ObjectMeta.Labels)
+	return podsStateFromLabels(client, ps.Spec.Template.ObjectMeta.Labels)
 }
 
 func petsetKey(name string) string {
@@ -80,59 +82,52 @@ func petsetKey(name string) string {
 }
 
 // Key returns PetSet name
-func (p PetSet) Key() string {
-	return petsetKey(p.PetSet.Name)
+func (p newPetSet) Key() string {
+	return petsetKey(p.petSet.Name)
 }
 
 // Create looks for the PetSet in Kubernetes cluster and creates it if it's not there
-func (p PetSet) Create() error {
-	if err := checkExistence(p); err != nil {
-		log.Println("Creating", p.Key())
-		_, err = p.Client.Create(p.PetSet)
-		return err
+func (p newPetSet) Create() error {
+	if checkExistence(p) {
+		return nil
+
 	}
-	return nil
+	log.Println("Creating", p.Key())
+	obj, err := p.client.PetSets().Create(p.petSet)
+	p.petSet = obj
+	return err
 }
 
 // Delete deletes PetSet from the cluster
-func (p PetSet) Delete() error {
-	return p.Client.Delete(p.PetSet.Name, nil)
+func (p newPetSet) Delete() error {
+	return p.client.PetSets().Delete(p.petSet.Name, nil)
 }
 
-// Status returns PetSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
-func (p PetSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return petsetStatus(p.Client, p.PetSet.Name, p.APIClient)
+// GetProgress returns PetSet deployment progress
+func (p newPetSet) GetProgress() (float32, error) {
+	return petsetProgress(p.client, p.petSet.Name)
 }
 
-// newPetSet is a constructor
-func newPetSet(petset *appsalpha1.PetSet, client v1alpha1.PetSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: PetSet{Base: Base{meta}, PetSet: petset, Client: client, APIClient: apiClient}}
-}
-
-// ExistingPetSet is a wrapper for K8s PetSet object which is meant to already be in a cluster bofer AppController execution
-type ExistingPetSet struct {
-	Base
-	Name      string
-	Client    v1alpha1.PetSetInterface
-	APIClient client.Interface
+func createNewPetSet(petset *appsalpha1.PetSet, client client.Interface) interfaces.Resource {
+	return newPetSet{petSet: petset, client: client}
 }
 
 // Key returns PetSet name
-func (p ExistingPetSet) Key() string {
-	return petsetKey(p.Name)
+func (p existingPetSet) Key() string {
+	return petsetKey(p.name)
 }
 
 // Create looks for existing PetSet and returns error if there is no such PetSet
-func (p ExistingPetSet) Create() error {
+func (p existingPetSet) Create() error {
 	return createExistingResource(p)
 }
 
-// Status returns PetSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
-func (p ExistingPetSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return petsetStatus(p.Client, p.Name, p.APIClient)
+// GetProgress returns PetSet deployment progress
+func (p existingPetSet) GetProgress() (float32, error) {
+	return petsetProgress(p.client, p.name)
 }
 
 // Delete deletes PetSet from the cluster
-func (p ExistingPetSet) Delete() error {
-	return p.Client.Delete(p.Name, nil)
+func (p existingPetSet) Delete() error {
+	return p.client.PetSets().Delete(p.name, nil)
 }

@@ -19,9 +19,7 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 
-	"k8s.io/client-go/kubernetes/typed/apps/v1beta1"
 	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
@@ -33,12 +31,16 @@ var statefulSetParamFields = []string{
 	"Spec.Template.ObjectMeta",
 }
 
-// StatefulSet is a wrapper for K8s StatefulSet object
-type StatefulSet struct {
-	Base
-	StatefulSet *appsbeta1.StatefulSet
-	Client      v1beta1.StatefulSetInterface
-	APIClient   client.Interface
+// newStatefulSet is a wrapper for K8s StatefulSet object
+type newStatefulSet struct {
+	statefulSet *appsbeta1.StatefulSet
+	client      client.Interface
+}
+
+// existingStatefulSet is a wrapper for K8s StatefulSet object which is meant to already be in a cluster before AppController execution
+type existingStatefulSet struct {
+	name   string
+	client client.Interface
 }
 
 type statefulSetTemplateFactory struct{}
@@ -59,21 +61,21 @@ func (statefulSetTemplateFactory) Kind() string {
 // New returns StatefulSet controller for new resource based on resource definition
 func (statefulSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	statefulSet := parametrizeResource(def.StatefulSet, gc, statefulSetParamFields).(*appsbeta1.StatefulSet)
-	return newStatefulSet(statefulSet, c.StatefulSets(), c, def.Meta)
+	return createNewStatefulSet(statefulSet, c)
 }
 
 // NewExisting returns StatefulSet controller for existing resource by its name
 func (statefulSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingStatefulSet{Name: name, Client: c.StatefulSets(), APIClient: c}}
+	return existingStatefulSet{name: name, client: c}
 }
 
-func statefulsetStatus(p v1beta1.StatefulSetInterface, name string, apiClient client.Interface) (interfaces.ResourceStatus, error) {
+func statefulsetProgress(client client.Interface, name string) (float32, error) {
 	// Use label from StatefulSet spec to get needed pods
-	ps, err := p.Get(name)
+	ps, err := client.StatefulSets().Get(name)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
-	return podsStateFromLabels(apiClient, ps.Spec.Template.ObjectMeta.Labels)
+	return podsStateFromLabels(client, ps.Spec.Template.ObjectMeta.Labels)
 }
 
 func statefulsetKey(name string) string {
@@ -81,58 +83,51 @@ func statefulsetKey(name string) string {
 }
 
 // Key returns StatefulSet name
-func (p StatefulSet) Key() string {
-	return statefulsetKey(p.StatefulSet.Name)
+func (p newStatefulSet) Key() string {
+	return statefulsetKey(p.statefulSet.Name)
 }
 
 // Create looks for the StatefulSet in Kubernetes cluster and creates it if it's not there
-func (p StatefulSet) Create() error {
-	if err := checkExistence(p); err != nil {
-		log.Println("Creating", p.Key())
-		_, err = p.Client.Create(p.StatefulSet)
-		return err
+func (p newStatefulSet) Create() error {
+	if checkExistence(p) {
+		return nil
 	}
-	return nil
+	log.Println("Creating", p.Key())
+	obj, err := p.client.StatefulSets().Create(p.statefulSet)
+	p.statefulSet = obj
+	return err
 }
 
 // Delete deletes StatefulSet from the cluster
-func (p StatefulSet) Delete() error {
-	return p.Client.Delete(p.StatefulSet.Name, nil)
+func (p newStatefulSet) Delete() error {
+	return p.client.StatefulSets().Delete(p.statefulSet.Name, nil)
 }
 
-// Status returns StatefulSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
-func (p StatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return statefulsetStatus(p.Client, p.StatefulSet.Name, p.APIClient)
+// GetProgress returns StatefulSet deployment progress
+func (p newStatefulSet) GetProgress() (float32, error) {
+	return statefulsetProgress(p.client, p.statefulSet.Name)
 }
 
-func newStatefulSet(statefulset *appsbeta1.StatefulSet, client v1beta1.StatefulSetInterface, apiClient client.Interface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: StatefulSet{Base: Base{meta}, StatefulSet: statefulset, Client: client, APIClient: apiClient}}
-}
-
-// ExistingStatefulSet is a wrapper for K8s StatefulSet object which is meant to already be in a cluster before AppController execution
-type ExistingStatefulSet struct {
-	Base
-	Name      string
-	Client    v1beta1.StatefulSetInterface
-	APIClient client.Interface
+func createNewStatefulSet(statefulset *appsbeta1.StatefulSet, client client.Interface) interfaces.Resource {
+	return newStatefulSet{statefulSet: statefulset, client: client}
 }
 
 // Key returns StatefulSet name
-func (p ExistingStatefulSet) Key() string {
-	return statefulsetKey(p.Name)
+func (p existingStatefulSet) Key() string {
+	return statefulsetKey(p.name)
 }
 
 // Create looks for existing StatefulSet and returns error if there is no such StatefulSet
-func (p ExistingStatefulSet) Create() error {
+func (p existingStatefulSet) Create() error {
 	return createExistingResource(p)
 }
 
-// Status returns StatefulSet status. interfaces.ResourceReady is regarded as sufficient for it's dependencies to be created.
-func (p ExistingStatefulSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return statefulsetStatus(p.Client, p.Name, p.APIClient)
+// GetProgress returns StatefulSet deployment progress
+func (p existingStatefulSet) GetProgress() (float32, error) {
+	return statefulsetProgress(p.client, p.name)
 }
 
 // Delete deletes StatefulSet from the cluster
-func (p ExistingStatefulSet) Delete() error {
-	return p.Client.Delete(p.Name, nil)
+func (p existingStatefulSet) Delete() error {
+	return p.client.StatefulSets().Delete(p.name, nil)
 }

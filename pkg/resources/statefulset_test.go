@@ -17,7 +17,6 @@ package resources
 import (
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
@@ -26,14 +25,14 @@ import (
 // TestStatefulSetSuccessCheck checks status of ready StatefulSet
 func TestStatefulSetSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeStatefulSet("notfail"))
-	status, err := statefulsetStatus(c.StatefulSets(), "notfail", c)
+	progress, err := statefulsetProgress(c, "notfail")
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	if status != interfaces.ResourceReady {
-		t.Errorf("status should be `ready`, is `%s` instead.", status)
+	if progress != 1 {
+		t.Errorf("progress must be 1 but got %v", progress)
 	}
 }
 
@@ -43,16 +42,16 @@ func TestStatefulSetFailCheck(t *testing.T) {
 	pod := mocks.MakePod("fail")
 	pod.Labels = ss.Spec.Template.ObjectMeta.Labels
 	c := mocks.NewClient(ss, pod)
-	status, err := statefulsetStatus(c.StatefulSets(), "fail", c)
+	progress, err := statefulsetProgress(c, "fail")
 
-	expectedError := "resource pod/fail is not ready"
-	if err.Error() != expectedError {
-		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
+	if err != nil {
+		t.Error(err)
 	}
 
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("status should be `not ready`, is `%s` instead.", status)
+	if progress != 0 {
+		t.Errorf("progress must be 0 but got %v", progress)
 	}
+
 }
 
 func TestStatefulSetIsEnabled(t *testing.T) {

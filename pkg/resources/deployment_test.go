@@ -17,48 +17,35 @@ package resources
 import (
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 // TestDeploymentSuccessCheck checks status of ready Deployment
 func TestDeploymentSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeDeployment("notfail"))
-	status, err := deploymentStatus(c.Deployments(), "notfail")
+	_, err := deploymentProgress(c.Deployments(), "notfail")
 
 	if err != nil {
 		t.Error(err)
-	}
-
-	if status != interfaces.ResourceReady {
-		t.Errorf("status should be `ready`, is `%s` instead.", status)
 	}
 }
 
 // TestDeploymentFailUpdatedCheck checks status of not ready deployment
 func TestDeploymentFailUpdatedCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeDeployment("fail"))
-	status, err := deploymentStatus(c.Deployments(), "fail")
+	_, err := deploymentProgress(c.Deployments(), "fail")
 
 	if err != nil {
 		t.Error(err)
-	}
-
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("status should be `not ready`, is `%s` instead.", status)
 	}
 }
 
 // TestDeploymentFailAvailableCheck checks status of not ready deployment
 func TestDeploymentFailAvailableCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeDeployment("failav"))
-	status, err := deploymentStatus(c.Deployments(), "failav")
+	_, err := deploymentProgress(c.Deployments(), "failav")
 
 	if err != nil {
 		t.Error(err)
-	}
-
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("status should be `not ready`, is `%s` instead.", status)
 	}
 }

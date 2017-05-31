@@ -17,32 +17,23 @@ package resources
 import (
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 func TestSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeReplicaSet("notfail"))
-	status, err := replicaSetStatus(c.ReplicaSets(), "notfail", nil)
+	_, err := replicaSetProgress(c.ReplicaSets(), "notfail")
 
 	if err != nil {
 		t.Error(err)
-	}
-
-	if status != interfaces.ResourceReady {
-		t.Errorf("status should be `ready`, is `%s` instead.", status)
 	}
 }
 
 func TestFailCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeReplicaSet("fail"))
-	status, err := replicaSetStatus(c.ReplicaSets(), "fail", map[string]string{successFactorKey: "80"})
+	_, err := replicaSetProgress(c.ReplicaSets(), "fail")
 
 	if err != nil {
 		t.Error(err)
-	}
-
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("status should be `not ready`, is `%s` instead.", status)
 	}
 }

@@ -17,13 +17,9 @@ package resources
 import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
-type void struct {
-	Base
-	name string
-}
+type void string
 
 type voidTemplateFactory struct{}
 
@@ -45,17 +41,17 @@ func (voidTemplateFactory) New(_ client.ResourceDefinition, _ client.Interface, 
 // NewExisting returns new void with specified name
 func (voidTemplateFactory) NewExisting(name string, _ client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	name = parametrizeResource(name, gc, []string{"*"}).(string)
-	return report.SimpleReporter{BaseResource: void{name: name}}
+	return void(name)
 }
 
 // Key returns void name
 func (v void) Key() string {
-	return "void/" + v.name
+	return "void/" + string(v)
 }
 
 // Status always returns "ready"
-func (void) Status(_ map[string]string) (interfaces.ResourceStatus, error) {
-	return interfaces.ResourceReady, nil
+func (void) GetProgress() (float32, error) {
+	return 1, nil
 }
 
 // Delete is a no-op method to create resource

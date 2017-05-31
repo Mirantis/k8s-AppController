@@ -6,3 +6,4 @@ import:
 - package: k8s.io/apimachinery
 - package: github.com/fatih/color
   version: ^1.1.0
+- package: github.com/olekukonko/tablewriter

@@ -17,34 +17,25 @@ package resources
 import (
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 // TestSecretSuccessCheck checks status of ready Secret
 func TestSecretSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeSecret("notfail"))
-	status, err := secretStatus(c.Secrets(), "notfail")
+	_, err := secretProgress(c.Secrets(), "notfail")
 
 	if err != nil {
 		t.Error(err)
-	}
-
-	if status != interfaces.ResourceReady {
-		t.Errorf("status should be `ready`, is `%s` instead.", status)
 	}
 }
 
 // TestSecretFailCheck checks status of not existing Secret
 func TestSecretFailCheck(t *testing.T) {
 	c := mocks.NewClient()
-	status, err := secretStatus(c.Secrets(), "fail")
+	_, err := secretProgress(c.Secrets(), "fail")
 
 	if err == nil {
 		t.Error("error not found, expected error")
-	}
-
-	if status != interfaces.ResourceError {
-		t.Errorf("status should be `error`, is `%s` instead.", status)
 	}
 }

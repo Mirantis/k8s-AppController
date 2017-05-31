@@ -19,14 +19,13 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
 // CountingResource is a fake resource that becomes ready after given timeout.
 // It also increases the counter when started and decreases it when becomes ready
 type CountingResource struct {
 	key       string
-	status    interfaces.ResourceStatus
+	progress  float32
 	counter   *CounterWithMemo
 	timeout   time.Duration
 	startTime time.Time
@@ -37,15 +36,15 @@ func (c CountingResource) Key() string {
 	return c.key
 }
 
-// Status returns a status of the CountingResource. It also updates the status
+// GetProgress returns a progress of the CountingResource. It also updates the progress
 // after provided timeout and decrements counter
-func (c *CountingResource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	if time.Since(c.startTime) >= c.timeout && c.status != interfaces.ResourceReady {
+func (c *CountingResource) GetProgress() (float32, error) {
+	if time.Since(c.startTime) >= c.timeout && c.progress < 1 {
 		c.counter.Dec()
-		c.status = interfaces.ResourceReady
+		c.progress = 1
 	}
 
-	return c.status, nil
+	return c.progress, nil
 }
 
 // Create increments counter and sets creation time
@@ -60,32 +59,22 @@ func (c *CountingResource) Delete() error {
 	return nil
 }
 
-// Meta returns empty string
-func (c *CountingResource) Meta(string) interface{} {
-	return nil
-}
-
-// NameMatches returns true
-func (c *CountingResource) NameMatches(_ client.ResourceDefinition, _ string) bool {
-	return true
-}
-
 // New returns new fake resource
-func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.BaseResource {
-	return report.SimpleReporter{BaseResource: NewResource("fake", interfaces.ResourceReady)}
+func (c *CountingResource) New(_ client.ResourceDefinition, _ client.Interface) interfaces.Resource {
+	return NewResource("fake", 1)
 }
 
 // NewExisting returns new existing resource
-func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.BaseResource {
-	return report.SimpleReporter{BaseResource: NewResource(name, interfaces.ResourceReady)}
+func (c *CountingResource) NewExisting(name string, _ client.Interface) interfaces.Resource {
+	return NewResource(name, 1)
 }
 
 // NewCountingResource creates new instance of CountingResource
 func NewCountingResource(key string, counter *CounterWithMemo, timeout time.Duration) *CountingResource {
 	return &CountingResource{
-		key:     key,
-		status:  interfaces.ResourceNotReady,
-		counter: counter,
-		timeout: timeout,
+		key:      key,
+		progress: 0,
+		counter:  counter,
+		timeout:  timeout,
 	}
 }
