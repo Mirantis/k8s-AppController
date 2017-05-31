@@ -19,7 +19,6 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -27,15 +26,19 @@ import (
 
 var podParamFields = []string{
 	"Spec.Containers.Env",
-	"Spec.Containers.Name",
+	"Spec.Containers.name",
 	"Spec.InitContainers.Env",
-	"Spec.InitContainers.Name",
+	"Spec.InitContainers.name",
 }
 
 type newPod struct {
-	Base
-	Pod    *v1.Pod
-	Client corev1.PodInterface
+	pod    *v1.Pod
+	client corev1.PodInterface
+}
+
+type existingPod struct {
+	name   string
+	client corev1.PodInterface
 }
 
 type podTemplateFactory struct{}
@@ -56,12 +59,12 @@ func (podTemplateFactory) Kind() string {
 // New returns Pod controller for new resource based on resource definition
 func (podTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	pod := parametrizeResource(def.Pod, gc, podParamFields).(*v1.Pod)
-	return createNewPod(pod, c.Pods(), def.Meta)
+	return createNewPod(pod, c.Pods())
 }
 
 // NewExisting returns Pod controller for existing resource by its name
 func (podTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: existingPod{Name: name, Client: c.Pods()}}
+	return existingPod{name: name, client: c.Pods()}
 }
 
 func podKey(name string) string {
@@ -70,24 +73,20 @@ func podKey(name string) string {
 
 // Key returns Pod name
 func (p newPod) Key() string {
-	return podKey(p.Pod.Name)
+	return podKey(p.pod.Name)
 }
 
-func podStatus(p corev1.PodInterface, name string) (interfaces.ResourceStatus, error) {
+func podProgress(p corev1.PodInterface, name string) (float32, error) {
 	pod, err := p.Get(name)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
 
-	if pod.Status.Phase == "Succeeded" {
-		return interfaces.ResourceReady, nil
+	if pod.Status.Phase == "Succeeded" || pod.Status.Phase == "Running" && isReady(pod) {
+		return 1, nil
 	}
 
-	if pod.Status.Phase == "Running" && isReady(pod) {
-		return interfaces.ResourceReady, nil
-	}
-
-	return interfaces.ResourceNotReady, nil
+	return 0, nil
 }
 
 func isReady(pod *v1.Pod) bool {
@@ -102,37 +101,32 @@ func isReady(pod *v1.Pod) bool {
 
 // Create looks for the Pod in k8s and creates it if not present
 func (p newPod) Create() error {
-	if err := checkExistence(p); err != nil {
-		log.Println("Creating", p.Key())
-		p.Pod, err = p.Client.Create(p.Pod)
-		return err
+	if checkExistence(p) {
+		return nil
 	}
-	return nil
+	log.Println("Creating", p.Key())
+	obj, err := p.client.Create(p.pod)
+	p.pod = obj
+	return err
 }
 
 // Delete deletes pod from the cluster
 func (p newPod) Delete() error {
-	return p.Client.Delete(p.Pod.Name, nil)
+	return p.client.Delete(p.pod.Name, nil)
 }
 
-// Status returns pod status. It returns interfaces.ResourceReady if the pod is succeeded or running with succeeding readiness probe.
-func (p newPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return podStatus(p.Client, p.Pod.Name)
+// GetProgress returns Pod deployment progress
+func (p newPod) GetProgress() (float32, error) {
+	return podProgress(p.client, p.pod.Name)
 }
 
-func createNewPod(pod *v1.Pod, client corev1.PodInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: newPod{Base: Base{meta}, Pod: pod, Client: client}}
-}
-
-type existingPod struct {
-	Base
-	Name   string
-	Client corev1.PodInterface
+func createNewPod(pod *v1.Pod, client corev1.PodInterface) interfaces.Resource {
+	return newPod{pod: pod, client: client}
 }
 
 // Key returns Pod name
 func (p existingPod) Key() string {
-	return podKey(p.Name)
+	return podKey(p.name)
 }
 
 // Create looks for existing Pod and returns error if there is no such Pod
@@ -140,12 +134,12 @@ func (p existingPod) Create() error {
 	return createExistingResource(p)
 }
 
-// Status returns pod status. It returns interfaces.ResourceReady if the pod is succeeded or running with succeeding readiness probe.
-func (p existingPod) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return podStatus(p.Client, p.Name)
+// GetProgress returns Pod deployment progress
+func (p existingPod) GetProgress() (float32, error) {
+	return podProgress(p.client, p.name)
 }
 
 // Delete deletes pod from the cluster
 func (p existingPod) Delete() error {
-	return p.Client.Delete(p.Name, nil)
+	return p.client.Delete(p.name, nil)
 }

@@ -25,7 +25,6 @@ import (
 	"github.com/Mirantis/k8s-AppController/e2e/utils"
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
 
 	. "github.com/onsi/ginkgo"
@@ -105,18 +104,16 @@ func (f *examplesFramework) handleListCreation(ustList *runtime.UnstructuredList
 }
 
 func (f *examplesFramework) VerifyStatus(options interfaces.DependencyGraphOptions) {
-	var depReport report.DeploymentReport
 	Eventually(
 		func() bool {
-			status, r, err := scheduler.GetStatus(f.Client, nil, options)
+			status, err := scheduler.GetStatus(f.Client, nil, options)
 			if err != nil {
 				return false
 			}
-			depReport = r.(report.DeploymentReport)
 			utils.Logf("STATUS: %s\n", status)
-			return status == interfaces.Finished || status == interfaces.Empty
+			return status.Progress == 1 || status.Total == 0
 		},
-		300*time.Second, 5*time.Second).Should(BeTrue(), strings.Join(depReport.AsText(0), "\n"))
+		300*time.Second, 5*time.Second).Should(BeTrue())
 }
 
 func (f *examplesFramework) CreateRunAndVerify(exampleName string, options interfaces.DependencyGraphOptions) {

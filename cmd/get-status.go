@@ -23,8 +23,9 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/scheduler"
-	"github.com/spf13/cobra"
 
+	"github.com/olekukonko/tablewriter"
+	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/labels"
 )
 
@@ -93,25 +94,48 @@ func getStatus(cmd *cobra.Command, args []string) {
 		AllowUndeclaredArgs: anyArgs,
 	}
 
-	status, report, err := scheduler.GetStatus(c, sel, options)
+	graph, err := scheduler.GetStatusGraph(c, sel, options)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	//status := graph.GetDeploymentStatus()
 	if getJSON {
-		data, err := json.Marshal(report)
+		data := graph.GetNodeStatuses()
+		out, err := json.Marshal(data)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf(string(data))
+		fmt.Printf(string(out))
 	} else {
-		fmt.Printf("STATUS: %s\n", status)
+		status := graph.GetDeploymentStatus()
+		if status.Total == 0 {
+			fmt.Println("Dependency graph is empty")
+			return
+		}
+
+		fmt.Println()
+		fmt.Printf("Total nodes: %d (%d groups)\n", status.Total, status.TotalGroups)
+		fmt.Printf("   Finished: %d\n", status.Finished)
+		fmt.Printf("   Progress: %d %%\n", int(status.Progress*100))
+
 		if getReport {
-			data := report.AsText(0)
-			for _, line := range data {
-				fmt.Println(line)
+			fmt.Println()
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetHeader([]string{"Node", "Status", "Progress %"})
+			table.SetColWidth(70)
+			table.SetAutoFormatHeaders(false)
+			for _, node := range graph.GetNodeStatuses() {
+				table.Append([]string{
+					node.Name,
+					node.Status,
+					fmt.Sprintf("%d %%", node.Progress),
+				})
 			}
+			table.Render()
 		}
 	}
+
 }
 
 // InitGetStatusCommand is an initialiser for get-status

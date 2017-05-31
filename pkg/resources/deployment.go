@@ -15,30 +15,33 @@
 package resources
 
 import (
-	"errors"
 	"log"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 
 	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 var deploymentParamFields = []string{
-	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.Containers.name",
 	"Spec.Template.Spec.Containers.Env",
-	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.Spec.InitContainers.name",
 	"Spec.Template.Spec.InitContainers.Env",
 	"Spec.Template.ObjectMeta",
 }
 
-// Deployment is wrapper for K8s Deployment object
-type Deployment struct {
-	Base
-	Deployment *extbeta1.Deployment
-	Client     v1beta1.DeploymentInterface
+// deployment is wrapper for K8s Deployment object
+type newDeployment struct {
+	deployment *extbeta1.Deployment
+	client     v1beta1.DeploymentInterface
+}
+
+// existingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
+type existingDeployment struct {
+	name   string
+	client v1beta1.DeploymentInterface
 }
 
 type deploymentTemplateFactory struct{}
@@ -58,97 +61,74 @@ func (deploymentTemplateFactory) Kind() string {
 
 // New returns Deployment controller for new resource based on resource definition
 func (deploymentTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newDeployment := parametrizeResource(def.Deployment, gc, deploymentParamFields).(*extbeta1.Deployment)
-	return report.SimpleReporter{BaseResource: Deployment{Base: Base{def.Meta}, Deployment: newDeployment, Client: c.Deployments()}}
+	deployment := parametrizeResource(def.Deployment, gc, deploymentParamFields).(*extbeta1.Deployment)
+	return newDeployment{deployment: deployment, client: c.Deployments()}
 }
 
 // NewExisting returns Deployment controller for existing resource by its name
 func (deploymentTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingDeployment{Name: name, Client: c.Deployments()}}
+	return existingDeployment{name: name, client: c.Deployments()}
 }
 
 func deploymentKey(name string) string {
 	return "deployment/" + name
 }
 
-func deploymentStatus(d v1beta1.DeploymentInterface, name string) (interfaces.ResourceStatus, error) {
+func deploymentProgress(d v1beta1.DeploymentInterface, name string) (float32, error) {
 	deployment, err := d.Get(name)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
 
-	if deployment.Status.UpdatedReplicas >= *deployment.Spec.Replicas && deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
-		return interfaces.ResourceReady, nil
+	var totalReplicas float32 = 1
+	if deployment.Spec.Replicas != nil {
+		totalReplicas = float32(*deployment.Spec.Replicas)
 	}
-	return interfaces.ResourceNotReady, nil
+	return float32(deployment.Status.AvailableReplicas) / totalReplicas, nil
 }
 
 // Key return Deployment name
-func (d Deployment) Key() string {
-	return deploymentKey(d.Deployment.Name)
+func (d newDeployment) Key() string {
+	return deploymentKey(d.deployment.Name)
 }
 
-// Status returns Deployment status. interfaces.ResourceReady means that its dependencies can be created
-func (d Deployment) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return deploymentStatus(d.Client, d.Deployment.Name)
+// GetProgress returns Deployment progress
+func (d newDeployment) GetProgress() (float32, error) {
+	return deploymentProgress(d.client, d.deployment.Name)
 }
 
 // Create looks for the Deployment in K8s and creates it if not present
-func (d Deployment) Create() error {
-	log.Println("Looking for deployment", d.Deployment.Name)
-	status, err := d.Status(nil)
-
-	if err == nil {
-		log.Printf("Found deployment %s, status: %s", d.Deployment.Name, status)
-		log.Println("Skipping creation of deployment", d.Deployment.Name)
+func (d newDeployment) Create() error {
+	if checkExistence(d) {
+		return nil
 	}
-	log.Println("Creating deployment", d.Deployment.Name)
-	d.Deployment, err = d.Client.Create(d.Deployment)
+	log.Println("Creating", d.Key())
+	obj, err := d.client.Create(d.deployment)
+	d.deployment = obj
 	return err
 }
 
 // Delete deletes Deployment from the cluster
-func (d Deployment) Delete() error {
-	return d.Client.Delete(d.Deployment.Name, nil)
-}
-
-// ExistingDeployment is a wrapper for K8s Deployment object which is deployed on a cluster before AppController
-type ExistingDeployment struct {
-	Base
-	Name   string
-	Client v1beta1.DeploymentInterface
-}
-
-// UpdateMeta does nothing at the moment
-func (d ExistingDeployment) UpdateMeta(meta map[string]string) error {
-	return nil
+func (d newDeployment) Delete() error {
+	return d.client.Delete(d.deployment.Name, nil)
 }
 
 // Key returns Deployment name
-func (d ExistingDeployment) Key() string {
-	return deploymentKey(d.Name)
+func (d existingDeployment) Key() string {
+	return deploymentKey(d.name)
 }
 
-// Status returns Deployment status. interfaces.ResourceReady means that its dependencies can be created
-func (d ExistingDeployment) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return deploymentStatus(d.Client, d.Name)
+// GetProgress returns Deployment deployment progress
+func (d existingDeployment) GetProgress() (float32, error) {
+	return deploymentProgress(d.client, d.name)
 }
 
 // Create looks for existing Deployment and returns error if there is no such Deployment
-func (d ExistingDeployment) Create() error {
-	log.Println("Looking for deployment", d.Name)
-	status, err := d.Status(nil)
-
-	if err == nil {
-		log.Printf("Found deployment %s, status: %s", d.Name, status)
-		return nil
-	}
-
-	log.Fatalf("Deployment %s not found", d.Name)
-	return errors.New("Deployment not found")
+func (d existingDeployment) Create() error {
+	return createExistingResource(d)
 }
 
 // Delete deletes Deployment from the cluster
-func (d ExistingDeployment) Delete() error {
-	return d.Client.Delete(d.Name, nil)
+func (d existingDeployment) Delete() error {
+	return d.client.Delete(d.name, nil)
 }

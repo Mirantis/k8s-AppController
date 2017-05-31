@@ -19,7 +19,6 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -30,15 +29,13 @@ var configMapParamFields = []string{
 }
 
 type newConfigMap struct {
-	Base
-	ConfigMap *v1.ConfigMap
-	Client    corev1.ConfigMapInterface
+	configMap *v1.ConfigMap
+	client    corev1.ConfigMapInterface
 }
 
 type existingConfigMap struct {
-	Base
-	Name   string
-	Client corev1.ConfigMapInterface
+	name   string
+	client corev1.ConfigMapInterface
 }
 
 type configMapTemplateFactory struct{}
@@ -59,12 +56,12 @@ func (configMapTemplateFactory) Kind() string {
 // New returns configMap controller for new resource based on resource definition
 func (configMapTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	cm := parametrizeResource(def.ConfigMap, gc, configMapParamFields).(*v1.ConfigMap)
-	return report.SimpleReporter{BaseResource: newConfigMap{Base: Base{def.Meta}, ConfigMap: cm, Client: c.ConfigMaps()}}
+	return newConfigMap{configMap: cm, client: c.ConfigMaps()}
 }
 
 // NewExisting returns configMap controller for existing resource by its name
 func (configMapTemplateFactory) NewExisting(name string, ci client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: existingConfigMap{Name: name, Client: ci.ConfigMaps()}}
+	return existingConfigMap{name: name, client: ci.ConfigMaps()}
 }
 
 func configMapKey(name string) string {
@@ -73,46 +70,47 @@ func configMapKey(name string) string {
 
 // Key returns the configMap object identifier
 func (c newConfigMap) Key() string {
-	return configMapKey(c.ConfigMap.Name)
+	return configMapKey(c.configMap.Name)
 }
 
-func configMapStatus(c corev1.ConfigMapInterface, name string) (interfaces.ResourceStatus, error) {
+func configMapProgress(c corev1.ConfigMapInterface, name string) (float32, error) {
 	_, err := c.Get(name)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
 
-	return interfaces.ResourceReady, nil
+	return 1, nil
 }
 
-// Status returns configMap status. interfaces.ResourceReady means that its dependencies can be created
-func (c newConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return configMapStatus(c.Client, c.ConfigMap.Name)
+// GetProgress returns configMap deployment progress
+func (c newConfigMap) GetProgress() (float32, error) {
+	return configMapProgress(c.client, c.configMap.Name)
 }
 
 // Create looks for DaemonSet in k8s and creates it if not present
 func (c newConfigMap) Create() error {
-	if err := checkExistence(c); err != nil {
-		log.Println("Creating", c.Key())
-		c.ConfigMap, err = c.Client.Create(c.ConfigMap)
-		return err
+	if checkExistence(c) {
+		return nil
 	}
-	return nil
+	log.Println("Creating", c.Key())
+	obj, err := c.client.Create(c.configMap)
+	c.configMap = obj
+	return err
 }
 
 // Delete deletes configMap from the cluster
 func (c newConfigMap) Delete() error {
-	return c.Client.Delete(c.ConfigMap.Name, &v1.DeleteOptions{})
+	return c.client.Delete(c.configMap.Name, &v1.DeleteOptions{})
 }
 
 // Key returns the configMap object identifier
 func (c existingConfigMap) Key() string {
-	return configMapKey(c.Name)
+	return configMapKey(c.name)
 }
 
-// Status returns configMap status. interfaces.ResourceReady means that its dependencies can be created
-func (c existingConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return configMapStatus(c.Client, c.Name)
+// GetProgress returns configMap deployment progress
+func (c existingConfigMap) GetProgress() (float32, error) {
+	return configMapProgress(c.client, c.name)
 }
 
 // Create looks for existing configMap and returns an error if there is no such configMap in a cluster
@@ -122,5 +120,5 @@ func (c existingConfigMap) Create() error {
 
 // Delete deletes configMap from the cluster
 func (c existingConfigMap) Delete() error {
-	return c.Client.Delete(c.Name, nil)
+	return c.client.Delete(c.name, nil)
 }

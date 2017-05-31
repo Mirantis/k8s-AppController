@@ -19,7 +19,6 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 
 	"k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -27,18 +26,23 @@ import (
 )
 
 var daemonSetParamFields = []string{
-	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.Containers.name",
 	"Spec.Template.Spec.Containers.Env",
-	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.Spec.InitContainers.name",
 	"Spec.Template.Spec.InitContainers.Env",
 	"Spec.Template.ObjectMeta",
 }
 
-// DaemonSet is wrapper for K8s DaemonSet object
-type DaemonSet struct {
-	Base
-	DaemonSet *extbeta1.DaemonSet
-	Client    v1beta1.DaemonSetInterface
+// newDaemonSet is wrapper for K8s DaemonSet object
+type newDaemonSet struct {
+	daemonSet *extbeta1.DaemonSet
+	client    v1beta1.DaemonSetInterface
+}
+
+// existingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController
+type existingDaemonSet struct {
+	name   string
+	client v1beta1.DaemonSetInterface
 }
 
 type daemonSetTemplateFactory struct{}
@@ -58,83 +62,77 @@ func (daemonSetTemplateFactory) Kind() string {
 
 // New returns DaemonSets controller for new resource based on resource definition
 func (d daemonSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	newDaemonSet := parametrizeResource(def.DaemonSet, gc, daemonSetParamFields).(*extbeta1.DaemonSet)
-	return report.SimpleReporter{BaseResource: DaemonSet{Base: Base{def.Meta}, DaemonSet: newDaemonSet, Client: c.DaemonSets()}}
+	daemonSet := parametrizeResource(def.DaemonSet, gc, daemonSetParamFields).(*extbeta1.DaemonSet)
+	return newDaemonSet{daemonSet: daemonSet, client: c.DaemonSets()}
 }
 
 // NewExisting returns DaemonSets controller for existing resource by its name
 func (d daemonSetTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return NewExistingDaemonSet(name, c.DaemonSets())
+	return newExistingDaemonSet(name, c.DaemonSets())
 }
 
 func daemonSetKey(name string) string {
 	return "daemonset/" + name
 }
 
-func daemonSetStatus(d v1beta1.DaemonSetInterface, name string) (interfaces.ResourceStatus, error) {
+func daemonSetProgress(d v1beta1.DaemonSetInterface, name string) (float32, error) {
 	daemonSet, err := d.Get(name)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
-	if daemonSet.Status.CurrentNumberScheduled == daemonSet.Status.DesiredNumberScheduled {
-		return interfaces.ResourceReady, nil
+	if daemonSet.Status.DesiredNumberScheduled == 0 {
+		return 1, nil
 	}
-	return interfaces.ResourceNotReady, nil
+	return float32(daemonSet.Status.CurrentNumberScheduled) / float32(daemonSet.Status.DesiredNumberScheduled), nil
 }
 
 // Key return DaemonSet name
-func (d DaemonSet) Key() string {
-	return daemonSetKey(d.DaemonSet.Name)
+func (d newDaemonSet) Key() string {
+	return daemonSetKey(d.daemonSet.Name)
 }
 
-// Status returns DaemonSet status. interfaces.ResourceReady means that its dependencies can be created
-func (d DaemonSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return daemonSetStatus(d.Client, d.DaemonSet.Name)
+// GetProgress returns DaemonSet deployment progress
+func (d newDaemonSet) GetProgress() (float32, error) {
+	return daemonSetProgress(d.client, d.daemonSet.Name)
 }
 
 // Create looks for DaemonSet in k8s and creates it if not present
-func (d DaemonSet) Create() error {
-	if err := checkExistence(d); err != nil {
-		log.Println("Creating", d.Key())
-		d.DaemonSet, err = d.Client.Create(d.DaemonSet)
-		return err
+func (d newDaemonSet) Create() error {
+	if checkExistence(d) {
+		return nil
 	}
-	return nil
+	log.Println("Creating", d.Key())
+	obj, err := d.client.Create(d.daemonSet)
+	d.daemonSet = obj
+	return err
 }
 
 // Delete deletes DaemonSet from the cluster
-func (d DaemonSet) Delete() error {
-	return d.Client.Delete(d.DaemonSet.Name, &v1.DeleteOptions{})
-}
-
-// ExistingDaemonSet is a wrapper for K8s DaemonSet object which is deployed on a cluster before AppController
-type ExistingDaemonSet struct {
-	Base
-	Name   string
-	Client v1beta1.DaemonSetInterface
+func (d newDaemonSet) Delete() error {
+	return d.client.Delete(d.daemonSet.Name, &v1.DeleteOptions{})
 }
 
 // Key returns DaemonSet name
-func (d ExistingDaemonSet) Key() string {
-	return daemonSetKey(d.Name)
+func (d existingDaemonSet) Key() string {
+	return daemonSetKey(d.name)
 }
 
-// Status returns DaemonSet status. interfaces.ResourceReady means that its dependencies can be created
-func (d ExistingDaemonSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return daemonSetStatus(d.Client, d.Name)
+// GetProgress returns DaemonSet deployment progress
+func (d existingDaemonSet) GetProgress() (float32, error) {
+	return daemonSetProgress(d.client, d.name)
 }
 
 // Create looks for existing DaemonSet and returns error if there is no such DaemonSet
-func (d ExistingDaemonSet) Create() error {
+func (d existingDaemonSet) Create() error {
 	return createExistingResource(d)
 }
 
 // Delete deletes DaemonSet from the cluster
-func (d ExistingDaemonSet) Delete() error {
-	return d.Client.Delete(d.Name, nil)
+func (d existingDaemonSet) Delete() error {
+	return d.client.Delete(d.name, nil)
 }
 
-// NewExistingDaemonSet is a constructor
-func NewExistingDaemonSet(name string, client v1beta1.DaemonSetInterface) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: ExistingDaemonSet{Name: name, Client: client}}
+// newExistingDaemonSet is a constructor
+func newExistingDaemonSet(name string, client v1beta1.DaemonSetInterface) interfaces.Resource {
+	return existingDaemonSet{name: name, client: client}
 }

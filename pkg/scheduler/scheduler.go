@@ -22,10 +22,8 @@ import (
 	"time"
 
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
-	"github.com/Mirantis/k8s-AppController/pkg/resources"
 
-	"k8s.io/client-go/pkg/api/errors"
+	api_errors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/unversioned"
 )
 
@@ -37,20 +35,22 @@ const (
 
 // scheduledResource is a wrapper for Resource with attached relationship data
 type scheduledResource struct {
-	requires       []string
-	requiredBy     []string
-	started        bool
-	ignored        bool
-	skipped        bool
-	error          error
-	existing       bool
-	context        *graphContext
-	usedInReplicas []string
-	status         interfaces.ResourceStatus
-	suffix         string
+	requires         []string
+	requiredBy       []string
+	started          bool
+	ignored          bool
+	skipped          bool
+	error            error
+	existing         bool
+	context          *graphContext
+	usedInReplicas   []string
+	finished         bool
+	distance         int
+	suffix           string
+	resourceMeta     map[string]interface{}
+	dependenciesMeta map[string]map[string]string
 	interfaces.Resource
 	// parentKey -> dependencyMetadata
-	meta map[string]map[string]string
 	sync.RWMutex
 }
 
@@ -63,7 +63,7 @@ func (sr *scheduledResource) Key() string {
 	return baseKey + "/" + sr.suffix
 }
 
-// requestCreation does not create a scheduled resource immediately, but updates status
+// requestCreation does not create a scheduled resource immediately, but updates state
 // and puts the scheduled resource to corresponding channel. Returns true if
 // scheduled resource creation was actually requested, false otherwise.
 func (sr *scheduledResource) requestCreation(toCreate chan<- *scheduledResource) bool {
@@ -88,17 +88,14 @@ func (sr *scheduledResource) requestCreation(toCreate chan<- *scheduledResource)
 }
 
 func isResourceFinished(sr *scheduledResource) (bool, error) {
-	status, err := sr.Resource.Status(nil)
-	if err != nil {
-		return status != interfaces.ResourceNotReady, err
-	}
-	if status == interfaces.ResourceReady {
-		return true, nil
+	progress, err := sr.Resource.GetProgress()
+	if err == nil {
+		return progress == 1, nil
 	}
 	return false, nil
 }
 
-// wait periodically checks resource status and returns if the resource processing is finished,
+// wait periodically checks resource deployment progress and returns if the resource processing is finished,
 // regardless successful or not. The actual result of processing could be obtained from returned error.
 func (sr *scheduledResource) wait(checkInterval time.Duration, timeout time.Duration, stopChan <-chan struct{}) (bool, error) {
 	log.Printf("%s flow: waiting for %v to be created", sr.context.graph.graphOptions.FlowName, sr.Key())
@@ -126,33 +123,38 @@ func (sr *scheduledResource) wait(checkInterval time.Duration, timeout time.Dura
 	}
 }
 
-// Status either returns cached copy of resource's status or retrieves it via Resource.Status.
-// Only ResourceReady is cached to avoid inconsistency for resources that may go to failure state over time
+// GetProgress either returns cached copy of resource's progress or retrieves it via Resource.GetProgress.
+// Only 100% completion is cached to avoid inconsistency for resources that may go to failure state over time
 // so that if resource becomes ready it stays in this status for the whole deployment duration.
 // Errors returned by the resource are never cached, however if AC sees permanent problem with resource it may set the
 // error field
-func (sr *scheduledResource) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+func (sr *scheduledResource) GetProgress() (float32, error) {
 	sr.Lock()
 	defer sr.Unlock()
-	if sr.status != "" || sr.error != nil {
-		return sr.status, sr.error
+	if sr.error != nil {
+		return 0, sr.error
 	}
-	status, err := sr.Resource.Status(meta)
-	if err == nil && status == interfaces.ResourceReady {
-		sr.status = status
+	if sr.finished {
+		return 1, nil
 	}
-	return status, err
+	progress, err := sr.Resource.GetProgress()
+	if err == nil && progress == 1 {
+		sr.finished = true
+	}
+	return progress, err
 }
 
-// isBlocked checks whether a scheduled resource can be created. It checks status of resources
-// it depends on, via API.
 func (sr *scheduledResource) isBlocked() bool {
-	isBlocked := false
+	return len(sr.getBlockedBy()) > 0
+}
+
+func (sr *scheduledResource) getBlockedBy() []string {
+	blockedBy := make([]string, 0, len(sr.requires))
 	var permanentlyBlockedKeys []string
 	skipped := true
 
 	for _, reqKey := range sr.requires {
-		meta := sr.meta[reqKey]
+		meta := sr.dependenciesMeta[reqKey]
 		onErrorValue, onErrorSet := meta["on-error"]
 		onErrorSet = onErrorSet && onErrorValue != "false"
 		req := sr.context.graph.graph[reqKey]
@@ -165,18 +167,19 @@ func (sr *scheduledResource) isBlocked() bool {
 		if ignored {
 			continue
 		}
-		status, err := req.Status(meta)
+		progress, err := req.GetProgress()
 		if onErrorSet {
 			if permanentError == nil {
-				isBlocked = true
-				if err == nil && status == interfaces.ResourceReady {
+				blockedBy = append(blockedBy, reqKey)
+				if err == nil && progress == 1 {
 					permanentlyBlockedKeys = append(permanentlyBlockedKeys, reqKey)
 				}
 			}
 		} else {
 			skipped = false
-			if permanentError != nil || err != nil || status != interfaces.ResourceReady {
-				isBlocked = true
+			threshold := getSuccessFactor(meta)
+			if permanentError != nil || err != nil || progress < threshold {
+				blockedBy = append(blockedBy, reqKey)
 				if permanentError != nil {
 					permanentlyBlockedKeys = append(permanentlyBlockedKeys, reqKey)
 				}
@@ -190,7 +193,7 @@ func (sr *scheduledResource) isBlocked() bool {
 		sr.Unlock()
 	}
 
-	return isBlocked
+	return blockedBy
 }
 
 func createResources(toCreate chan *scheduledResource, finished chan<- *scheduledResource, ccLimiter chan struct{}, stopChan <-chan struct{}) {
@@ -208,9 +211,9 @@ func createResources(toCreate chan *scheduledResource, finished chan<- *schedule
 				<-ccLimiter
 			}()
 
-			attempts := resources.GetIntMeta(r.Resource, "retry", 1)
-			timeoutInSeconds := resources.GetIntMeta(r.Resource, "timeout", -1)
-			onError := resources.GetStringMeta(r.Resource, "on-error", "")
+			attempts := getIntMeta(r, "retry", 1)
+			timeoutInSeconds := getIntMeta(r, "timeout", -1)
+			onError := getStringMeta(r, "on-error", "")
 
 			waitTimeout := WaitTimeout
 			if timeoutInSeconds >= 0 {
@@ -373,65 +376,36 @@ func (depGraph dependencyGraph) Deploy(stopChan <-chan struct{}) bool {
 	return result
 }
 
-// getNodeReport acts as a more verbose version of isBlocked. It performs the
-// same check as isBlocked, but returns the DeploymentReport
-func (sr *scheduledResource) getNodeReport(name string) report.NodeReport {
-	var ready bool
-	isBlocked := false
-	dependencies := make([]interfaces.DependencyReport, 0, len(sr.requires))
-	status, err := sr.Status(nil)
-	if err != nil {
-		ready = false
-	} else {
-		ready = status == "ready"
-	}
-	for _, rKey := range sr.requires {
-		r := sr.context.graph.graph[rKey]
-		r.RLock()
-		meta := r.meta[sr.Key()]
-		depReport := r.GetDependencyReport(meta)
-		r.RUnlock()
-		if depReport.Blocks {
-			isBlocked = true
-		}
-		dependencies = append(dependencies, depReport)
-	}
-	return report.NodeReport{
-		Dependent:    name,
-		Dependencies: dependencies,
-		Blocked:      isBlocked,
-		Ready:        ready,
-	}
-}
-
-// GetStatus generates data for getting the status of deployment. Returns
-// a DeploymentStatus and a human readable report string
-// TODO: Allow for other formats of report (e.g. json for visualisations)
-func (depGraph dependencyGraph) GetStatus() (interfaces.DeploymentStatus, interfaces.DeploymentReport) {
-	var readyExist, nonReadyExist bool
-	var status interfaces.DeploymentStatus
-	deploymentReport := make(report.DeploymentReport, 0, len(depGraph.graph))
-	for key, resource := range depGraph.graph {
-		depReport := resource.getNodeReport(key)
-		deploymentReport = append(deploymentReport, depReport)
-		if depReport.Ready {
-			readyExist = true
-		} else {
-			nonReadyExist = true
-		}
-	}
-	switch {
-	case readyExist && nonReadyExist:
-		status = interfaces.Running
-	case readyExist:
-		status = interfaces.Finished
-	case nonReadyExist:
-		status = interfaces.Prepared
-	default:
-		status = interfaces.Empty
-	}
-	return status, deploymentReport
-}
+//// getNodeReport acts as a more verbose version of isBlocked. It performs the
+//// same check as isBlocked, but returns the DeploymentReport
+//func (sr *scheduledResource) getNodeReport(name string) report.NodeReport {
+//	var ready bool
+//	isBlocked := false
+//	dependencies := make([]interfaces.DependencyReport, 0, len(sr.requires))
+//	status, err := sr.GetProgress(nil)
+//	if err != nil {
+//		ready = false
+//	} else {
+//		ready = status == "ready"
+//	}
+//	for _, rKey := range sr.requires {
+//		r := sr.context.graph.graph[rKey]
+//		r.RLock()
+//		meta := r.meta[sr.Key()]
+//		depReport := r.GetDependencyReport(meta)
+//		r.RUnlock()
+//		if depReport.Blocks {
+//			isBlocked = true
+//		}
+//		dependencies = append(dependencies, depReport)
+//	}
+//	return report.NodeReport{
+//		Dependent:    name,
+//		Dependencies: dependencies,
+//		Blocked:      isBlocked,
+//		Ready:        ready,
+//	}
+//}
 
 func runConcurrently(funcs []func(<-chan struct{}) bool, concurrency int, stopChan <-chan struct{}) bool {
 	if concurrency < 1 {
@@ -470,7 +444,7 @@ func deleteResource(resource *scheduledResource) error {
 		log.Printf("%s flow: Deleting resource %s", resource.context.flow.Name, resource.Key())
 		err := resource.Delete()
 		if err != nil {
-			statusError, ok := err.(*errors.StatusError)
+			statusError, ok := err.(*api_errors.StatusError)
 			if ok && statusError.Status().Reason == unversioned.StatusReasonNotFound {
 				return nil
 			}

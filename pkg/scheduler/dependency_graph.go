@@ -88,16 +88,17 @@ func (gc graphContext) Graph() interfaces.DependencyGraph {
 }
 
 // newScheduledResourceFor returns new scheduled resource for given resource in init state
-func newScheduledResourceFor(r interfaces.Resource, suffix string, context *graphContext, existing bool) *scheduledResource {
+func newScheduledResourceFor(r interfaces.Resource, suffix string, context *graphContext, existing bool, meta map[string]interface{}) *scheduledResource {
 	return &scheduledResource{
-		started:  false,
-		ignored:  false,
-		error:    nil,
-		Resource: r,
-		meta:     map[string]map[string]string{},
-		context:  context,
-		existing: existing,
-		suffix:   copier.EvaluateString(suffix, getArgFunc(context)),
+		started:          false,
+		ignored:          false,
+		error:            nil,
+		Resource:         r,
+		dependenciesMeta: map[string]map[string]string{},
+		resourceMeta:     meta,
+		context:          context,
+		existing:         existing,
+		suffix:           copier.EvaluateString(suffix, getArgFunc(context)),
 	}
 }
 
@@ -276,26 +277,28 @@ func (sched scheduler) newScheduledResource(kind, name, suffix string, resDefs m
 		return nil, fmt.Errorf("not a proper resource kind: %s. Expected '%s'",
 			kind, strings.Join(resources.Kinds, "', '"))
 	}
-	r, existing, err := sched.newResource(kind, name, resDefs, gc, resourceTemplate, silent)
+	r, existing, meta, err := sched.newResource(kind, name, resDefs, gc, resourceTemplate, silent)
 	if err != nil {
 		return nil, err
 	}
 
-	return newScheduledResourceFor(r, suffix, gc, existing), nil
+	return newScheduledResourceFor(r, suffix, gc, existing, meta), nil
 }
 
 // newResource returns creates a resource controller for a given resources name and factory.
 // It returns the created controller (implementation of interfaces.Resource), flag saying if the created controller
-// will create new resource or check the status of existing resource outside (i.e. that doesn't have resource defintition)
+// will create new resource or check the status of existing resource outside (i.e. that doesn't have resource definition)
 // and error (or nil, if no error happened)
 func (sched scheduler) newResource(kind, name string, resDefs map[string]client.ResourceDefinition,
-	gc interfaces.GraphContext, resourceTemplate interfaces.ResourceTemplate, silent bool) (interfaces.Resource, bool, error) {
+	gc interfaces.GraphContext, resourceTemplate interfaces.ResourceTemplate,
+	silent bool) (interfaces.Resource, bool, map[string]interface{}, error) {
+
 	rd, ok := resDefs[kind+"/"+name]
 	if ok {
 		if !silent {
 			log.Printf("Found resource definition for %s/%s", kind, name)
 		}
-		return resourceTemplate.New(rd, sched.client, gc), false, nil
+		return resourceTemplate.New(rd, sched.client, gc), false, rd.Meta, nil
 	}
 
 	if !silent {
@@ -304,9 +307,9 @@ func (sched scheduler) newResource(kind, name string, resDefs map[string]client.
 	name = copier.EvaluateString(name, getArgFunc(gc))
 	r := resourceTemplate.NewExisting(name, sched.client, gc)
 	if r == nil {
-		return nil, true, fmt.Errorf("existing resource %s/%s cannot be reffered", kind, name)
+		return nil, true, nil, fmt.Errorf("existing resource %s/%s cannot be reffered", kind, name)
 	}
-	return r, true, nil
+	return r, true, nil, nil
 }
 
 func keyParts(key string) (kind, name, suffix string, err error) {
@@ -718,68 +721,6 @@ func listDependencies(dependencies map[string][]client.Dependency, parent string
 	return result
 }
 
-func permute(variants [][]string) [][]string {
-	switch len(variants) {
-	case 0:
-		return variants
-	case 1:
-		var result [][]string
-		for _, v := range variants[0] {
-			result = append(result, []string{v})
-		}
-		return result
-	default:
-		var result [][]string
-		for _, tail := range variants[len(variants)-1] {
-			for _, p := range permute(variants[:len(variants)-1]) {
-				result = append(result, append(p, tail))
-			}
-		}
-		return result
-	}
-}
-
-func expandListExpression(expr string) []string {
-	var result []string
-	for _, part := range strings.Split(expr, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-
-		isRange := true
-		var from, to int
-
-		rangeParts := strings.SplitN(part, "..", 2)
-		if len(rangeParts) != 2 {
-			isRange = false
-		}
-
-		var err error
-		if isRange {
-			from, err = strconv.Atoi(rangeParts[0])
-			if err != nil {
-				isRange = false
-			}
-		}
-		if isRange {
-			to, err = strconv.Atoi(rangeParts[1])
-			if err != nil {
-				isRange = false
-			}
-		}
-
-		if isRange {
-			for i := from; i <= to; i++ {
-				result = append(result, strconv.Itoa(i))
-			}
-		} else {
-			result = append(result, part)
-		}
-	}
-	return result
-}
-
 type interimGraphVertex struct {
 	dependency        client.Dependency
 	scheduledResource *scheduledResource
@@ -815,8 +756,10 @@ func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 					}
 				}
 				parentContext := replicaContext
+				distance := 1
 				if parent.scheduledResource != nil {
 					parentContext = parent.scheduledResource.context
+					distance = parent.scheduledResource.distance + 1
 				}
 
 				kind, name, suffix, err := keyParts(dep.Child)
@@ -827,6 +770,7 @@ func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 					return err
 				}
 				sr.usedInReplicas = []string{replicaName}
+				sr.distance = distance
 
 				vertex := interimGraphVertex{
 					scheduledResource: sr,
@@ -838,7 +782,7 @@ func (sched *scheduler) fillDependencyGraph(rootContext *graphContext,
 				if parent.scheduledResource != nil {
 					sr.requires = append(sr.requires, parent.scheduledResource.Key())
 					parent.scheduledResource.requiredBy = append(parent.scheduledResource.requiredBy, sr.Key())
-					sr.meta[parent.dependency.Child] = dep.Meta
+					sr.dependenciesMeta[parent.dependency.Child] = dep.Meta
 				}
 				queue.PushBack(vertex)
 			}
@@ -866,12 +810,13 @@ func (sched *scheduler) concatenateReplicas(vertices [][]interimGraphVertex, gc 
 	options interfaces.DependencyGraphOptions) {
 	graph := gc.graph.graph
 	var previousReplicaGraph map[string]*scheduledResource
+	maxDistance := 0
 	for i, replicaVertices := range vertices {
 		replicaGraph := map[string]*scheduledResource{}
-		sched.mergeInterimGraphVertices(replicaVertices, replicaGraph, options)
+		replicaDistance := sched.mergeInterimGraphVertices(replicaVertices, replicaGraph, options)
 
 		if i > 0 {
-			correctDuplicateResources(graph, replicaGraph, i)
+			adjustConcatenatedReplicaResources(graph, replicaGraph, i, maxDistance)
 
 			for _, leafName := range getLeafs(previousReplicaGraph) {
 				for _, rootName := range getRoots(replicaGraph) {
@@ -886,15 +831,17 @@ func (sched *scheduler) concatenateReplicas(vertices [][]interimGraphVertex, gc 
 		for key, value := range replicaGraph {
 			graph[key] = value
 		}
+		maxDistance += replicaDistance
 	}
 }
 
-func correctDuplicateResources(existingGraph, newGraph map[string]*scheduledResource, index int) {
+func adjustConcatenatedReplicaResources(existingGraph, newGraph map[string]*scheduledResource, index, startDistance int) {
 	toReplace := map[string]*scheduledResource{}
 	for key, sr := range newGraph {
 		if existingGraph[key] != nil {
 			toReplace[key] = sr
 		}
+		sr.distance += startDistance
 	}
 	for key, sr := range toReplace {
 		sr.context.id = existingGraph[key].context.id
@@ -951,8 +898,9 @@ func getLeafs(graph map[string]*scheduledResource) []string {
 }
 
 func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex, graph map[string]*scheduledResource,
-	options interfaces.DependencyGraphOptions) {
+	options interfaces.DependencyGraphOptions) int {
 
+	maxDistance := 0
 	for _, entry := range vertices {
 		key := entry.scheduledResource.Key()
 		existingSr := graph[key]
@@ -960,17 +908,22 @@ func (sched *scheduler) mergeInterimGraphVertices(vertices []interimGraphVertex,
 			if !options.Silent {
 				log.Printf("Adding resource %s to the dependency graph flow %s", key, options.FlowName)
 			}
-			graph[key] = entry.scheduledResource
+			existingSr = entry.scheduledResource
+			graph[key] = existingSr
 		} else {
 			sched.updateContext(existingSr.context, entry.parentContext, entry.dependency)
 			existingSr.requires = append(existingSr.requires, entry.scheduledResource.requires...)
 			existingSr.requiredBy = append(existingSr.requiredBy, entry.scheduledResource.requiredBy...)
 			existingSr.usedInReplicas = append(existingSr.usedInReplicas, entry.scheduledResource.usedInReplicas...)
-			for metaKey, metaValue := range entry.scheduledResource.meta {
-				existingSr.meta[metaKey] = metaValue
+			for metaKey, metaValue := range entry.scheduledResource.dependenciesMeta {
+				existingSr.dependenciesMeta[metaKey] = metaValue
 			}
 		}
+		if existingSr.distance > maxDistance {
+			maxDistance = existingSr.distance
+		}
 	}
+	return maxDistance
 }
 
 // getResourceDestructors builds a list of functions, each of them delete one of replica resources

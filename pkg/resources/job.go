@@ -19,7 +19,6 @@ import (
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 
 	batchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	"k8s.io/client-go/pkg/apis/batch/v1"
@@ -27,16 +26,20 @@ import (
 
 var jobParamFields = []string{
 	"Spec.Template.Spec.Containers.Env",
-	"Spec.Template.Spec.Containers.Name",
+	"Spec.Template.Spec.Containers.name",
 	"Spec.Template.Spec.InitContainers.Env",
-	"Spec.Template.Spec.InitContainers.Name",
+	"Spec.Template.Spec.InitContainers.name",
 	"Spec.Template.ObjectMeta",
 }
 
 type newJob struct {
-	Base
-	Job    *v1.Job
-	Client batchv1.JobInterface
+	job    *v1.Job
+	client batchv1.JobInterface
+}
+
+type existingJob struct {
+	name   string
+	client batchv1.JobInterface
 }
 
 func jobKey(name string) string {
@@ -61,72 +64,67 @@ func (jobTemplateFactory) Kind() string {
 // New returns Job controller for new resource based on resource definition
 func (jobTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	job := parametrizeResource(def.Job, gc, jobParamFields).(*v1.Job)
-	return createNewJob(job, c.Jobs(), def.Meta)
+	return createNewJob(job, c.Jobs())
 }
 
 // NewExisting returns Job controller for existing resource by its name
 func (jobTemplateFactory) NewExisting(name string, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: existingJob{Name: name, Client: c.Jobs()}}
+	return existingJob{name: name, client: c.Jobs()}
 }
 
-func jobStatus(j batchv1.JobInterface, name string) (interfaces.ResourceStatus, error) {
+func jobProgress(j batchv1.JobInterface, name string) (float32, error) {
 	job, err := j.Get(name)
 	if err != nil {
-		return interfaces.ResourceError, err
+		return 0, err
 	}
 
 	for _, cond := range job.Status.Conditions {
 		if cond.Type == "Complete" && cond.Status == "True" {
-			return interfaces.ResourceReady, nil
+			return 1, nil
 		}
 	}
 
-	return interfaces.ResourceNotReady, nil
+	return 0, nil
 }
 
 // Key returns job name
 func (j newJob) Key() string {
-	return jobKey(j.Job.Name)
+	return jobKey(j.job.Name)
 }
 
-// Status returns job status
-func (j newJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return jobStatus(j.Client, j.Job.Name)
+// GetProgress returns job deployment progress
+func (j newJob) GetProgress() (float32, error) {
+	return jobProgress(j.client, j.job.Name)
 }
 
 // Create looks for the Job in k8s and creates it if not present
 func (j newJob) Create() error {
-	if err := checkExistence(j); err != nil {
-		log.Println("Creating", j.Key())
-		j.Job, err = j.Client.Create(j.Job)
-		return err
+	if checkExistence(j) {
+		return nil
 	}
-	return nil
+	log.Println("Creating", j.Key())
+	obj, err := j.client.Create(j.job)
+	j.job = obj
+	return err
 }
 
 // Delete deletes Job from the cluster
 func (j newJob) Delete() error {
-	return j.Client.Delete(j.Job.Name, nil)
+	return j.client.Delete(j.job.Name, nil)
 }
 
-func createNewJob(job *v1.Job, client batchv1.JobInterface, meta map[string]interface{}) interfaces.Resource {
-	return report.SimpleReporter{BaseResource: newJob{Base: Base{meta}, Job: job, Client: client}}
-}
-
-type existingJob struct {
-	Base
-	Name   string
-	Client batchv1.JobInterface
+func createNewJob(job *v1.Job, client batchv1.JobInterface) interfaces.Resource {
+	return newJob{job: job, client: client}
 }
 
 // Key return Job name
 func (j existingJob) Key() string {
-	return jobKey(j.Name)
+	return jobKey(j.name)
 }
 
-// Status returns job status
-func (j existingJob) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return jobStatus(j.Client, j.Name)
+// GetProgress returns job deployment progress
+func (j existingJob) GetProgress() (float32, error) {
+	return jobProgress(j.client, j.name)
 }
 
 // Create looks for existing Job and returns error if there is no such Job
@@ -136,5 +134,5 @@ func (j existingJob) Create() error {
 
 // Delete deletes Job from the cluster
 func (j existingJob) Delete() error {
-	return j.Client.Delete(j.Name, nil)
+	return j.client.Delete(j.name, nil)
 }

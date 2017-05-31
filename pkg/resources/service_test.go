@@ -15,24 +15,22 @@
 package resources
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 // TestCheckServiceStatusReady checks if the service status check is fine for healthy service
 func TestCheckServiceStatusReady(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeService("success"))
-	status, err := serviceStatus(c.Services(), "success", c)
+	progress, err := serviceProgress(c, "success")
 
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	if status != interfaces.ResourceReady {
-		t.Errorf("service should be `ready`, is `%s` instead", status)
+	if progress != 1 {
+		t.Errorf("progress must be 1 but got %v", progress)
 	}
 }
 
@@ -42,18 +40,13 @@ func TestCheckServiceStatusPodNotReady(t *testing.T) {
 	pod := mocks.MakePod("error")
 	pod.Labels = svc.Spec.Selector
 	c := mocks.NewClient(svc, pod)
-	status, err := serviceStatus(c.Services(), "failedpod", c)
+	progress, err := serviceProgress(c, "failedpod")
 
-	if err == nil {
-		t.Fatal("error should be returned, got nil")
+	if err != nil {
+		t.Fatal(err)
 	}
-	expectedError := fmt.Sprintf("resource pod/%v is not ready", pod.Name)
-	if err.Error() != expectedError {
-		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
-	}
-
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	if progress != 0 {
+		t.Errorf("progress must be 0 but got %v", progress)
 	}
 }
 
@@ -63,19 +56,14 @@ func TestCheckServiceStatusJobNotReady(t *testing.T) {
 	job := mocks.MakeJob("error")
 	job.Labels = svc.Spec.Selector
 	c := mocks.NewClient(svc, job)
-	status, err := serviceStatus(c.Services(), "failedjob", c)
+	progress, err := serviceProgress(c, "failedjob")
 
-	if err == nil {
-		t.Error("error should be returned, got nil")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	expectedError := fmt.Sprintf("resource job/%v is not ready", job.Name)
-	if err.Error() != expectedError {
-		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
-	}
-
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	if progress != 0 {
+		t.Errorf("progress must be 0 but got %v", progress)
 	}
 }
 
@@ -85,19 +73,14 @@ func TestCheckServiceStatusReplicaSetNotReady(t *testing.T) {
 	rc := mocks.MakeReplicaSet("fail")
 	rc.Labels = svc.Spec.Selector
 	c := mocks.NewClient(svc, rc)
-	status, err := serviceStatus(c.Services(), "failedrc", c)
+	progress, err := serviceProgress(c, "failedrc")
 
-	if err == nil {
-		t.Error("error should be returned, got nil")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	expectedError := fmt.Sprintf("resource replicaset/%v is not ready", rc.Name)
-	if err.Error() != expectedError {
-		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
-	}
-
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	if progress != 0 {
+		t.Errorf("progress must be 0 but got %v", progress)
 	}
 }
 
@@ -124,8 +107,11 @@ func TestCheckServiceStatusOnPartialSelector(t *testing.T) {
 	}
 
 	c := mocks.NewClient(svc, rs, pod, job)
-	status, err := serviceStatus(c.Services(), "svc", c)
+	progress, err := serviceProgress(c, "svc")
 
+	if progress != 1 {
+		t.Errorf("progress must be 0.5 but got %v", progress)
+	}
 	if err != nil {
 		t.Fatalf("error should be nil, got %v", err)
 	}
@@ -138,17 +124,13 @@ func TestCheckServiceStatusOnPartialSelector(t *testing.T) {
 	}
 	c.ReplicaSets().Create(rs2)
 
-	status, err = serviceStatus(c.Services(), "svc", c)
+	progress, err = serviceProgress(c, "svc")
 
-	if err == nil {
-		t.Fatal("error should be returned, got nil")
-	}
-	expectedError := fmt.Sprintf("resource replicaset/%s is not ready", rs2.Name)
-	if err.Error() != expectedError {
-		t.Errorf("expected `%s` as error, got `%s`", expectedError, err.Error())
+	if err != nil {
+		t.Error(err)
 	}
 
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	if progress != 0.5 {
+		t.Errorf("progress must be 0.5 but got %v", progress)
 	}
 }
