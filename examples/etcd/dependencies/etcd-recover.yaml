@@ -8,6 +8,7 @@ parent: flow/etcd-recover
 child: job/delete-node-$NAME-job
 args:
   NAME: $nodeSuffix
+  SELF_DELETE: "true"
 ---
 apiVersion: appcontroller.k8s/v1alpha1
 kind: Dependency

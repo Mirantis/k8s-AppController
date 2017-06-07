@@ -35,4 +35,5 @@ parent: flow/etcd-scale
 child: job/delete-node-$NAME-job
 args:
   NAME: $AC_NAME
+  SELF_DELETE: "false"
 

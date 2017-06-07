@@ -25,6 +25,8 @@ job:
               value: $clusterName
             - name: REPLICA_NAME
               value: $NAME
+            - name: SELF_DELETE
+              value: $SELF_DELETE
           command:
             - "/bin/sh"
             - "-c"
@@ -38,5 +40,8 @@ job:
               kubectl delete replica "replica-$REPLICA_NAME"
               kubectl delete service "etcd-$REPLICA_NAME"
               kubectl delete replica -l"replicaspace=etcd-recover-$CLUSTERNAME"
-              kubectl delete job "delete-node-$REPLICA_NAME-job"
+              if [ $SELF_DELETE = "true" ]
+              then
+                kubectl delete job "delete-node-$REPLICA_NAME-job"
+              fi
         restartPolicy: Never
