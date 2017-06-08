@@ -190,11 +190,9 @@ func GetStatus(client client.Interface, selector labels.Selector,
 	if options.FlowName == "" {
 		options.FlowName = interfaces.DefaultFlowName
 	}
-	options.ReplicaCount = 0
+	options.ReplicaCount = -1
+	options.FixedNumberOfReplicas = true
 	options.Silent = true
-	options.FixedNumberOfReplicas = false
-	options.MinReplicaCount = 0
-	options.MaxReplicaCount = 0
 
 	if !silent {
 		log.Println("Getting status of flow", options.FlowName)
