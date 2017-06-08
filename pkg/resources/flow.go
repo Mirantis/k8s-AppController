@@ -58,9 +58,14 @@ func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface
 		depName = strings.Replace(deps[0].Name, deps[0].GenerateName, "", 1)
 	}
 
+	def.Flow = newFlow
+
 	return report.SimpleReporter{
 		BaseResource: &flow{
-			Base:          Base{def.Meta},
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
 			flow:          newFlow,
 			context:       gc,
 			generatedName: fmt.Sprintf("%s-%s%s", newFlow.Name, depName, gc.GetArg("AC_NAME")),

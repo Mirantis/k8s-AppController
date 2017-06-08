@@ -17,6 +17,7 @@ package resources
 import (
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -59,8 +60,8 @@ func (replicaSetTemplateFactory) Kind() string {
 
 // New returns ReplicaSet controller for new resource based on resource definition
 func (replicaSetTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	replicaSet := parametrizeResource(def.ReplicaSet, gc, replicaSetParamFields).(*extbeta1.ReplicaSet)
-	return createNewReplicaSet(replicaSet, c.ReplicaSets(), def.Meta)
+	def.ReplicaSet = parametrizeResource(def.ReplicaSet, gc, replicaSetParamFields).(*extbeta1.ReplicaSet)
+	return createNewReplicaSet(def, c.ReplicaSets())
 }
 
 // NewExisting returns ReplicaSet controller for existing resource by its name
@@ -68,12 +69,7 @@ func (replicaSetTemplateFactory) NewExisting(name string, c client.Interface, gc
 	return existingReplicaSet{Name: name, Client: c.ReplicaSets()}
 }
 
-func replicaSetStatus(r v1beta1.ReplicaSetInterface, name string, meta map[string]string) (interfaces.ResourceStatus, error) {
-	rs, err := r.Get(name)
-	if err != nil {
-		return interfaces.ResourceError, err
-	}
-
+func replicaSetStatus(rs *extbeta1.ReplicaSet, meta map[string]string) (interfaces.ResourceStatus, error) {
 	successFactor, err := getPercentage(successFactorKey, meta)
 	if err != nil {
 		return interfaces.ResourceError, err
@@ -140,14 +136,15 @@ func (r newReplicaSet) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (r newReplicaSet) UpdateFromDefinition() (err error) {
+	r.ReplicaSet, err = r.Client.Update(r.Definition.ReplicaSet)
+	return err
+}
+
 // Delete deletes ReplicaSet from the cluster
 func (r newReplicaSet) Delete() error {
 	return r.Client.Delete(r.ReplicaSet.Name, nil)
-}
-
-// Status returns ReplicaSet status based on provided meta.
-func (r newReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return replicaSetStatus(r.Client, r.ReplicaSet.Name, meta)
 }
 
 // GetDependencyReport returns a DependencyReport for this ReplicaSet
@@ -155,8 +152,41 @@ func (r newReplicaSet) GetDependencyReport(meta map[string]string) interfaces.De
 	return replicaSetReport(r.Client, r.ReplicaSet.Name, meta)
 }
 
-func createNewReplicaSet(replicaSet *extbeta1.ReplicaSet, client v1beta1.ReplicaSetInterface, meta map[string]interface{}) newReplicaSet {
-	return newReplicaSet{Base: Base{meta}, ReplicaSet: replicaSet, Client: client}
+// Status returns ReplicaSet status based on provided meta.
+func (r newReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+	rs, err := r.Client.Get(r.ReplicaSet.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	if !r.equalsToDefinition(rs) {
+		return interfaces.ResourceWaitingForUpgrade, nil
+	}
+	return replicaSetStatus(rs, meta)
+}
+
+// equalsToDefinition checks if definition in object is compatible with provided object
+func (r newReplicaSet) equalsToDefinition(replicaSetiface interface{}) bool {
+	replicaSet := replicaSetiface.(*extbeta1.ReplicaSet)
+
+	return reflect.DeepEqual(replicaSet.ObjectMeta, r.ReplicaSet.ObjectMeta) && reflect.DeepEqual(replicaSet.Spec, r.ReplicaSet.Spec)
+}
+
+// StatusIsCacheable returns false if meta contains SuccessFactorKey
+func (r newReplicaSet) StatusIsCacheable(meta map[string]string) bool {
+	_, ok := meta[successFactorKey]
+	return !ok
+}
+
+func createNewReplicaSet(def client.ResourceDefinition, client v1beta1.ReplicaSetInterface) newReplicaSet {
+	return newReplicaSet{
+		Base: Base{
+			Definition: def,
+			meta:       def.Meta,
+		},
+		ReplicaSet: def.ReplicaSet,
+		Client:     client,
+	}
 }
 
 type existingReplicaSet struct {
@@ -177,7 +207,11 @@ func (r existingReplicaSet) Create() error {
 
 // Status returns ReplicaSet status based on provided meta.
 func (r existingReplicaSet) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return replicaSetStatus(r.Client, r.Name, meta)
+	rs, err := r.Client.Get(r.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+	return replicaSetStatus(rs, meta)
 }
 
 // Delete deletes ReplicaSet from the cluster

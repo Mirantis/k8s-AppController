@@ -16,6 +16,7 @@ package resources
 
 import (
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -59,8 +60,21 @@ func (secretTemplateFactory) Kind() string {
 
 // New returns Secret controller for new resource based on resource definition
 func (secretTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	secret := parametrizeResource(def.Secret, gc, secretParamFields).(*v1.Secret)
-	return report.SimpleReporter{BaseResource: newSecret{Base: Base{def.Meta}, Secret: secret, Client: c.Secrets()}}
+	def.Secret = parametrizeResource(def.Secret, gc, secretParamFields).(*v1.Secret)
+	return createNewSecret(def, c.Secrets())
+}
+
+func createNewSecret(def client.ResourceDefinition, c corev1.SecretInterface) interfaces.Resource {
+	return report.SimpleReporter{
+		BaseResource: newSecret{
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
+			Secret: def.Secret,
+			Client: c,
+		},
+	}
 }
 
 // NewExisting returns Secret controller for existing resource by its name
@@ -82,18 +96,25 @@ func (s existingSecret) Key() string {
 	return secretKey(s.Name)
 }
 
-func secretStatus(s corev1.SecretInterface, name string) (interfaces.ResourceStatus, error) {
-	_, err := s.Get(name)
+// Status returns interfaces.ResourceReady if the secret is available in cluster
+func (s newSecret) Status(_ map[string]string) (interfaces.ResourceStatus, error) {
+	secret, err := s.Client.Get(s.Secret.Name)
 	if err != nil {
 		return interfaces.ResourceError, err
+	}
+
+	if !s.equalsToDefinition(secret) {
+		return interfaces.ResourceWaitingForUpgrade, nil
 	}
 
 	return interfaces.ResourceReady, nil
 }
 
-// Status returns interfaces.ResourceReady if the secret is available in cluster
-func (s newSecret) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return secretStatus(s.Client, s.Secret.Name)
+// equalsToDefinition checks if definition in object is compatible with provided object
+func (s newSecret) equalsToDefinition(secretiface interface{}) bool {
+	secret := secretiface.(*v1.Secret)
+
+	return reflect.DeepEqual(secret.ObjectMeta, s.Secret.ObjectMeta) && reflect.DeepEqual(secret.Data, s.Secret.Data) && reflect.DeepEqual(secret.StringData, s.Secret.StringData) && secret.Type == s.Secret.Type
 }
 
 // Create looks for the Secret in k8s and creates it if not present
@@ -106,6 +127,12 @@ func (s newSecret) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (s newSecret) UpdateFromDefinition() (err error) {
+	s.Secret, err = s.Client.Update(s.Definition.Secret)
+	return err
+}
+
 // Delete deletes Secret from the cluster
 func (s newSecret) Delete() error {
 	return s.Client.Delete(s.Secret.Name, nil)
@@ -113,7 +140,12 @@ func (s newSecret) Delete() error {
 
 // Status returns interfaces.ResourceReady if the secret is available in cluster
 func (s existingSecret) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return secretStatus(s.Client, s.Name)
+	_, err := s.Client.Get(s.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	return interfaces.ResourceReady, nil
 }
 
 // Create looks for existing Secret and returns error if there is no such Secret

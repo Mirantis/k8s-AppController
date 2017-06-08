@@ -22,8 +22,14 @@ import (
 )
 
 func TestSuccessCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeReplicaSet("notfail"))
-	status, err := replicaSetStatus(c.ReplicaSets(), "notfail", nil)
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeReplicaSet(name)).ReplicaSets()
+
+	def := MakeDefinition(mocks.MakeReplicaSet(name))
+	tested := createNewReplicaSet(def, client)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Error(err)
@@ -35,8 +41,14 @@ func TestSuccessCheck(t *testing.T) {
 }
 
 func TestFailCheck(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeReplicaSet("fail"))
-	status, err := replicaSetStatus(c.ReplicaSets(), "fail", map[string]string{successFactorKey: "80"})
+	name := "fail"
+
+	client := mocks.NewClient(mocks.MakeReplicaSet(name)).ReplicaSets()
+
+	def := MakeDefinition(mocks.MakeReplicaSet(name))
+	tested := createNewReplicaSet(def, client)
+
+	status, err := tested.Status(map[string]string{successFactorKey: "80"})
 
 	if err != nil {
 		t.Error(err)
@@ -44,5 +56,28 @@ func TestFailCheck(t *testing.T) {
 
 	if status != interfaces.ResourceNotReady {
 		t.Errorf("status should be `not ready`, is `%s` instead.", status)
+	}
+}
+
+// TestReplicaSetUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestReplicaSetUpgraded(t *testing.T) {
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeReplicaSet(name)).ReplicaSets()
+
+	def := MakeDefinition(mocks.MakeReplicaSet(name))
+	//Make definition differ from client version
+	def.ReplicaSet.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+	tested := createNewReplicaSet(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err != nil {
+		t.Error("Error found, expected nil")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

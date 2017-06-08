@@ -42,6 +42,11 @@ func (c *Resource) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition does nothing
+func (c *Resource) UpdateFromDefinition() error {
+	return nil
+}
+
 // Delete does nothing
 func (c *Resource) Delete() error {
 	return nil

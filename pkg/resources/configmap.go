@@ -16,6 +16,7 @@ package resources
 
 import (
 	"log"
+	"reflect"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
@@ -58,8 +59,21 @@ func (configMapTemplateFactory) Kind() string {
 
 // New returns configMap controller for new resource based on resource definition
 func (configMapTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
-	cm := parametrizeResource(def.ConfigMap, gc, configMapParamFields).(*v1.ConfigMap)
-	return report.SimpleReporter{BaseResource: newConfigMap{Base: Base{def.Meta}, ConfigMap: cm, Client: c.ConfigMaps()}}
+	def.ConfigMap = parametrizeResource(def.ConfigMap, gc, configMapParamFields).(*v1.ConfigMap)
+	return createNewConfigMap(def, c)
+}
+
+func createNewConfigMap(def client.ResourceDefinition, c client.Interface) interfaces.Resource {
+	return report.SimpleReporter{
+		BaseResource: newConfigMap{
+			Base: Base{
+				Definition: def,
+				meta:       def.Meta,
+			},
+			ConfigMap: def.ConfigMap,
+			Client:    c.ConfigMaps(),
+		},
+	}
 }
 
 // NewExisting returns configMap controller for existing resource by its name
@@ -76,18 +90,25 @@ func (c newConfigMap) Key() string {
 	return configMapKey(c.ConfigMap.Name)
 }
 
-func configMapStatus(c corev1.ConfigMapInterface, name string) (interfaces.ResourceStatus, error) {
-	_, err := c.Get(name)
+// Status returns ConfigMap status. interfaces.ResourceReady means that its dependencies can be created
+func (c newConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+	cm, err := c.Client.Get(c.ConfigMap.Name)
 	if err != nil {
 		return interfaces.ResourceError, err
+	}
+
+	if !c.equalsToDefinition(cm) {
+		return interfaces.ResourceWaitingForUpgrade, nil
 	}
 
 	return interfaces.ResourceReady, nil
 }
 
-// Status returns configMap status. interfaces.ResourceReady means that its dependencies can be created
-func (c newConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return configMapStatus(c.Client, c.ConfigMap.Name)
+// equalsToDefinition checks if definition in object is compatible with provided object
+func (c newConfigMap) equalsToDefinition(configmap interface{}) bool {
+	cm := configmap.(*v1.ConfigMap)
+
+	return reflect.DeepEqual(cm.Data, c.Definition.ConfigMap.Data) && reflect.DeepEqual(cm.ObjectMeta, c.Definition.ConfigMap.ObjectMeta)
 }
 
 // Create looks for DaemonSet in k8s and creates it if not present
@@ -100,6 +121,12 @@ func (c newConfigMap) Create() error {
 	return nil
 }
 
+// UpdateFromDefinition updates k8s object with the definition contents
+func (c newConfigMap) UpdateFromDefinition() (err error) {
+	c.ConfigMap, err = c.Client.Update(c.Definition.ConfigMap)
+	return err
+}
+
 // Delete deletes configMap from the cluster
 func (c newConfigMap) Delete() error {
 	return c.Client.Delete(c.ConfigMap.Name, &v1.DeleteOptions{})
@@ -110,9 +137,14 @@ func (c existingConfigMap) Key() string {
 	return configMapKey(c.Name)
 }
 
-// Status returns configMap status. interfaces.ResourceReady means that its dependencies can be created
+// Status returns ConfigMap status. interfaces.ResourceReady means that its dependencies can be created
 func (c existingConfigMap) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
-	return configMapStatus(c.Client, c.Name)
+	_, err := c.Client.Get(c.Name)
+	if err != nil {
+		return interfaces.ResourceError, err
+	}
+
+	return interfaces.ResourceReady, nil
 }
 
 // Create looks for existing configMap and returns an error if there is no such configMap in a cluster

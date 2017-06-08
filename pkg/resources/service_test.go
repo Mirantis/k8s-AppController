@@ -24,8 +24,13 @@ import (
 
 // TestCheckServiceStatusReady checks if the service status check is fine for healthy service
 func TestCheckServiceStatusReady(t *testing.T) {
-	c := mocks.NewClient(mocks.MakeService("success"))
-	status, err := serviceStatus(c.Services(), "success", c)
+	svc := mocks.MakeService("success")
+	c := mocks.NewClient(svc)
+
+	def := MakeDefinition(svc)
+	tested := createNewService(def, c)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Errorf("%s", err)
@@ -38,11 +43,19 @@ func TestCheckServiceStatusReady(t *testing.T) {
 
 // TestCheckServiceStatusPodNotReady tests if service which selects failed pods is not ready
 func TestCheckServiceStatusPodNotReady(t *testing.T) {
-	svc := mocks.MakeService("failedpod")
-	pod := mocks.MakePod("error")
+	svcName := "failedpod"
+	podName := "error"
+	svc := mocks.MakeService(svcName)
+
+	pod := mocks.MakePod(podName)
 	pod.Labels = svc.Spec.Selector
+
 	c := mocks.NewClient(svc, pod)
-	status, err := serviceStatus(c.Services(), "failedpod", c)
+
+	def := MakeDefinition(svc)
+	tested := createNewService(def, c)
+
+	status, err := tested.Status(nil)
 
 	if err == nil {
 		t.Fatal("error should be returned, got nil")
@@ -57,13 +70,21 @@ func TestCheckServiceStatusPodNotReady(t *testing.T) {
 	}
 }
 
-// TestCheckServiceStatusJobNotReady tests if service which selects failed pods is not ready
+// TestCheckServiceStatusJobNotReady tests if service which selects failed jobs is not ready
 func TestCheckServiceStatusJobNotReady(t *testing.T) {
-	svc := mocks.MakeService("failedjob")
-	job := mocks.MakeJob("error")
+	svcName := "failedjob"
+	jobName := "error"
+	svc := mocks.MakeService(svcName)
+
+	job := mocks.MakeJob(jobName)
 	job.Labels = svc.Spec.Selector
+
 	c := mocks.NewClient(svc, job)
-	status, err := serviceStatus(c.Services(), "failedjob", c)
+
+	def := MakeDefinition(svc)
+	tested := createNewService(def, c)
+
+	status, err := tested.Status(nil)
 
 	if err == nil {
 		t.Error("error should be returned, got nil")
@@ -81,11 +102,19 @@ func TestCheckServiceStatusJobNotReady(t *testing.T) {
 
 // TestCheckServiceStatusReplicaSetNotReady tests if service which selects failed replicasets is not ready
 func TestCheckServiceStatusReplicaSetNotReady(t *testing.T) {
-	svc := mocks.MakeService("failedrc")
-	rc := mocks.MakeReplicaSet("fail")
+	svcName := "failedrc"
+	rsName := "fail"
+	svc := mocks.MakeService(svcName)
+
+	rc := mocks.MakeReplicaSet(rsName)
 	rc.Labels = svc.Spec.Selector
+
 	c := mocks.NewClient(svc, rc)
-	status, err := serviceStatus(c.Services(), "failedrc", c)
+
+	def := MakeDefinition(svc)
+	tested := createNewService(def, c)
+
+	status, err := tested.Status(nil)
 
 	if err == nil {
 		t.Error("error should be returned, got nil")
@@ -124,7 +153,11 @@ func TestCheckServiceStatusOnPartialSelector(t *testing.T) {
 	}
 
 	c := mocks.NewClient(svc, rs, pod, job)
-	status, err := serviceStatus(c.Services(), "svc", c)
+
+	def := MakeDefinition(svc)
+	tested := createNewService(def, c)
+
+	status, err := tested.Status(nil)
 
 	if err != nil {
 		t.Fatalf("error should be nil, got %v", err)
@@ -138,7 +171,7 @@ func TestCheckServiceStatusOnPartialSelector(t *testing.T) {
 	}
 	c.ReplicaSets().Create(rs2)
 
-	status, err = serviceStatus(c.Services(), "svc", c)
+	status, err = tested.Status(nil)
 
 	if err == nil {
 		t.Fatal("error should be returned, got nil")
@@ -150,5 +183,28 @@ func TestCheckServiceStatusOnPartialSelector(t *testing.T) {
 
 	if status != interfaces.ResourceNotReady {
 		t.Errorf("service should be `not ready`, is `%s` instead", status)
+	}
+}
+
+// TestServiceUpgraded tests status behaviour with resource definition differing from object in cluster
+func TestServiceUpgraded(t *testing.T) {
+	name := "notfail"
+
+	client := mocks.NewClient(mocks.MakeService(name))
+
+	def := MakeDefinition(mocks.MakeService(name))
+	//Make definition differ from client version
+	def.Service.ObjectMeta.Labels = map[string]string{
+		"trolo": "lolo",
+	}
+	tested := createNewService(def, client)
+
+	status, err := tested.Status(nil)
+
+	if err != nil {
+		t.Error("Error found, expected nil")
+	}
+	if status != interfaces.ResourceWaitingForUpgrade {
+		t.Errorf("Status should be `waiting for upgrade`, is `%s` instead.", status)
 	}
 }

@@ -21,12 +21,16 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/client-go/pkg/api/v1"
+	appsbeta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
+	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
+	extbeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/labels"
+
 	"github.com/Mirantis/k8s-AppController/pkg/client"
+	appsalpha1 "github.com/Mirantis/k8s-AppController/pkg/client/petsets/apis/apps/v1alpha1"
 	"github.com/Mirantis/k8s-AppController/pkg/copier"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/labels"
 )
 
 func init() {
@@ -52,7 +56,8 @@ func init() {
 
 // Base is a base struct that contains data common for all resources
 type Base struct {
-	meta map[string]interface{}
+	Definition client.ResourceDefinition
+	meta       map[string]interface{}
 }
 
 // Meta returns metadata parameter with given name, or empty string,
@@ -69,6 +74,16 @@ func (b Base) Meta(paramName string) interface{} {
 	}
 
 	return val
+}
+
+// equalsToDefinition returns false since there is no definition to compare Base resource against.
+func (b Base) equalsToDefinition(_ interface{}) bool {
+	return false
+}
+
+// UpdateFromDefinition is an empty implementation
+func (b Base) UpdateFromDefinition() error {
+	return nil
 }
 
 // KindToResourceTemplate is a map mapping kind strings to empty structs representing proper resources
@@ -154,7 +169,9 @@ func podsStateFromLabels(apiClient client.Interface, objLabels map[string]string
 	resources := make([]interfaces.BaseResource, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		p := pod
-		resources = append(resources, createNewPod(&p, apiClient.Pods(), nil))
+		//resources = append(resources, createNewPod(&p, apiClient.Pods(), nil))
+		def := MakeDefinition(&p)
+		resources = append(resources, createNewPod(def, apiClient.Pods()))
 	}
 
 	status, err := resourceListStatus(resources)
@@ -214,4 +231,36 @@ func parametrizeResource(resource interface{}, context interfaces.GraphContext, 
 		}
 		return value
 	}, append(replaceIn, "ObjectMeta")...)
+}
+
+func MakeDefinition(object interface{}) client.ResourceDefinition {
+	result := client.ResourceDefinition{}
+
+	switch object.(type) {
+	case *v1.ConfigMap:
+		result.ConfigMap = object.(*v1.ConfigMap)
+	case *extbeta1.DaemonSet:
+		result.DaemonSet = object.(*extbeta1.DaemonSet)
+	case *extbeta1.Deployment:
+		result.Deployment = object.(*extbeta1.Deployment)
+	case *batchv1.Job:
+		result.Job = object.(*batchv1.Job)
+	case *v1.PersistentVolumeClaim:
+		result.PersistentVolumeClaim = object.(*v1.PersistentVolumeClaim)
+	case *appsalpha1.PetSet:
+		result.PetSet = object.(*appsalpha1.PetSet)
+	case *v1.Pod:
+		result.Pod = object.(*v1.Pod)
+	case *extbeta1.ReplicaSet:
+		result.ReplicaSet = object.(*extbeta1.ReplicaSet)
+	case *v1.Secret:
+		result.Secret = object.(*v1.Secret)
+	case *v1.Service:
+		result.Service = object.(*v1.Service)
+	case *v1.ServiceAccount:
+		result.ServiceAccount = object.(*v1.ServiceAccount)
+	case *appsbeta1.StatefulSet:
+		result.StatefulSet = object.(*appsbeta1.StatefulSet)
+	}
+	return result
 }
