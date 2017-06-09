@@ -1327,3 +1327,43 @@ func TestMultipathParameterPassingWithSuffix(t *testing.T) {
 		t.Errorf("not all jobs were created: %d jobs were not found", len(jobNames))
 	}
 }
+
+// TestSyncOnVoidResource tests replica deployment synchronization on void resource - pods from all replicas must be
+// created before the first job deployment begins. Void acts here as a sync point because it dose nothing but is shared
+// by all replicas and thus depends on parents (pods) from all replicas
+func TestSyncOnVoidResource(t *testing.T) {
+	replicaCount := 5
+	c, fake := mocks.NewClientWithFake(
+		mocks.MakeFlow("test"),
+		mocks.MakeResourceDefinition("pod/ready-$AC_NAME"),
+		mocks.MakeResourceDefinition("job/ready-$AC_NAME"),
+		mocks.MakeDependency("flow/test", "pod/ready-$AC_NAME", "flow=test"),
+		mocks.MakeDependency("pod/ready-$AC_NAME", "void/checkpoint", "flow=test"),
+		mocks.MakeDependency("void/checkpoint", "job/ready-$AC_NAME", "flow=test"),
+	)
+
+	stopChan := make(chan struct{})
+	podCount := 0
+
+	fake.PrependReactor("create", "*",
+		func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			switch action.GetResource().Resource {
+			case "pods":
+				podCount++
+			case "jobs":
+				if podCount != replicaCount {
+					t.Errorf("expected %d pods to exist, found %d", replicaCount, podCount)
+				}
+			}
+			return false, nil, nil
+		})
+
+	depGraph, err := New(c, nil, 0).BuildDependencyGraph(
+		interfaces.DependencyGraphOptions{ReplicaCount: replicaCount, FlowName: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	depGraph.Deploy(stopChan)
+	ensureReplicas(c, t, replicaCount, replicaCount)
+}
