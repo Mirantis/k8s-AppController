@@ -30,6 +30,10 @@ type scheduler struct {
 	client      client.Interface
 	selector    labels.Selector
 	concurrency int
+
+	resDefsCache     map[string]client.ResourceDefinition
+	dependencyCache  []client.Dependency
+	graphHasNoCycles bool
 }
 
 var _ interfaces.Scheduler = &scheduler{}
@@ -161,14 +165,11 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 		if err != nil {
 			return "", err
 		}
-		var ch <-chan struct{}
-		if stopChan == nil {
-			ch := make(chan struct{})
-			defer close(ch)
+		if depGraph.Deploy(stopChan) {
+			log.Println("Deployment finished sucessfully")
 		} else {
-			ch = stopChan
+			log.Println("Deployment failed")
 		}
-		depGraph.Deploy(ch)
 	} else {
 		log.Printf("Scheduling deployment of %s flow", options.FlowName)
 		var err error
@@ -178,7 +179,6 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 		}
 		log.Printf("Scheduled deployment task %s", task)
 	}
-	log.Println("Done")
 	return task, nil
 }
 
