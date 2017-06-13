@@ -44,17 +44,38 @@ type AppControllerManager struct {
 }
 
 // Run runs dependency graph deployment with default settings
-func (a *AppControllerManager) Run() string {
-	return a.RunWithOptions(interfaces.DependencyGraphOptions{MinReplicaCount: 1})
+func (a *AppControllerManager) Run() {
+	a.runDeployment(false, interfaces.DependencyGraphOptions{MinReplicaCount: 1})
+}
+
+// RunAsynchronously runs dependency graph deployment with default settings without waiting for deployment to complete
+func (a *AppControllerManager) RunAsynchronously() {
+	a.runDeployment(true, interfaces.DependencyGraphOptions{MinReplicaCount: 1})
 }
 
 // RunWithOptions runs dependency graph deployment with given settings
-func (a *AppControllerManager) RunWithOptions(options interfaces.DependencyGraphOptions) string {
+func (a *AppControllerManager) RunWithOptions(options interfaces.DependencyGraphOptions) {
+	a.runDeployment(false, options)
+}
+
+// RunAsynchronouslyWithOptions runs dependency graph deployment with given settings without waiting for deployment to complete
+func (a *AppControllerManager) RunAsynchronouslyWithOptions(options interfaces.DependencyGraphOptions) {
+	a.runDeployment(true, options)
+}
+
+func (a *AppControllerManager) runDeployment(runAsync bool, options interfaces.DependencyGraphOptions) {
 	sched := scheduler.New(a.Client, nil, 0)
 
 	task, err := scheduler.Deploy(sched, options, false, nil)
 	Expect(err).NotTo(HaveOccurred())
-	return task
+	if !runAsync {
+		Eventually(
+			func() error {
+				_, err := a.Client.ConfigMaps().Get(task)
+				return err
+			},
+			300*time.Second, 5*time.Second).Should(HaveOccurred(), "Deployment job wasn't completed")
+	}
 }
 
 // DeleteAppControllerPod deletes pod, where AppController is running

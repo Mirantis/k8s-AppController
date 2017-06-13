@@ -72,7 +72,7 @@ type DeploymentReport interface {
 // DependencyGraph represents operations on dependency graph
 type DependencyGraph interface {
 	GetStatus() (DeploymentStatus, DeploymentReport)
-	Deploy(<-chan struct{})
+	Deploy(<-chan struct{}) bool
 	Options() DependencyGraphOptions
 }
 
@@ -82,7 +82,6 @@ type GraphContext interface {
 	Scheduler() Scheduler
 	GetArg(string) string
 	Graph() DependencyGraph
-	Dependency() *client.Dependency
 }
 
 // DependencyGraphOptions contains all the input required to build a dependency graph
