@@ -17,34 +17,29 @@ package resources
 import (
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 // TestConfigMapSuccessCheck checks status of ready ConfigMap
 func TestConfigMapSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.ConfigMaps("notfail"))
-	status, err := configMapStatus(c.ConfigMaps(), "notfail")
+	progress, err := configMapProgress(c.ConfigMaps(), "notfail")
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	if status != interfaces.ResourceReady {
-		t.Errorf("status should be `ready`, is `%s` instead.", status)
+	if progress != 1 {
+		t.Errorf("progress must be 1 but got %v", progress)
 	}
 }
 
 // TestConfigMapFailCheck checks status of not existing ConfigMap
 func TestConfigMapFailCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.ConfigMaps())
-	status, err := configMapStatus(c.ConfigMaps(), "fail")
+	_, err := configMapProgress(c.ConfigMaps(), "fail")
 
 	if err == nil {
 		t.Error("error not found, expected error")
-	}
-
-	if status != interfaces.ResourceError {
-		t.Errorf("status should be `error`, is `%s` instead.", status)
 	}
 }

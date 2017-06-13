@@ -4,6 +4,8 @@ metadata:
   name: etcd-scale
 
 exported: true
+sequential: true
+
 construction:
   flow: etcd-scale
 destruction:

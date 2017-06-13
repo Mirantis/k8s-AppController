@@ -15,21 +15,16 @@
 package resources
 
 import (
-	"fmt"
 	"log"
-	"strings"
 
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 )
 
 type flow struct {
-	Base
 	flow         *client.Flow
 	context      interfaces.GraphContext
 	originalName string
-	instanceName string
 	currentGraph interfaces.DependencyGraph
 }
 
@@ -52,20 +47,11 @@ func (flowTemplateFactory) Kind() string {
 func (flowTemplateFactory) New(def client.ResourceDefinition, c client.Interface, gc interfaces.GraphContext) interfaces.Resource {
 	newFlow := parametrizeResource(def.Flow, gc, []string{"*"}).(*client.Flow)
 
-	dep := gc.Dependency()
-	var depName string
-	if dep != nil {
-		depName = strings.Replace(dep.Name, dep.GenerateName, "", 1)
+	return &flow{
+		flow:         newFlow,
+		context:      gc,
+		originalName: def.Flow.Name,
 	}
-
-	return report.SimpleReporter{
-		BaseResource: &flow{
-			Base:         Base{def.Meta},
-			flow:         newFlow,
-			context:      gc,
-			originalName: def.Flow.Name,
-			instanceName: fmt.Sprintf("%s%s", depName, gc.GetArg("AC_NAME")),
-		}}
 }
 
 // NewExisting returns Flow controller for existing resource by its name. Since flow is not a real k8s resource
@@ -88,20 +74,13 @@ func (f *flow) buildDependencyGraph(replicaCount int, silent bool) (interfaces.D
 			args[arg] = val
 		}
 	}
-	fixedNumberOfReplicas := false
-	if replicaCount > 0 {
-		fixedNumberOfReplicas = f.context.Graph().Options().FixedNumberOfReplicas
-	} else if replicaCount == 0 {
-		fixedNumberOfReplicas = true
-		replicaCount = -1
-	}
 	options := interfaces.DependencyGraphOptions{
 		FlowName:              f.originalName,
 		Args:                  args,
-		FlowInstanceName:      f.instanceName,
+		FlowInstanceName:      f.context.GetArg("AC_ID"),
 		ReplicaCount:          replicaCount,
 		Silent:                silent,
-		FixedNumberOfReplicas: fixedNumberOfReplicas,
+		FixedNumberOfReplicas: true,
 	}
 
 	graph, err := f.context.Scheduler().BuildDependencyGraph(options)
@@ -138,10 +117,10 @@ func (f *flow) Create() error {
 
 // Delete releases resources allocated to the last flow replica (i.e. decreases replica count by 1)
 // Note, that unlike Create() method Delete() is not idempotent. However, it doesn't create any issues since
-// Delete is called during dlow destruction which can happen only once while Create ensures that at least one flow
+// Delete is called during flow destruction which can happen only once while Create ensures that at least one flow
 // replica exists, and as such can be called any number of times
 func (f flow) Delete() error {
-	graph, err := f.buildDependencyGraph(-1, false)
+	graph, err := f.buildDependencyGraph(0, false)
 	if err != nil {
 		return err
 	}
@@ -150,29 +129,17 @@ func (f flow) Delete() error {
 	return nil
 }
 
-// Status returns current status of the flow deployment
-func (f flow) Status(meta map[string]string) (interfaces.ResourceStatus, error) {
+// GetProgress returns current status of the flow deployment
+func (f flow) GetProgress() (float32, error) {
 	graph := f.currentGraph
 	if graph == nil {
 		var err error
-		graph, err = f.buildDependencyGraph(0, true)
+		graph, err = f.buildDependencyGraph(-1, true)
 		if err != nil {
-			return interfaces.ResourceError, err
+			return 0, err
 		}
 	}
 
-	status, _ := graph.GetStatus()
-
-	switch status {
-	case interfaces.Empty:
-		fallthrough
-	case interfaces.Finished:
-		return interfaces.ResourceReady, nil
-	case interfaces.Prepared:
-		fallthrough
-	case interfaces.Running:
-		return interfaces.ResourceNotReady, nil
-	default:
-		return interfaces.ResourceError, nil
-	}
+	deploymentReport := graph.GetDeploymentStatus()
+	return deploymentReport.Progress, nil
 }

@@ -4,6 +4,7 @@ metadata:
   name: monitor-clustername-job
 meta:
   timeout: 0
+  on-error: ignore
 job:
   apiVersion: batch/v1
   kind: Job

@@ -25,7 +25,6 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
-	"github.com/Mirantis/k8s-AppController/pkg/report"
 	"github.com/Mirantis/k8s-AppController/pkg/resources"
 )
 
@@ -64,19 +63,19 @@ func TestBuildDependencyGraph(t *testing.T) {
 			"pod/ready-1", sr.Key())
 	}
 
-	if len(sr.Requires) != 0 {
+	if len(sr.requires) != 0 {
 		t.Errorf("wrong length of 'Requires' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 0, len(sr.Requires))
+			sr.Key(), 0, len(sr.requires))
 	}
 
-	if len(sr.RequiredBy) != 1 {
+	if len(sr.requiredBy) != 1 {
 		t.Errorf("wrong length of 'RequiredBy' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 1, len(sr.Requires))
+			sr.Key(), 1, len(sr.requires))
 	}
 
-	if sr.RequiredBy[0] != "pod/ready-2" {
+	if sr.requiredBy[0] != "pod/ready-2" {
 		t.Errorf("wrong value of 'RequiredBy' for scheduled resource '%s', expected '%s', actual '%s'",
-			sr.Key(), "pod/ready-2", sr.RequiredBy[0])
+			sr.Key(), "pod/ready-2", sr.requiredBy[0])
 		return
 	}
 
@@ -92,19 +91,19 @@ func TestBuildDependencyGraph(t *testing.T) {
 			"pod/ready-2", sr.Key())
 	}
 
-	if len(sr.Requires) != 1 {
+	if len(sr.requires) != 1 {
 		t.Errorf("wrong length of 'Requires' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 1, len(sr.Requires))
+			sr.Key(), 1, len(sr.requires))
 	}
 
-	if sr.Requires[0] != "pod/ready-1" {
+	if sr.requires[0] != "pod/ready-1" {
 		t.Errorf("wrong value of 'Requires' for scheduled resource '%s', expected '%s', actual '%s'",
-			sr.Key(), "pod/ready-1", sr.Requires[0])
+			sr.Key(), "pod/ready-1", sr.requires[0])
 	}
 
-	if len(sr.RequiredBy) != 0 {
+	if len(sr.requiredBy) != 0 {
 		t.Errorf("wrong length of 'RequiredBy' for scheduled resource '%s', expected %d, actual %d",
-			sr.Key(), 0, len(sr.Requires))
+			sr.Key(), 0, len(sr.requires))
 	}
 }
 
@@ -112,47 +111,46 @@ func TestIsBlocked(t *testing.T) {
 	depGraph := newDependencyGraph(nil, interfaces.DependencyGraphOptions{})
 	context := &graphContext{graph: depGraph}
 
-	one := &ScheduledResource{
-		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
-		Meta:     map[string]map[string]string{},
-		context:  context,
+	one := &scheduledResource{
+		Resource:         mocks.NewResource("fake1", 0),
+		dependenciesMeta: map[string]map[string]string{},
+		context:          context,
 	}
 
 	depGraph.graph["fake1"] = one
 
-	if one.IsBlocked() {
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must not")
 	}
 
-	two := &ScheduledResource{
-		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "ready")},
-		Meta:     map[string]map[string]string{},
-		context:  context,
+	two := &scheduledResource{
+		Resource:         mocks.NewResource("fake2", 1),
+		dependenciesMeta: map[string]map[string]string{},
+		context:          context,
 	}
 
 	depGraph.graph["fake2"] = two
 
-	one.Requires = []string{"fake2"}
+	one.requires = []string{"fake2"}
 
-	if one.IsBlocked() {
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must not")
 	}
 
-	two.Error = errors.New("non-nil error")
-	if !one.IsBlocked() {
+	two.error = errors.New("non-nil error")
+	if !one.isBlocked() {
 		t.Error("scheduled resource is not blocked but it must be")
 	}
 
-	depGraph.graph["fake3"] = &ScheduledResource{
-		Resource: report.SimpleReporter{mocks.NewResource("fake3", "not ready")},
-		Meta:     map[string]map[string]string{},
+	depGraph.graph["fake3"] = &scheduledResource{
+		Resource: mocks.NewResource("fake3", 0),
 		context:  context,
 	}
 
-	two.Error = nil
-	one.Requires = append(one.Requires, "fake3")
+	two.error = nil
+	one.requires = append(one.requires, "fake3")
 
-	if !one.IsBlocked() {
+	if !one.isBlocked() {
 		t.Error("scheduled resource is not blocked but it must be")
 	}
 }
@@ -169,33 +167,31 @@ func TestIsBlockedWithOnErrorDependency(t *testing.T) {
 	depGraph := newDependencyGraph(nil, interfaces.DependencyGraphOptions{})
 	context := &graphContext{graph: depGraph}
 
-	one := &ScheduledResource{
-		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
-		Meta:     map[string]map[string]string{},
-		context:  context,
+	one := &scheduledResource{
+		Resource:         mocks.NewResource("fake1", 0),
+		dependenciesMeta: map[string]map[string]string{"fake2": {"on-error": "true"}},
+		context:          context,
 	}
 	depGraph.graph["fake1"] = one
 
-	if one.IsBlocked() {
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must be not")
 	}
 
-	two := &ScheduledResource{
-		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake2", "not ready")},
-		Meta:     map[string]map[string]string{},
+	two := &scheduledResource{
+		Resource: mocks.NewResource("fake2", 0),
 		context:  context,
 	}
 	depGraph.graph["fake2"] = two
 
-	one.Requires = []string{"fake2"}
-	one.Meta["fake2"] = map[string]string{"on-error": "true"}
+	one.requires = []string{"fake2"}
 
-	if !one.IsBlocked() {
+	if !one.isBlocked() {
 		t.Error("scheduled resource is not blocked but it must be")
 	}
 
-	two.Error = errors.New("non-nil error")
-	if one.IsBlocked() {
+	two.error = errors.New("non-nil error")
+	if one.isBlocked() {
 		t.Error("scheduled resource is blocked but it must be not")
 	}
 }
@@ -329,9 +325,9 @@ func TestLimitConcurrency(t *testing.T) {
 
 		for i := 0; i < 15; i++ {
 			key := fmt.Sprintf("resource%d", i)
-			r := report.SimpleReporter{BaseResource: mocks.NewCountingResource(key, counter, time.Second/4)}
+			r := mocks.NewCountingResource(key, counter, time.Second/4)
 			context := &graphContext{graph: depGraph}
-			sr := newScheduledResourceFor(r, "", context, false)
+			sr := newScheduledResourceFor(r, "", context, false, nil)
 			depGraph.graph[sr.Key()] = sr
 		}
 		stopChan := make(chan struct{})
@@ -342,23 +338,23 @@ func TestLimitConcurrency(t *testing.T) {
 			concurrency = len(depGraph.graph)
 		}
 		if counter.Max() != concurrency {
-			t.Errorf("expected max concurrency counter %d, but got %d", concurrency, counter.Max())
+			t.Errorf("expected max concurrency counter %d but got %d", concurrency, counter.Max())
 		}
 	}
 }
 
 func TestStopBeforeDeploymentStarted(t *testing.T) {
 	depGraph := newDependencyGraph(&scheduler{}, interfaces.DependencyGraphOptions{})
-	sr := &ScheduledResource{
-		Resource: report.SimpleReporter{BaseResource: mocks.NewResource("fake1", "not ready")},
+	sr := &scheduledResource{
+		Resource: mocks.NewResource("fake1", 0),
 	}
 	depGraph.graph[sr.Key()] = sr
 	stopChan := make(chan struct{})
 	close(stopChan)
 	depGraph.Deploy(stopChan)
-	status, _ := sr.Resource.Status(nil)
-	if status == interfaces.ResourceReady {
-		t.Errorf("expected that resource %v wont be in ready status, but got %v", sr.Key(), status)
+	progress, _ := sr.Resource.GetProgress()
+	if progress != 0 {
+		t.Errorf("expected that resource %v wont be in ready progress but got %v", sr.Key(), progress)
 	}
 }
 
@@ -425,9 +421,9 @@ func TestEmptyStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _ := depGraph.GetStatus()
-	if status != interfaces.Empty {
-		t.Errorf("expected status to be Empty, but got %s", status)
+	status := depGraph.GetDeploymentStatus()
+	if status.Total != 0 {
+		t.Errorf("expected total number to be zero but got %d", status.Total)
 	}
 }
 
@@ -446,9 +442,11 @@ func TestPreparedStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _ := depGraph.GetStatus()
-	if status != interfaces.Prepared {
-		t.Errorf("expected status to be Prepared, but got %s", status)
+	status := depGraph.GetDeploymentStatus()
+	if status.Total != 2 || status.Failed > 0 || status.Skipped > 0 || status.Progress > 0 || status.Replicas != 1 ||
+		status.Finished > 0 || status.TotalGroups != 2 {
+
+		t.Errorf("got unexpected status %v", status)
 	}
 }
 
@@ -467,9 +465,11 @@ func TestRunningStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _ := depGraph.GetStatus()
-	if status != interfaces.Running {
-		t.Errorf("expected status to be Running, but got %s", status)
+	status := depGraph.GetDeploymentStatus()
+	if status.Total != 2 || status.Failed > 0 || status.Skipped > 0 || status.Progress != 0.5 || status.Replicas != 1 ||
+		status.Finished != 1 || status.TotalGroups != 2 {
+
+		t.Errorf("got unexpected status %v", status)
 	}
 }
 
@@ -488,14 +488,16 @@ func TestFinishedStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, _ := depGraph.GetStatus()
-	if status != interfaces.Finished {
-		t.Errorf("expected status to be Finished, but got %s", status)
+	status := depGraph.GetDeploymentStatus()
+	if status.Total != 2 || status.Failed > 0 || status.Skipped > 0 || status.Progress != 1 || status.Replicas != 1 ||
+		status.Finished != 2 || status.TotalGroups != 2 {
+
+		t.Errorf("got unexpected status %v", status)
 	}
 }
 
-// TestGraph tests a simple DependencyGraph report
-func TestGraph(t *testing.T) {
+// TestGraphNodeStatuses tests a node status report
+func TestGraphNodeStatuses(t *testing.T) {
 	c := mocks.NewClient(
 		mocks.MakeJob("1"),
 		mocks.MakeJob("ready-2"),
@@ -513,51 +515,35 @@ func TestGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, rep := depGraph.GetStatus()
-	if status != interfaces.Running {
-		t.Errorf("expected status to be Running, but got %s", status)
+	nodeStatuses := depGraph.GetNodeStatuses()
+
+	if len(nodeStatuses) != 3 {
+		t.Fatalf("wrong length of a graph 3 != %d", len(nodeStatuses))
 	}
-
-	deploymentReport := rep.(report.DeploymentReport)
-
-	if len(deploymentReport) != 3 {
-		t.Errorf("wrong length of a graph 3 != %d", len(deploymentReport))
+	expected := []interfaces.NodeStatus{
+		{Name: "job/3", Status: "Starting / in progress", Progress: 0},
+		{Name: "job/ready-2", Status: "Finished", Progress: 100},
+		{Name: "job/1", Status: "Waiting for job/3", Progress: 0},
 	}
-	for _, nodeReport := range deploymentReport {
-		if nodeReport.Dependent == "job/1" {
-			if len(nodeReport.Dependencies) != 2 {
-				t.Errorf("wrong length of dependencies 2 != %d", len(nodeReport.Dependencies))
-				for _, dependency := range nodeReport.Dependencies {
-					if dependency.Dependency == "job/ready-2" {
-						if dependency.Blocks {
-							t.Error("job 2 should not block")
-						}
-					} else if dependency.Dependency == "job/3" {
-						if !dependency.Blocks {
-							t.Error("job 3 should block")
-						}
-					} else {
-						t.Errorf("unexpected dependency %s", dependency.Dependency)
-					}
-				}
-
-			}
+	for i, e := range expected {
+		if e != nodeStatuses[i] {
+			t.Errorf("unexpected report entry %d", i)
 		}
 	}
 }
 
-func makeTaskFunc(i int32, res bool, acc *int32) func() bool {
-	return func() bool {
+func makeTaskFunc(i int32, res bool, acc *int32) func(<-chan struct{}) bool {
+	return func(<-chan struct{}) bool {
 		time.Sleep(time.Second / 10)
 		atomic.AddInt32(acc, i)
 		return res
 	}
 }
 
-func runTaskFuncs(t *testing.T, funcs []func() bool, concurrency int, expectedSum int32, expectedResult bool, threshold float64, acc *int32) {
+func runTaskFuncs(t *testing.T, funcs []func(<-chan struct{}) bool, concurrency int, expectedSum int32, expectedResult bool, threshold float64, acc *int32) {
 	*acc = 0
 	before := time.Now()
-	res := runConcurrently(funcs, concurrency)
+	res := runConcurrently(funcs, concurrency, nil)
 	after := time.Now()
 	if *acc != expectedSum {
 		t.Errorf("runConcurrently failed: %d != %d", expectedSum, acc)
@@ -576,7 +562,7 @@ func runTaskFuncs(t *testing.T, funcs []func() bool, concurrency int, expectedSu
 // TestRunConcurrently tests runConcurrently function which runs list of concurrent tasks
 func TestRunConcurrently(t *testing.T) {
 	var acc int32
-	var funcs []func() bool
+	var funcs []func(<-chan struct{}) bool
 	for i := int32(1); i <= 50; i++ {
 		funcs = append(funcs, makeTaskFunc(i, true, &acc))
 	}
@@ -599,14 +585,14 @@ func TestWaitWithZeroTimeout(t *testing.T) {
 	graph := &dependencyGraph{graphOptions: options}
 	gc := &graphContext{graph: graph}
 	resource := resources.KindToResourceTemplate["pod"].New(resdef, mocks.NewClient(pod), gc)
-	sr := newScheduledResourceFor(resource, "", gc, false)
+	sr := newScheduledResourceFor(resource, "", gc, false, nil)
 	stopChan := make(chan struct{})
 	defer close(stopChan)
 
 	now := time.Now()
-	res, err := sr.Wait(CheckInterval, 0, stopChan)
+	res, err := sr.wait(CheckInterval, 0, stopChan)
 	if res {
-		t.Error("Wait() succeded")
+		t.Error("wait() succeded")
 	}
 	if err == nil {
 		t.Error("No error was returned")
@@ -615,11 +601,8 @@ func TestWaitWithZeroTimeout(t *testing.T) {
 		if err.Error() != expectedMessage {
 			t.Error("Got unexpected error:", err)
 		}
-		if sr.Error != err {
-			t.Error("ScheduledResource was not marked as permanently failed")
-		}
 	}
 	if time.Now().Sub(now) >= time.Second {
-		t.Error("Wait() was running for too long")
+		t.Error("wait() was running for too long")
 	}
 }

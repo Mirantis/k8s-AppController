@@ -17,34 +17,29 @@ package resources
 import (
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 // TestServiceAccountSuccessCheck checks status of ready ServiceAccount
 func TestServiceAccountSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.ServiceAccounts("notfail"))
-	status, err := serviceAccountStatus(c.ServiceAccounts(), "notfail")
+	progress, err := serviceAccountProgress(c.ServiceAccounts(), "notfail")
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	if status != interfaces.ResourceReady {
-		t.Errorf("status should be `ready`, is `%s` instead.", status)
+	if progress != 1 {
+		t.Errorf("progress must be 0 but got %v", progress)
 	}
 }
 
 // TestServiceAccountFailCheck checks status of not existing ServiceAccount
 func TestServiceAccountFailCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.ServiceAccounts())
-	status, err := serviceAccountStatus(c.ServiceAccounts(), "fail")
+	_, err := serviceAccountProgress(c.ServiceAccounts(), "fail")
 
 	if err == nil {
 		t.Error("error not found, expected error")
-	}
-
-	if status != interfaces.ResourceError {
-		t.Errorf("status should be `error`, is `%s` instead.", status)
 	}
 }

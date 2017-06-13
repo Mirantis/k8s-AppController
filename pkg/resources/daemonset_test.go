@@ -17,31 +17,27 @@ package resources
 import (
 	"testing"
 
-	"github.com/Mirantis/k8s-AppController/pkg/interfaces"
 	"github.com/Mirantis/k8s-AppController/pkg/mocks"
 )
 
 // TestDaemonSetSuccessCheck check status for ready DaemonSet
 func TestDaemonSetSuccessCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeDaemonSet("not-fail"))
-	status, err := daemonSetStatus(c.DaemonSets(), "not-fail")
+	progress, err := daemonSetProgress(c.DaemonSets(), "not-fail")
 
 	if err != nil {
 		t.Error(err)
 	}
-	if status != interfaces.ResourceReady {
-		t.Errorf("status should be ready , is %s instead", status)
+	if progress != 1 {
+		t.Errorf("progress must be 1 but got %v", progress)
 	}
 }
 
 // TestDaemonSetFailCheck status of not ready daemonset
 func TestDaemonSetFailCheck(t *testing.T) {
 	c := mocks.NewClient(mocks.MakeDaemonSet("fail"))
-	status, err := daemonSetStatus(c.DaemonSets(), "fail")
+	_, err := daemonSetProgress(c.DaemonSets(), "fail")
 	if err != nil {
 		t.Error(err)
-	}
-	if status != interfaces.ResourceNotReady {
-		t.Errorf("status should be not ready, is %s instead.", status)
 	}
 }
