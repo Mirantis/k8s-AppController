@@ -82,7 +82,6 @@ type GraphContext interface {
 	Scheduler() Scheduler
 	GetArg(string) string
 	Graph() DependencyGraph
-	Dependency() *client.Dependency
 }
 
 // DependencyGraphOptions contains all the input required to build a dependency graph

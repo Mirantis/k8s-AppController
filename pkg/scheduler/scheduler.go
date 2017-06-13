@@ -353,7 +353,7 @@ func (depGraph dependencyGraph) Deploy(stopChan <-chan struct{}) {
 		}
 	}
 	if depGraph.finalizer != nil {
-		depGraph.finalizer()
+		depGraph.finalizer(stopChan)
 	}
 	// TODO Make sure every KO gets created eventually
 }
@@ -418,7 +418,7 @@ func (depGraph dependencyGraph) GetStatus() (interfaces.DeploymentStatus, interf
 	return status, deploymentReport
 }
 
-func runConcurrently(funcs []func() bool, concurrency int) bool {
+func runConcurrently(funcs []func(<-chan struct{}) bool, concurrency int, stopChan <-chan struct{}) bool {
 	if concurrency < 1 {
 		concurrency = len(funcs)
 	}
@@ -430,12 +430,18 @@ func runConcurrently(funcs []func() bool, concurrency int) bool {
 
 	for _, f := range funcs {
 		sem <- true
-		go func(foo func() bool) {
-			defer func() { <-sem }()
-			if !foo() {
-				result = false
-			}
-		}(f)
+		select {
+		case <-stopChan:
+			result = false
+			<-sem
+		default:
+			go func(foo func(<-chan struct{}) bool) {
+				defer func() { <-sem }()
+				if !foo(stopChan) {
+					result = false
+				}
+			}(f)
+		}
 	}
 
 	for i := 0; i < cap(sem); i++ {

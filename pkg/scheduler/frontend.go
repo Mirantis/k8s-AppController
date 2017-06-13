@@ -161,14 +161,7 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 		if err != nil {
 			return "", err
 		}
-		var ch <-chan struct{}
-		if stopChan == nil {
-			ch := make(chan struct{})
-			defer close(ch)
-		} else {
-			ch = stopChan
-		}
-		depGraph.Deploy(ch)
+		depGraph.Deploy(stopChan)
 	} else {
 		log.Printf("Scheduling deployment of %s flow", options.FlowName)
 		var err error
