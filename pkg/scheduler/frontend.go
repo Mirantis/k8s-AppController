@@ -30,6 +30,10 @@ type scheduler struct {
 	client      client.Interface
 	selector    labels.Selector
 	concurrency int
+
+	resDefsCache     map[string]client.ResourceDefinition
+	dependencyCache  []client.Dependency
+	graphHasNoCycles bool
 }
 
 var _ interfaces.Scheduler = &scheduler{}
@@ -161,14 +165,11 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 		if err != nil {
 			return "", err
 		}
-		var ch <-chan struct{}
-		if stopChan == nil {
-			ch := make(chan struct{})
-			defer close(ch)
+		if depGraph.Deploy(stopChan) {
+			log.Println("Deployment finished sucessfully")
 		} else {
-			ch = stopChan
+			log.Println("Deployment failed")
 		}
-		depGraph.Deploy(ch)
 	} else {
 		log.Printf("Scheduling deployment of %s flow", options.FlowName)
 		var err error
@@ -178,15 +179,13 @@ func Deploy(sched interfaces.Scheduler, options interfaces.DependencyGraphOption
 		}
 		log.Printf("Scheduled deployment task %s", task)
 	}
-	log.Println("Done")
 	return task, nil
 }
 
-// GetStatus returns deployment status
-func GetStatus(client client.Interface, selector labels.Selector,
-	options interfaces.DependencyGraphOptions) (interfaces.DeploymentStatus, interfaces.DeploymentReport, error) {
+// GetStatusGraph returns deployment graph suitable for status queries
+func GetStatusGraph(client client.Interface, selector labels.Selector,
+	options interfaces.DependencyGraphOptions) (interfaces.DependencyGraph, error) {
 
-	silent := options.Silent
 	if options.FlowName == "" {
 		options.FlowName = interfaces.DefaultFlowName
 	}
@@ -194,14 +193,6 @@ func GetStatus(client client.Interface, selector labels.Selector,
 	options.FixedNumberOfReplicas = true
 	options.Silent = true
 
-	if !silent {
-		log.Println("Getting status of flow", options.FlowName)
-	}
 	sched := New(client, selector, 0)
-	graph, err := sched.BuildDependencyGraph(options)
-	if err != nil {
-		return interfaces.Empty, nil, err
-	}
-	status, report := graph.GetStatus()
-	return status, report, nil
+	return sched.BuildDependencyGraph(options)
 }

@@ -1,5 +1,5 @@
-hash: 2f834ec155cd18ba87aa9e1d956eddb68e27fed79ce906a755642f746da88757
-updated: 2017-02-21T17:08:06.756552076+02:00
+hash: 3d9eb1f21cfc40c5821df13618f7cf523730afd27e75ae5c99f53354307dcec1
+updated: 2017-05-29T23:26:02.460000726-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -37,7 +37,7 @@ imports:
   - log
   - swagger
 - name: github.com/fatih/color
-  version: 7824417a424b65227be8ac9b14d545a7f3e6c3f0
+  version: 570b54cabe6b8eb0bc2dfce68d964677d63b5260
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
@@ -75,6 +75,10 @@ imports:
   - buffer
   - jlexer
   - jwriter
+- name: github.com/mattn/go-runewidth
+  version: 97311d9f7767e3d6f422ea06661bc2c7a19e8a5d
+- name: github.com/olekukonko/tablewriter
+  version: febf2d34b54a69ce7530036c7503b1c9fbfdf0bb
 - name: github.com/onsi/ginkgo
   version: 74c678d97c305753605c338c6c78c49ec104b5e7
   subpackages:
@@ -271,6 +275,7 @@ imports:
   - pkg/util
   - pkg/util/cert
   - pkg/util/clock
+  - pkg/util/diff
   - pkg/util/errors
   - pkg/util/flowcontrol
   - pkg/util/framer
@@ -300,6 +305,7 @@ imports:
   - rest
   - testing
   - tools/auth
+  - tools/cache
   - tools/clientcmd
   - tools/clientcmd/api
   - tools/clientcmd/api/latest

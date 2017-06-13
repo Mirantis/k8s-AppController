@@ -18,42 +18,15 @@ import (
 	"github.com/Mirantis/k8s-AppController/pkg/client"
 )
 
-// ResourceStatus is an enum of k8s resource statuses
-type ResourceStatus string
-
-// Possible ResourceStatus values
-const (
-	ResourceReady    ResourceStatus = "ready"
-	ResourceNotReady ResourceStatus = "not ready"
-	ResourceError    ResourceStatus = "error"
-)
-
 // DefaultFlowName is the name of default flow (main dependency graph)
 const DefaultFlowName = "DEFAULT"
 
-// BaseResource is an interface for AppController supported resources
-type BaseResource interface {
+// Resource is an interface for AppController supported resources
+type Resource interface {
 	Key() string
-	// Ensure that Status() supports nil as meta
-	Status(meta map[string]string) (ResourceStatus, error)
+	GetProgress() (float32, error)
 	Create() error
 	Delete() error
-	Meta(string) interface{}
-}
-
-// DependencyReport is a report of a single dependency of a node in graph
-type DependencyReport struct {
-	Dependency string
-	Blocks     bool
-	Percentage int
-	Needed     int
-	Message    string
-}
-
-// Resource is an interface for a base resource that implements getting dependency reports
-type Resource interface {
-	BaseResource
-	GetDependencyReport(map[string]string) DependencyReport
 }
 
 // ResourceTemplate is an interface for AppController supported resource templates
@@ -64,15 +37,29 @@ type ResourceTemplate interface {
 	NewExisting(string, client.Interface, GraphContext) Resource
 }
 
-// DeploymentReport is an interface to get string representation of current deployment progress
-type DeploymentReport interface {
-	AsText(int) []string
+// DeploymentStatus is the structure containing deployment status - different stats and progress info
+type DeploymentStatus struct {
+	Total       int
+	TotalGroups int
+	Failed      int
+	Skipped     int
+	Finished    int
+	Replicas    int
+	Progress    float32
+}
+
+// NodeStatus represents status of each graph node
+type NodeStatus struct {
+	Name     string
+	Status   string
+	Progress int
 }
 
 // DependencyGraph represents operations on dependency graph
 type DependencyGraph interface {
-	GetStatus() (DeploymentStatus, DeploymentReport)
-	Deploy(<-chan struct{})
+	GetDeploymentStatus() DeploymentStatus
+	GetNodeStatuses() []NodeStatus
+	Deploy(<-chan struct{}) bool
 	Options() DependencyGraphOptions
 }
 
@@ -82,7 +69,6 @@ type GraphContext interface {
 	Scheduler() Scheduler
 	GetArg(string) string
 	Graph() DependencyGraph
-	Dependency() *client.Dependency
 }
 
 // DependencyGraphOptions contains all the input required to build a dependency graph
